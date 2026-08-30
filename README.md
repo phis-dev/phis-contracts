@@ -48,3 +48,5 @@ a different contract and do not belong here.
 The full walkthrough — how an Add-on is laid out, compiled, installed, activated, and
 upgraded — lives in phi-server's `ADDON_HOWTO.md`, with the design rationale in
 `SERVER_ADDONS.md`.
+
+<!-- CLA-Probelauf, wird nicht zusammengefuehrt -->
