@@ -31,7 +31,7 @@ jobs:
           path-to-document: https://github.com/phis-dev/.github/blob/main/CLA.md
           remote-organization-name: phis-dev
           remote-repository-name: cla-signatures
-          allowlist: phi-systems-tech,*[bot]
+          allowlist: "*[bot]"
           lock-pullrequest-aftermerge: false
           custom-notsigned-prcomment: >-
             Thank you for your pull request. Before it can be merged, please read
