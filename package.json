@@ -21,12 +21,21 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "devDependencies": {
     "@types/node": "^24.0.0",
     "eslint": "^10.9.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.68.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/phis-dev/phi-addon-contract.git"
+  },
+  "homepage": "https://github.com/phis-dev/phi-addon-contract#readme",
+  "bugs": {
+    "url": "https://github.com/phis-dev/phi-addon-contract/issues"
   }
 }
