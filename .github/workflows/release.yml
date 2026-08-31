@@ -1,0 +1,48 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  # Mints the OIDC token that npm trades for a short-lived publish credential.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Holds the job until a reviewer releases it, and narrows which runs npm will
+    # accept an OIDC token from. The name must match the trusted publisher on npmjs.com.
+    environment: npm-publish
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or newer; the npm bundled with Node trails it.
+      - name: Use an npm that can publish without a token
+        run: npm install -g npm@latest
+
+      - name: Refuse a tag that disagrees with package.json
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag $GITHUB_REF_NAME carries $tag, package.json says $pkg" >&2
+            exit 1
+          fi
+
+      - run: npm install
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      # No build step: `npm publish` runs prepack, and prepack is the guard that keeps an
+      # unbuilt dist out of the tarball. Building here as well would only hide it.
+      - name: Publish
+        run: npm publish
