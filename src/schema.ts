@@ -43,10 +43,15 @@ export type PhiServerAddonColumnDefault =
  * An Add-on never writes `phis.sites(id)`. Core is then free to rename its own tables without breaking
  * an installed Add-on, and which Core tables are referenceable becomes a decision instead of a
  * consequence of what happens to be reachable.
+ *
+ * A group exists only inside a Site, so a table pointing at `core.group` must be Site-scoped and Core
+ * binds the pair rather than the id alone. Core never references a group any other way, and an Add-on
+ * that could would be able to name a group belonging to a different Site.
  */
 export const PHI_SERVER_ADDON_CORE_REFERENCES = {
   site: "core.site",
   user: "core.user",
+  group: "core.group",
 } as const;
 
 export type PhiServerAddonCoreReference =
@@ -140,6 +145,27 @@ export type PhiServerAddonTableDescriptor = {
    * merely wants to mention a Site uses a reference column instead.
    */
   siteScoped?: boolean;
+  /**
+   * Core adds the owner column and its foreign key, and answers whether a row belongs to the acting
+   * user. The Add-on neither writes the column nor decides what "own" means, which is the point: the
+   * rule that a person may edit and delete what they created is one rule, not one per package.
+   *
+   * The column is nullable and a deleted user leaves it null rather than taking the rows along. A row
+   * without an owner therefore belongs to nobody, and no membership level reaches it through ownership.
+   *
+   * This is authority, not history. A table that only wants to record who created a row uses an
+   * ordinary `core.user` reference column, which grants nothing.
+   */
+  ownerScoped?: boolean;
+  /**
+   * Core adds the group column and binds it to the Site's group, which makes the group membership
+   * levels applicable to this table. Requires `siteScoped`, because a group has no meaning without one.
+   *
+   * As with the Site, this is more than a reference column: it says the rows are group property and are
+   * read through a membership level. A table that merely wants to mention a group uses a `core.group`
+   * reference column instead.
+   */
+  groupScoped?: boolean;
   columns: PhiServerAddonColumnDescriptor[];
   primaryKey: string[];
   indexes?: PhiServerAddonIndexDescriptor[];
