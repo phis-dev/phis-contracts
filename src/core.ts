@@ -24,6 +24,8 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
    * mean the opposite half of the same word.
    */
   authorization: "@phis/phi-server/authorization:v1",
+  /** Running the queries the manifest declared against this Add-on's own tables. */
+  data: "@phis/phi-server/data:v1",
   threads: "@phis/phi-server/threads:v1",
   resourceLinks: "@phis/phi-server/resource-links:v1",
   support: "@phis/phi-server/support:v1",

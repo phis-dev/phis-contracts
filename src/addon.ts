@@ -17,6 +17,7 @@ import type {
   PhiServerCoreCapabilityId,
   PhiServerServiceKind,
 } from "./core.js";
+import type { PhiServerAddonQueryCatalog } from "./queries.js";
 import type { PhiServerAddonSchemaDescriptor } from "./schema.js";
 
 export const PHI_SERVER_ADDON_MANIFEST_VERSION = 1 as const;
@@ -102,6 +103,13 @@ export type PhiServerAddonManifestV1 = {
    * applied is recorded in the database, and Core derives the difference.
    */
   schema: PhiServerAddonSchemaDescriptor | null;
+  /**
+   * The statements this Add-on may run against its own tables, or null when it runs none.
+   *
+   * Declared for the same reason the tables are: Core derives the SQL once, so what an installed
+   * Add-on can do to its data is readable before it does it, and nothing is assembled per request.
+   */
+  queries: PhiServerAddonQueryCatalog | null;
   /** The version of `schema`, or 0 when there is none. */
   migrationVersion: number;
 };

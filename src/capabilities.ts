@@ -12,6 +12,8 @@
  * at the point where it made the mistake.
  */
 
+import type { PhiServerDataCapabilityV1 } from "./queries.js";
+
 /**
  * The cumulative group levels, by name.
  *
@@ -95,4 +97,5 @@ export type PhiServerAuthorizationCapabilityV1 = {
  */
 export type PhiServerAddonCapabilities = {
   authorization?: PhiServerAuthorizationCapabilityV1;
+  data?: PhiServerDataCapabilityV1;
 };
