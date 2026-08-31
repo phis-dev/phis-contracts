@@ -32,6 +32,8 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
   /** Group facts -- which groups exist, who is in them. What follows from them is `authorization`. */
   groups: "@phis/phi-server/groups:v1",
   storage: "@phis/phi-server/storage:v1",
+  /** Reading the secrets an operator set for this Add-on, and no others. */
+  secrets: "@phis/phi-server/secrets:v1",
 } as const;
 
 export type PhiServerCoreCapabilityId =

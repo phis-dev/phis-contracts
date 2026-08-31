@@ -98,4 +98,85 @@ export type PhiServerAuthorizationCapabilityV1 = {
 export type PhiServerAddonCapabilities = {
   authorization?: PhiServerAuthorizationCapabilityV1;
   data?: PhiServerDataCapabilityV1;
+  storage?: PhiServerStorageCapabilityV1;
+  secrets?: PhiServerSecretsCapabilityV1;
+  groups?: PhiServerGroupsCapabilityV1;
+};
+
+/**
+ * The storage capability: `@phis/phi-server/storage:v1`.
+ *
+ * A private object store, bound to this Add-on and this Site. Keys are the Add-on's own and relative:
+ * Core puts them under a prefix it derives, and never hands the physical key back. An Add-on therefore
+ * cannot store an address, and cannot reach another Add-on's objects or another Site's by constructing
+ * one -- the same rule the install root follows, where a stored string never becomes an import
+ * specifier.
+ *
+ * This is not the Media library. Assets that a person uploads, browses, and references belong in a
+ * Media Space with its folders, quotas and delivery policies. This is for what an Add-on keeps for
+ * itself: a release artifact, a generated preview, an export waiting to be fetched.
+ */
+export type PhiServerStorageCapabilityV1 = {
+  put(input: {
+    key: string;
+    body: Uint8Array;
+    contentType: string;
+  }): Promise<{ key: string; byteSize: number }>;
+  /** Null rather than throwing for an object that is not there. */
+  get(key: string): Promise<{ body: Uint8Array; contentType: string } | null>;
+  head(key: string): Promise<{ key: string; byteSize: number; contentType: string } | null>;
+  /** Whether an object was removed. Removing what is not there is not an error. */
+  remove(key: string): Promise<boolean>;
+  /** The Add-on's own keys under a prefix, relative as they were given. */
+  list(prefix?: string): Promise<string[]>;
+};
+
+/**
+ * The secrets capability: `@phis/phi-server/secrets:v1`.
+ *
+ * An Add-on reads the secrets an operator set for it and no others. The owner is bound here, so there
+ * is no argument through which another Add-on's reference could be named -- the resolver enforces the
+ * same rule a second time, because the two are different kinds of mistake.
+ *
+ * There is no writer. An operator sets a secret with `phis secret set`; a package that could write its
+ * own would be a package that could plant one.
+ */
+export type PhiServerSecretsCapabilityV1 = {
+  /** The value, or null when the operator has not configured it. */
+  read(name: string): Promise<string | null>;
+};
+
+/**
+ * What an Add-on may learn about a person.
+ *
+ * Deliberately the same projection one group member gets of another: a display name, a company only
+ * where the group discloses it, and never an address. An Add-on renders "listed by" and nothing more.
+ */
+export type PhiServerUserProjection = {
+  userId: number;
+  displayName: string | null;
+  companyName: string | null;
+};
+
+/**
+ * The groups capability: `@phis/phi-server/groups:v1`.
+ *
+ * Group facts. What follows from them -- may this actor do this -- is `authorization:v1`.
+ *
+ * Every answer is bounded by the acting user: an Add-on sees the groups its actor is in and the people
+ * its actor could already see in them. It cannot become a directory of a Site's users, because there is
+ * no question here that reaches past the actor's own membership.
+ */
+export type PhiServerGroupsCapabilityV1 = {
+  /** The groups the acting user belongs to on this Site. */
+  myGroups(): Promise<Array<{ id: number; key: string; name: string }>>;
+  /** The members of one group the acting user is in, projected as a member sees them. */
+  members(groupId: number): Promise<PhiServerUserProjection[]>;
+  /**
+   * One person, if the acting user shares a group with them.
+   *
+   * Null otherwise, and null is the whole point: it is what stops a row's owner id from becoming a
+   * lookup into everybody.
+   */
+  user(userId: number): Promise<PhiServerUserProjection | null>;
 };
