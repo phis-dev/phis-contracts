@@ -12,6 +12,7 @@
  * back a constant, it is in the wrong package.
  */
 
+import type { PhiServerAddonCapabilities } from "./capabilities.js";
 import type {
   PhiServerCoreCapabilityId,
   PhiServerServiceKind,
@@ -134,6 +135,13 @@ export type PhiServerAddonRequestContext = {
         id: null;
       }
     | null;
+  /**
+   * What Core hands this request, bound to the Site and actor above.
+   *
+   * Only what the manifest declared arrives. A capability is not fetched, looked up, or constructed by
+   * the Add-on -- it is here or it is not, and it was already decided before the handler ran.
+   */
+  capabilities: PhiServerAddonCapabilities;
   signal: AbortSignal;
 };
 

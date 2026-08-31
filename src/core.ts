@@ -16,10 +16,18 @@
 
 /** The Core capabilities an Add-on may require. */
 export const PHI_SERVER_CORE_CAPABILITIES = {
-  auth: "@phis/phi-server/auth:v1",
+  authentication: "@phis/phi-server/authentication:v1",
+  /**
+   * "May this actor", in all three of its sources: does the row belong to them, what level do they
+   * hold in its group, and what may they do on this Site at all. It is spelled out rather than
+   * shortened to `auth` because the shortening would sit one letter away from `authentication` and
+   * mean the opposite half of the same word.
+   */
+  authorization: "@phis/phi-server/authorization:v1",
   threads: "@phis/phi-server/threads:v1",
   resourceLinks: "@phis/phi-server/resource-links:v1",
   support: "@phis/phi-server/support:v1",
+  /** Group facts -- which groups exist, who is in them. What follows from them is `authorization`. */
   groups: "@phis/phi-server/groups:v1",
   storage: "@phis/phi-server/storage:v1",
 } as const;
