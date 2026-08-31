@@ -101,6 +101,7 @@ export type PhiServerAddonCapabilities = {
   storage?: PhiServerStorageCapabilityV1;
   secrets?: PhiServerSecretsCapabilityV1;
   groups?: PhiServerGroupsCapabilityV1;
+  settings?: PhiServerSettingsCapabilityV1;
 };
 
 /**
@@ -180,3 +181,44 @@ export type PhiServerGroupsCapabilityV1 = {
    */
   user(userId: number): Promise<PhiServerUserProjection | null>;
 };
+
+/**
+ * The settings capability: `@phis/phi-server/settings:v1`.
+ *
+ * What an operator configures and an Add-on reads: a commission rate, a moderation switch, an endpoint.
+ * Distinct from `secrets:v1` on purpose -- a percentage is not a credential, and asking the secret store
+ * to hold one would make "what is configured here" unreadable to the operator who configured it.
+ *
+ * There is no writer. Settings are the operator's, set with `phis addon config set`, and an Add-on that
+ * could write its own would be able to widen what it was given.
+ *
+ * A setting the operator has not set answers with the declared default, so an Add-on has one shape to
+ * handle rather than two, and `null` means genuinely unset with no default to fall back to.
+ */
+export type PhiServerSettingsCapabilityV1 = {
+  read(name: string): Promise<string | number | boolean | null>;
+  all(): Promise<Readonly<Record<string, string | number | boolean | null>>>;
+};
+
+/**
+ * What a job receives.
+ *
+ * No request, no headers, and above all no actor: a job is the Add-on acting on its own data, not a
+ * person acting through it. That is why the row-level ladder does not apply inside one, and why a job
+ * is reachable only from `phis addon job run` and never from a route -- an Add-on that could start its
+ * own job from a request would have built itself a way around the ladder.
+ */
+export type PhiServerAddonJobContext = {
+  addonId: string;
+  jobId: string;
+  /** This run, for correlating what the job logs with what the operator started. */
+  runId: string;
+  /** The Site this run is for. A job always runs against exactly one. */
+  site: { id: number; key: string };
+  capabilities: PhiServerAddonCapabilities;
+  signal: AbortSignal;
+};
+
+export type PhiServerAddonJobHandler = (
+  context: PhiServerAddonJobContext,
+) => Promise<void> | void;

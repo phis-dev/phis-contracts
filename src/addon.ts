@@ -12,7 +12,10 @@
  * back a constant, it is in the wrong package.
  */
 
-import type { PhiServerAddonCapabilities } from "./capabilities.js";
+import type {
+  PhiServerAddonCapabilities,
+  PhiServerAddonJobHandler,
+} from "./capabilities.js";
 import type {
   PhiServerCoreCapabilityId,
   PhiServerServiceKind,
@@ -82,6 +85,30 @@ export type PhiServerAddonServiceProviderDescriptor = {
 export type PhiServerAddonJobDescriptor = {
   id: string;
   handler: string;
+  /**
+   * How often this job expects to run, for the operator to read -- never a schedule Core keeps.
+   *
+   * phi-server serves from several instances, so an in-process timer would fire once per instance for
+   * one intended run. The operator schedules `phis addon job run`, which is one runner by construction,
+   * and this field tells them what the Add-on had in mind.
+   */
+  suggestedInterval?: "hourly" | "daily" | "weekly";
+};
+
+/**
+ * One setting an operator may configure for this Add-on.
+ *
+ * Declared so `phis addon config` can list what is configurable, refuse a name nobody declared, and
+ * check a value against its type before it is stored -- the same bargain as the schema and query
+ * descriptors, one step smaller.
+ */
+export type PhiServerAddonSettingDescriptor = {
+  name: string;
+  type: "text" | "integer" | "boolean";
+  /** Shown by the CLI when it lists what an Add-on can be configured with. */
+  description?: string;
+  /** Answered when the operator has set nothing. Absent means the Add-on must handle null. */
+  default?: string | number | boolean;
 };
 
 export type PhiServerAddonManifestV1 = {
@@ -96,6 +123,8 @@ export type PhiServerAddonManifestV1 = {
   apiRoutes: PhiServerAddonApiRouteDescriptor[];
   hooks: PhiServerAddonHookDescriptor[];
   jobs: PhiServerAddonJobDescriptor[];
+  /** What an operator may configure, or an empty list when nothing is configurable. */
+  settings: PhiServerAddonSettingDescriptor[];
   /**
    * The tables this Add-on owns, or null when it owns none.
    *
@@ -174,6 +203,7 @@ export type PhiServerAddonRuntimeV1 = {
   apiHandlers?: Readonly<Record<string, PhiServerAddonHandler>>;
   hookHandlers?: Readonly<Record<string, PhiServerAddonHandler>>;
   serviceFactories?: Readonly<Record<string, PhiServerAddonServiceFactory>>;
+  jobHandlers?: Readonly<Record<string, PhiServerAddonJobHandler>>;
 };
 
 export type PhiServerAddonRuntimeModuleV1 = {

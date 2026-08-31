@@ -34,6 +34,8 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
   storage: "@phis/phi-server/storage:v1",
   /** Reading the secrets an operator set for this Add-on, and no others. */
   secrets: "@phis/phi-server/secrets:v1",
+  /** Reading what an operator configured for this Add-on on this Site. */
+  settings: "@phis/phi-server/settings:v1",
 } as const;
 
 export type PhiServerCoreCapabilityId =
