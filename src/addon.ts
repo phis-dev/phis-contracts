@@ -123,8 +123,16 @@ export type PhiServerAddonManifestV1 = {
   apiRoutes: PhiServerAddonApiRouteDescriptor[];
   hooks: PhiServerAddonHookDescriptor[];
   jobs: PhiServerAddonJobDescriptor[];
-  /** What an operator may configure, or an empty list when nothing is configurable. */
-  settings: PhiServerAddonSettingDescriptor[];
+  /**
+   * What an operator may configure. Absent means nothing is.
+   *
+   * Optional, like every field added after this manifest version was already in the wild. A required
+   * addition would make an installed Add-on's stored manifest unreadable the moment Core is upgraded --
+   * and its author had not forgotten anything, the field did not exist when they built it. The initial
+   * fields may demand an explicit `null`, because no stored manifest predates them; later ones must
+   * define what absence means and accept it.
+   */
+  settings?: PhiServerAddonSettingDescriptor[];
   /**
    * The tables this Add-on owns, or null when it owns none.
    *
@@ -137,8 +145,10 @@ export type PhiServerAddonManifestV1 = {
    *
    * Declared for the same reason the tables are: Core derives the SQL once, so what an installed
    * Add-on can do to its data is readable before it does it, and nothing is assembled per request.
+   *
+   * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
    */
-  queries: PhiServerAddonQueryCatalog | null;
+  queries?: PhiServerAddonQueryCatalog | null;
   /** The version of `schema`, or 0 when there is none. */
   migrationVersion: number;
 };
