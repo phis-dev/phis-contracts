@@ -90,7 +90,45 @@ export type PhiMediaUploadCompletionInput = {
   completion?: unknown;
 };
 
+/**
+ * What one endpoint turned out to be able to do, established by trying rather than by asking.
+ *
+ * A Provider is one adapter over many backends: the S3 adapter speaks to AWS, to MinIO and to Garage,
+ * and they do not agree on everything. So the capability belongs to the configured endpoint and not to
+ * the code, and no field of the configuration would tell Core which one it is looking at.
+ *
+ * Establishing it once, when an operator sets a Profile up, also moves a whole class of failure
+ * forward: today a wrong endpoint, a missing permission or a bucket that does not exist is discovered
+ * by whoever uploads first, and reaches them as their error rather than as a misconfiguration.
+ */
+export type PhisMediaStorageProbe = {
+  /** Whether a small object could be written, read back, and removed again. */
+  writable: boolean;
+  /**
+   * Whether the endpoint checks a declared SHA-256 against the bytes it is given.
+   *
+   * True only when a correct checksum was accepted *and* a deliberately wrong one was refused.
+   * Accepting alone proves nothing: an endpoint that ignores the header accepts everything, and a
+   * checksum nobody verifies is a claim by the uploader wearing the shape of proof.
+   *
+   * What it buys is a direct upload that still yields a trustworthy digest -- the bytes go from the
+   * client to the storage without passing through Core, and the storage refuses them if they are not
+   * what the client said they were.
+   */
+  verifiesSha256: boolean;
+  /** What did not answer, in an operator's terms. Empty when everything did. */
+  findings: string[];
+};
+
 export interface PhisMediaStorageAdapter {
+  /**
+   * Tries what this endpoint can do, and leaves nothing behind.
+   *
+   * Runs when a Profile is configured, not per upload. It writes a small object under a key of its own
+   * and removes it again; a Provider that cannot be probed answers with `writable: false` and a finding
+   * rather than throwing, because a Profile that cannot be reached is an answer too.
+   */
+  probeCapabilities(): Promise<PhisMediaStorageProbe>;
   putObject(input: PhisMediaObjectInput): Promise<PhisMediaObjectHead>;
   putObjectStream(input: PhisMediaObjectStreamInput): Promise<PhisMediaObjectHead>;
   getObject(storageKey: string): Promise<Buffer | null>;
