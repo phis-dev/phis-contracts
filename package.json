@@ -1,6 +1,6 @@
 {
   "name": "@phis/contracts",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "type": "module",
   "publishConfig": {
@@ -24,6 +24,11 @@
       "types": "./dist/access.d.ts",
       "import": "./dist/access.js",
       "default": "./dist/access.js"
+    },
+    "./signals": {
+      "types": "./dist/signals.d.ts",
+      "import": "./dist/signals.js",
+      "default": "./dist/signals.js"
     }
   },
   "files": [

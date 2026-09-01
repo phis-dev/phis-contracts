@@ -6,6 +6,7 @@ they hold between different parties and freeze at different moments.
 ```
 @phis/contracts/addon     what phi-server and a separately shipped Add-on promise each other
 @phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
+@phis/contracts/signals   the signal vocabulary the UI declares against and phi-server validates
 ```
 
 There is deliberately no root export. A package you can import from the top invites everything that
@@ -43,6 +44,21 @@ looked wrong on its own, which is why it went unnoticed.
 
 Each side keeps its own viewer type and passes a projection onto `PhiAccessSubject`, so neither
 package has to adopt the other's shape.
+
+## `/signals`
+
+The closed vocabularies a widget's wiring is written in -- scopes, actions, value types -- and the shape
+of a value schema name.
+
+A widget declares what it emits and listens for, the Builder stores that, and phi-server validates it on
+the way in. Two lists, one meaning; and when they were two lists they drifted. `@phis/ui` had grown
+`date`, `time` and `length`; phi-server had not. A length control's change signal -- from a widget the
+same release shipped -- was refused on save with "valueType is invalid".
+
+Which schemas exist stays with the UI. phi-server checks that a JSON signal names *a* schema, never
+which one, and `isPhiSignalValueSchemaShape` is exactly that much: shape, not membership. The UI asks
+the stricter question, because it holds the module registry; phi-server must not, or it would refuse
+every third party's schema for never having heard of it.
 
 ## What `/addon` covers
 
