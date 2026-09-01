@@ -212,6 +212,19 @@ export type PhiServerAddonManifestV1 = {
    */
   groups?: PhiServerAddonGroupDescriptor[];
   /**
+   * The Modules this package's other half contributes. Absent means it has no Module half.
+   *
+   * Each id is `<package name>/<module key>`, and the package name is this manifest's own -- one package
+   * carries one product, so there is nothing to resolve. What the field adds is the one thing Core
+   * cannot see from an artifact: whether a Module half exists at all. An Add-on that is only an Add-on,
+   * like a storage provider, says nothing here and is complete on its own.
+   *
+   * It is what lets enabling an Add-on for a Site check that the Site actually has the other half. A
+   * Site with the Add-on and not the Module has routes with no surface: nothing is broken, but an
+   * operator who thinks they switched a feature on finds nothing.
+   */
+  modules?: string[];
+  /**
    * The tables this Add-on owns, or null when it owns none.
    *
    * There is no list of migration steps beside it. The descriptor is the desired shape; what has been
