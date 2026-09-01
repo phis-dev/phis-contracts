@@ -138,8 +138,21 @@ export type PhiServerAddonTableConstraintDescriptor =
   /** For the polymorphic row: exactly `nonNullCount` of `columns` is set. */
   | { kind: "nullCardinality"; name: string; columns: string[]; nonNullCount: number };
 
+/**
+ * What an index is for, said abstractly so Core can choose the structure.
+ *
+ * `ordered` is the ordinary one: equality, ranges, and the orderings a paged select runs under.
+ * `text` is for substring search, names exactly one text column, and is what makes `contains` more than
+ * a scan -- measured on 200,000 rows, 72 ms without it and 0.5 ms with. It cannot be unique, because it
+ * indexes fragments rather than values.
+ *
+ * Absent means `ordered`: an index declared before this field existed had not forgotten it.
+ */
+export type PhiServerAddonIndexKind = "ordered" | "text";
+
 export type PhiServerAddonIndexDescriptor = {
   name: string;
+  kind?: PhiServerAddonIndexKind;
   columns: string[];
   /**
    * Unique, and read exactly as `unique` on a column: within the Site, on a Site-scoped table, with the

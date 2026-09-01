@@ -49,10 +49,11 @@ export type PhiServerAddonQueryComparison = "=" | "<>" | "<" | "<=" | ">" | ">="
 /**
  * A condition, as a tree of a closed set of shapes.
  *
- * No expressions, no functions, no pattern matching. `LIKE` is absent for the reason regular
+ * No expressions, no functions, no patterns an Add-on writes. `LIKE` is absent for the reason regular
  * expressions are absent from the schema descriptor: its escaping and collation behaviour differ
- * between database systems, and taking it would buy back the dependency this exists to remove. Text
- * search is a Core service, not a query the Add-on writes.
+ * between database systems, and taking it would buy back the dependency this exists to remove. What
+ * replaces it is `contains`, an operator: the Add-on names a column and a value, and Core decides how
+ * that is spelled and escaped.
  */
 export type PhiServerAddonQueryCondition =
   | {
@@ -62,6 +63,18 @@ export type PhiServerAddonQueryCondition =
       value: PhiServerAddonQueryValue;
     }
   | { kind: "isNull"; column: string; negated?: boolean }
+  /**
+   * Whether a text column contains this fragment, case-insensitively.
+   *
+   * The one search the vocabulary offers, and it is an operator rather than a pattern: the Add-on says
+   * what it wants and Core writes the statement, so there is no `LIKE` syntax in a manifest and no
+   * escaping for an author to get wrong. A `%` or a `_` in the value is a character to look for, not a
+   * wildcard.
+   *
+   * It wants a `text` index on the column. Without one it still works and reads the whole table to do
+   * it, which `phis addon check` reports at install rather than leaving to be discovered in production.
+   */
+  | { kind: "contains"; column: string; value: PhiServerAddonQueryValue }
   | { kind: "in"; column: string; values: PhiServerAddonQueryValue[] }
   | { kind: "all"; conditions: PhiServerAddonQueryCondition[] }
   | { kind: "any"; conditions: PhiServerAddonQueryCondition[] }
