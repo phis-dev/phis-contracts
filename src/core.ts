@@ -36,6 +36,8 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
   secrets: "@phis/phi-server/secrets:v1",
   /** Reading what an operator configured for this Add-on on this Site. */
   settings: "@phis/phi-server/settings:v1",
+  /** Whether the acting user holds one of this Add-on's own declared roles. */
+  roles: "@phis/phi-server/roles:v1",
 } as const;
 
 export type PhiServerCoreCapabilityId =

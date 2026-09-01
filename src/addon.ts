@@ -15,6 +15,7 @@
 import type {
   PhiServerAddonCapabilities,
   PhiServerAddonJobHandler,
+  PhiServerSiteAccess,
 } from "./capabilities.js";
 import type {
   PhiServerCoreCapabilityId,
@@ -122,6 +123,37 @@ export type PhiServerAddonSettingDescriptor = {
   default?: string | number | boolean;
 };
 
+/**
+ * Who may hand out one of this Add-on's roles.
+ *
+ * Declared rather than coded, which is the whole point: the Add-on's author decides the policy, and
+ * Core enforces it. A running Add-on cannot rewrite what is in a manifest the digest covers, so "the
+ * Add-on decides who may grant" and "an Add-on cannot widen what it was granted" stop contradicting
+ * each other.
+ *
+ * `siteAccess` names one of the Site's own claims; `role` names another role of this same Add-on. A
+ * Site Admin may always grant any role of any Add-on, so a graph that reaches nobody still has a way in.
+ */
+export type PhiServerAddonRoleGrantPolicy =
+  | { siteAccess: PhiServerSiteAccess }
+  | { role: string };
+
+/**
+ * One role this Add-on defines, in its own vocabulary.
+ *
+ * A role answers "may this person do this at all", where there is no row yet to judge -- may they submit
+ * an offering, open the agent workspace, approve somebody else's work. What may be done to a particular
+ * row stays the row's question: ownership for their own, the group ladder for shared ones.
+ *
+ * Core never interprets the name. It stores assignments, answers `has()`, and enforces `grantableBy`;
+ * what `reviewer` means is the Add-on's business and stays there.
+ */
+export type PhiServerAddonRoleDescriptor = {
+  name: string;
+  description?: string;
+  grantableBy: PhiServerAddonRoleGrantPolicy;
+};
+
 export type PhiServerAddonManifestV1 = {
   manifestVersion: typeof PHI_SERVER_ADDON_MANIFEST_VERSION;
   addonId: string;
@@ -144,6 +176,14 @@ export type PhiServerAddonManifestV1 = {
    * define what absence means and accept it.
    */
   settings?: PhiServerAddonSettingDescriptor[];
+  /**
+   * The roles this Add-on defines. Absent means it defines none.
+   *
+   * Optional for the same reason `settings` is: a manifest built before the field existed had not
+   * forgotten it. A name is frozen from the first assignment -- renaming one orphans every grant that
+   * points at it, silently, because the grant is stored as text and text does not follow a rename.
+   */
+  roles?: PhiServerAddonRoleDescriptor[];
   /**
    * The tables this Add-on owns, or null when it owns none.
    *

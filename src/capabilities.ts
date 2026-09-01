@@ -102,6 +102,25 @@ export type PhiServerAddonCapabilities = {
   secrets?: PhiServerSecretsCapabilityV1;
   groups?: PhiServerGroupsCapabilityV1;
   settings?: PhiServerSettingsCapabilityV1;
+  roles?: PhiServerRolesCapabilityV1;
+};
+
+/**
+ * The roles capability: `@phis/phi-server/roles:v1`.
+ *
+ * Answers whether the acting user holds one of the roles this Add-on declared, and nothing about who
+ * they are. There is no writer, for the reason `settings:v1` and `secrets:v1` have none: an Add-on able
+ * to grant its own roles could grant itself whatever those roles guard.
+ *
+ * Only declared roles are answered. A grant stored against a name this release no longer declares is not
+ * handed over, the same way a stored setting nobody declared is not -- so an Add-on never sees a role it
+ * does not know, whatever has accumulated across versions.
+ */
+export type PhiServerRolesCapabilityV1 = {
+  /** Whether the acting user holds this role here. False when nobody is acting. */
+  has(role: string): Promise<boolean>;
+  /** Every declared role the acting user holds, in declaration order. */
+  all(): Promise<readonly string[]>;
 };
 
 /**
