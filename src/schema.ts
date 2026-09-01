@@ -71,6 +71,15 @@ export type PhiServerAddonValueColumnDescriptor = {
   /** Required for `string`, forbidden otherwise. */
   maxLength?: number;
   nullable?: boolean;
+  /**
+   * Unique -- within the Site, when the table is Site-scoped.
+   *
+   * Core prepends the Site column, because the Add-on cannot: it may not declare `site_id` and so has
+   * nowhere to name the pair. Without that, uniqueness would reach across every tenant on the instance,
+   * and the second Site to install the Add-on would collide with the first over a value neither of them
+   * can see. Instance-wide uniqueness is therefore not expressible on a Site-scoped table, which is the
+   * intended answer rather than a missing feature.
+   */
   unique?: boolean;
   default?: PhiServerAddonColumnDefault;
 };
@@ -132,14 +141,22 @@ export type PhiServerAddonTableConstraintDescriptor =
 export type PhiServerAddonIndexDescriptor = {
   name: string;
   columns: string[];
+  /**
+   * Unique, and read exactly as `unique` on a column: within the Site, on a Site-scoped table, with the
+   * Site column prepended by Core.
+   *
+   * A non-unique index is only an access path and is left as it was written. Which order helps depends
+   * on the query, and Core does not know it.
+   */
   unique?: boolean;
 };
 
 export type PhiServerAddonTableDescriptor = {
   name: string;
   /**
-   * Core adds the Site column, its foreign key, and its cascade, and puts the Site filter into every
-   * query that reads this table. The Add-on neither writes the column nor is able to forget it.
+   * Core adds the Site column, its foreign key, and its cascade, puts the Site filter into every query
+   * that reads this table, and prepends it to every uniqueness rule the table declares. The Add-on
+   * neither writes the column nor is able to forget it.
    *
    * This is more than a reference column: it is the boundary a query is compiled against. A table that
    * merely wants to mention a Site uses a reference column instead.
