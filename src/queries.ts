@@ -156,7 +156,7 @@ export type PhiServerAddonQueryArguments = Readonly<
 export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
 
 /**
- * Running the declared queries: `@phis/phi-server/data:v1`.
+ * Running the declared queries: `@phis/server/data:v1`.
  *
  * Every call names a query the manifest declared. There is no method that takes SQL, a table, or a
  * condition, because an Add-on that could pass one of those at request time would be holding a

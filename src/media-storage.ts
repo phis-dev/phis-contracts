@@ -7,7 +7,7 @@
  * and answers about objects.
  */
 
-export const PHI_LOCAL_MEDIA_STORAGE_PROVIDER_ID = "@phis/phi-server/storage-local" as const;
+export const PHI_LOCAL_MEDIA_STORAGE_PROVIDER_ID = "@phis/server/storage-local" as const;
 export type PhisMediaStorageProviderId = `@${string}/${string}`;
 
 export type PhisMediaStorageConfig = {

@@ -53,7 +53,7 @@ export const PHI_SERVER_SITE_ACCESS = {
 export type PhiServerSiteAccess = (typeof PHI_SERVER_SITE_ACCESS)[keyof typeof PHI_SERVER_SITE_ACCESS];
 
 /**
- * The authorization capability: `@phis/phi-server/authorization:v1`.
+ * The authorization capability: `@phis/server/authorization:v1`.
  *
  * It answers questions and grants nothing. There is no operation here that changes a role, a
  * membership, or an owner, and there must not be one -- a single capability declaration would then be
@@ -106,7 +106,7 @@ export type PhiServerAddonCapabilities = {
 };
 
 /**
- * The roles capability: `@phis/phi-server/roles:v1`.
+ * The roles capability: `@phis/server/roles:v1`.
  *
  * Answers whether the acting user holds one of the roles this Add-on declared, and nothing about who
  * they are. There is no writer, for the reason `settings:v1` and `secrets:v1` have none: an Add-on able
@@ -124,7 +124,7 @@ export type PhiServerRolesCapabilityV1 = {
 };
 
 /**
- * The storage capability: `@phis/phi-server/storage:v1`.
+ * The storage capability: `@phis/server/storage:v1`.
  *
  * A private object store, bound to this Add-on and this Site. Keys are the Add-on's own and relative:
  * Core puts them under a prefix it derives, and never hands the physical key back. An Add-on therefore
@@ -152,7 +152,7 @@ export type PhiServerStorageCapabilityV1 = {
 };
 
 /**
- * The secrets capability: `@phis/phi-server/secrets:v1`.
+ * The secrets capability: `@phis/server/secrets:v1`.
  *
  * An Add-on reads the secrets an operator set for it and no others. The owner is bound here, so there
  * is no argument through which another Add-on's reference could be named -- the resolver enforces the
@@ -179,7 +179,7 @@ export type PhiServerUserProjection = {
 };
 
 /**
- * The groups capability: `@phis/phi-server/groups:v1`.
+ * The groups capability: `@phis/server/groups:v1`.
  *
  * Group facts. What follows from them -- may this actor do this -- is `authorization:v1`.
  *
@@ -202,7 +202,7 @@ export type PhiServerGroupsCapabilityV1 = {
 };
 
 /**
- * The settings capability: `@phis/phi-server/settings:v1`.
+ * The settings capability: `@phis/server/settings:v1`.
  *
  * What an operator configures and an Add-on reads: a commission rate, a moderation switch, an endpoint.
  * Distinct from `secrets:v1` on purpose -- a percentage is not a credential, and asking the secret store

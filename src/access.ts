@@ -14,7 +14,7 @@
  * What belongs here is what two ends of one agreement must both know. Not what both happen to use.
  */
 
-export const PHI_CORE_ROLE_PROVIDER_ID = "@phis/phi-server/core" as const;
+export const PHI_CORE_ROLE_PROVIDER_ID = "@phis/server/core" as const;
 
 /**
  * The Site roles Core itself grants, as bit flags.

@@ -16,28 +16,28 @@
 
 /** The Core capabilities an Add-on may require. */
 export const PHI_SERVER_CORE_CAPABILITIES = {
-  authentication: "@phis/phi-server/authentication:v1",
+  authentication: "@phis/server/authentication:v1",
   /**
    * "May this actor", in all three of its sources: does the row belong to them, what level do they
    * hold in its group, and what may they do on this Site at all. It is spelled out rather than
    * shortened to `auth` because the shortening would sit one letter away from `authentication` and
    * mean the opposite half of the same word.
    */
-  authorization: "@phis/phi-server/authorization:v1",
+  authorization: "@phis/server/authorization:v1",
   /** Running the queries the manifest declared against this Add-on's own tables. */
-  data: "@phis/phi-server/data:v1",
-  threads: "@phis/phi-server/threads:v1",
-  resourceLinks: "@phis/phi-server/resource-links:v1",
-  support: "@phis/phi-server/support:v1",
+  data: "@phis/server/data:v1",
+  threads: "@phis/server/threads:v1",
+  resourceLinks: "@phis/server/resource-links:v1",
+  support: "@phis/server/support:v1",
   /** Group facts -- which groups exist, who is in them. What follows from them is `authorization`. */
-  groups: "@phis/phi-server/groups:v1",
-  storage: "@phis/phi-server/storage:v1",
+  groups: "@phis/server/groups:v1",
+  storage: "@phis/server/storage:v1",
   /** Reading the secrets an operator set for this Add-on, and no others. */
-  secrets: "@phis/phi-server/secrets:v1",
+  secrets: "@phis/server/secrets:v1",
   /** Reading what an operator configured for this Add-on on this Site. */
-  settings: "@phis/phi-server/settings:v1",
+  settings: "@phis/server/settings:v1",
   /** Whether the acting user holds one of this Add-on's own declared roles. */
-  roles: "@phis/phi-server/roles:v1",
+  roles: "@phis/server/roles:v1",
 } as const;
 
 export type PhiServerCoreCapabilityId =
@@ -51,8 +51,8 @@ export type PhiServerCoreCapabilityId =
  * LDAP for a Directory. Core keeps selecting the configured implementation itself.
  */
 export const PHI_SERVER_SERVICE_KINDS = {
-  mediaStorage: "@phis/phi-server/service/media-storage",
-  directory: "@phis/phi-server/service/directory",
+  mediaStorage: "@phis/server/service/media-storage",
+  directory: "@phis/server/service/directory",
 } as const;
 
 export type PhiServerServiceKind =
@@ -76,7 +76,7 @@ export const PHI_SERVER_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhiServerSer
 
 export const PHI_SERVER_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhiServerServiceKind, string>> = {
   [PHI_SERVER_SERVICE_KINDS.mediaStorage]:
-    "66cb9728bdcfc4d2b97ef33db5b3de9934659ec5dd94b5ef1e35cf9030586ae2",
+    "45a871522511f7d77841ca8dd0113b423b3cfd4cb921f143cd1d3d116cab6952",
   [PHI_SERVER_SERVICE_KINDS.directory]:
-    "ed8c179c64b07ea93ab24c26f7cfea237c409c879549ac4ed6cd74af356c2d6a",
+    "2cac7397c7beb1b8e71fc67f5cae3be89182dddf096895570a15deafa1adbfc9",
 };
