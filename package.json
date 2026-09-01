@@ -38,10 +38,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/phis-dev/phis-addon-contract.git"
+    "url": "git+https://github.com/phis-dev/phis-contracts.git"
   },
-  "homepage": "https://github.com/phis-dev/phis-addon-contract#readme",
+  "homepage": "https://github.com/phis-dev/phis-contracts#readme",
   "bugs": {
-    "url": "https://github.com/phis-dev/phis-addon-contract/issues"
+    "url": "https://github.com/phis-dev/phis-contracts/issues"
   }
 }
