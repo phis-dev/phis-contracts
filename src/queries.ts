@@ -64,7 +64,16 @@ export type PhiServerAddonQueryCondition =
   | { kind: "isNull"; column: string; negated?: boolean }
   | { kind: "in"; column: string; values: PhiServerAddonQueryValue[] }
   | { kind: "all"; conditions: PhiServerAddonQueryCondition[] }
-  | { kind: "any"; conditions: PhiServerAddonQueryCondition[] };
+  | { kind: "any"; conditions: PhiServerAddonQueryCondition[] }
+  /**
+   * A condition that applies only when its parameter was given.
+   *
+   * A listing has filters the caller may or may not set, and a declared query has one fixed `where`.
+   * Without this, every combination is its own query -- three optional filters are eight of them, four
+   * are sixteen, each declared, validated and kept in step by hand. The parameter must be nullable, and
+   * null means the condition is not there rather than that it matched nothing.
+   */
+  | { kind: "whenPresent"; parameter: string; condition: PhiServerAddonQueryCondition };
 
 export type PhiServerAddonQueryOrdering = {
   column: string;
@@ -79,8 +88,19 @@ export type PhiServerAddonQueryAssignment = {
 /**
  * Reading rows of one of this Add-on's tables.
  *
- * `limit` is required and bounded. An unbounded read is how an Add-on takes an instance down with a
- * table that grew, and "the caller will pass a sensible one" is not a bound.
+ * Every select is paged, whether or not it was written as a listing. There is no unpaged form to reach
+ * for: an unbounded read is how an Add-on takes an instance down with a table that grew, and "the
+ * caller will pass a sensible one" is not a bound.
+ *
+ * `orderBy` is completed by Core with the primary key, so the order is total. Without that a cursor is
+ * quietly wrong: two rows sharing a sort value may come back in either order, and a row then appears on
+ * two pages while another appears on none. It is the kind of fault that stays invisible until the table
+ * is large, and no Add-on author has to think about it.
+ *
+ * Every column named in `orderBy` must be declared `NOT NULL`. Where nulls sort is a decision the
+ * descriptor cannot express, so an order over a nullable column is underdetermined -- and a keyset
+ * comparison against a null value matches nothing at all, which would end the paging early rather than
+ * loudly.
  */
 export type PhiServerAddonSelectQueryDescriptor = {
   kind: "select";
@@ -90,8 +110,13 @@ export type PhiServerAddonSelectQueryDescriptor = {
   columns?: string[];
   where?: PhiServerAddonQueryCondition;
   orderBy?: PhiServerAddonQueryOrdering[];
+  /**
+   * The largest page this query will ever serve, whatever the caller asks for.
+   *
+   * The Add-on's own ceiling, not the page size: a call may ask for less, and Core takes the smallest of
+   * the request, this, and `PHI_SERVER_ADDON_QUERY_MAX_LIMIT`.
+   */
   limit: number;
-  offsetParameter?: string;
 };
 
 /**
@@ -156,6 +181,30 @@ export type PhiServerAddonQueryArguments = Readonly<
 export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
 
 /**
+ * One page of a select, and whether there is another.
+ *
+ * `cursor` present means there is more; absent means that was everything. It is the one promise a
+ * consumer can neither detect nor repair on its own -- a truncated answer is indistinguishable from a
+ * complete one unless the answer says so -- and Core keeps it by reading one row more than it returns,
+ * which costs a row and no count.
+ *
+ * The cursor is opaque. It encodes the ordering it was made for and is refused by a query with a
+ * different one, because paging on somebody else's order silently skips and repeats rows.
+ */
+export type PhiServerAddonQueryPage = {
+  rows: PhiServerAddonQueryRow[];
+  cursor: string | null;
+};
+
+/** What a caller asks for a page, beside the query's own parameters. */
+export type PhiServerAddonQueryPageRequest = {
+  /** A wish. Core takes the smallest of this, the descriptor's `limit`, and the hard maximum. */
+  limit?: number;
+  /** From a previous page. Absent starts at the beginning. */
+  cursor?: string | null;
+};
+
+/**
  * Running the declared queries: `@phis/server/data:v1`.
  *
  * Every call names a query the manifest declared. There is no method that takes SQL, a table, or a
@@ -165,9 +214,16 @@ export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
  * A mutation answers how many rows it touched. Zero from an `update` or `delete` means the row was not
  * there or was not the caller's to change, and the two are deliberately the same answer: telling them
  * apart would report the existence of a row the caller may not have.
+ *
+ * A select answers with a page. There is no method that returns everything, because the caller who
+ * wanted everything is the one who brings the instance down.
  */
 export type PhiServerDataCapabilityV1 = {
-  select(name: string, args?: PhiServerAddonQueryArguments): Promise<PhiServerAddonQueryRow[]>;
+  select(
+    name: string,
+    args?: PhiServerAddonQueryArguments,
+    page?: PhiServerAddonQueryPageRequest,
+  ): Promise<PhiServerAddonQueryPage>;
   /** Returns the inserted row, with the scope columns Core filled in. */
   insert(name: string, args?: PhiServerAddonQueryArguments): Promise<PhiServerAddonQueryRow | null>;
   update(name: string, args?: PhiServerAddonQueryArguments): Promise<number>;
