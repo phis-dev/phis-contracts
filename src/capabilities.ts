@@ -149,6 +149,23 @@ export type PhiServerStorageCapabilityV1 = {
   remove(key: string): Promise<boolean>;
   /** The Add-on's own keys under a prefix, relative as they were given. */
   list(prefix?: string): Promise<string[]>;
+  /**
+   * What this Add-on holds on this Site, and what it is allowed to hold.
+   *
+   * The ceilings are the operator's and are enforced by Core: a `put` past one is refused whether or
+   * not anybody read this first. It is here so an Add-on can say *why* -- a refusal an interface can
+   * explain before it happens beats one that arrives as an error, and a vendor who can see they are at
+   * their limit does not file a bug about it.
+   *
+   * `null` means no ceiling. Both counts are kept as running totals rather than counted on demand,
+   * because counting would mean listing the store -- the unbounded read the ceiling exists to prevent.
+   */
+  usage(): Promise<{
+    bytes: number;
+    objects: number;
+    quotaBytes: number | null;
+    quotaObjects: number | null;
+  }>;
 };
 
 /**
