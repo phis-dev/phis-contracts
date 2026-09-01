@@ -59,6 +59,17 @@ export type PhiServerAddonHookDescriptor = {
   bodyLimitBytes: number;
   rateLimitClass: string;
   timeoutMs: number;
+  /**
+   * Whether this hook is told which Site it was called for, through `x-phi-site-key`.
+   *
+   * A hook is unauthenticated by construction -- that is what makes it reachable by a payment provider
+   * or by somebody else's Core. Without a Site it also has no capabilities at all, because every one of
+   * them is Site-scoped, so a hook could until now verify a signature and touch no data. Stating the
+   * Site is what makes a public read possible; it grants nothing else, and the caller is still nobody.
+   *
+   * Optional, and absent means false: a hook written before this field existed had not forgotten it.
+   */
+  siteScoped?: boolean;
 };
 
 export type PhiServerAddonCapabilityDescriptor = {
