@@ -27,6 +27,20 @@ export type PhiServerAddonQueryParameter = {
   type: PhiServerAddonQueryParameterType;
   /** Whether the caller may pass null. Absent means it may not. */
   nullable?: boolean;
+  /**
+   * Whether this parameter carries many values rather than one.
+   *
+   * Only usable by `in`, and the reason `in` is worth having at all. Its other form takes values fixed
+   * in the descriptor, which answers "one of these three states" and nothing a caller brings -- and the
+   * commonest need is exactly that: the rows belonging to the page that was just read, whose keys are
+   * known only at request time.
+   *
+   * It stays one binding. Core writes `= ANY($n::TYPE[])` rather than expanding the list into the
+   * statement, so the query has one shape however many values arrive; a statement whose text grew with
+   * its arguments would be assembled at request time, which is the thing this file exists to prevent.
+   * Core caps the length, because a list is an unbounded read wearing a parameter.
+   */
+  list?: boolean;
 };
 
 /**
@@ -75,7 +89,16 @@ export type PhiServerAddonQueryCondition =
    * it, which `phis addon check` reports at install rather than leaving to be discovered in production.
    */
   | { kind: "contains"; column: string; value: PhiServerAddonQueryValue }
-  | { kind: "in"; column: string; values: PhiServerAddonQueryValue[] }
+  /** One of a set fixed in the descriptor: a state, a kind, a handful of names the Add-on knows. */
+  | { kind: "in"; column: string; values: PhiServerAddonQueryValue[]; parameter?: never }
+  /**
+   * One of a set the caller brings, named by a `list` parameter.
+   *
+   * What makes a second query about the same rows possible: read a page, then ask something else about
+   * exactly those keys. Without it the second question can only be asked one row at a time or about the
+   * whole table, and neither is a page.
+   */
+  | { kind: "in"; column: string; parameter: string; values?: never }
   | { kind: "all"; conditions: PhiServerAddonQueryCondition[] }
   | { kind: "any"; conditions: PhiServerAddonQueryCondition[] }
   /**
@@ -213,14 +236,71 @@ export type PhiServerAddonDeleteQueryDescriptor = PhiServerAddonRoleGuarded & {
   idParameter: string;
 };
 
+/**
+ * `count` without a column counts rows; every other function names one.
+ *
+ * `sum` and `avg` want an integer column, and validation says so rather than letting PostgreSQL raise it
+ * at the first call: a manifest that averages a text column is wrong when it is written, not when it is
+ * run. `avg` comes back as a string, because it is `numeric` and a JavaScript number is not.
+ */
+export type PhiServerAddonAggregateFunction = "count" | "sum" | "avg" | "min" | "max";
+
+export type PhiServerAddonQueryAggregate = {
+  function: PhiServerAddonAggregateFunction;
+  column?: string;
+  /** What the value is called in the answer. Must not collide with a grouping column. */
+  as: string;
+};
+
+/**
+ * Counting and summarising rows instead of returning them.
+ *
+ * The question a select cannot answer: "how many" and "what on average", per something. Without it an
+ * Add-on reads every row to count them, which is the unbounded read paging exists to prevent, or keeps a
+ * running total in a column of its own -- a number Core cannot hold true and that drifts the first time
+ * a write is lost.
+ *
+ * It reads no row a select could not have read. The ladder is not consulted for either: what a query may
+ * see is what the query says, `actor` and all, and an aggregate over rows the caller may not read one by
+ * one is an aggregate the Add-on wrote that way deliberately. What changes here is arithmetic, not
+ * reach.
+ *
+ * `groupBy` decides the shape of the answer. Without it there is exactly one row and no paging. With it
+ * there is one row per group, paged like a select -- and the grouping columns are the ordering, which is
+ * total by construction, since `GROUP BY` yields each combination once. That is also why they must be
+ * `NOT NULL`, and why there is no ordering by an aggregated value: ranking by an average would page on a
+ * key that is neither unique nor known before the group is computed.
+ */
+export type PhiServerAddonAggregateQueryDescriptor = PhiServerAddonRoleGuarded & {
+  kind: "aggregate";
+  name: string;
+  table: string;
+  aggregates: PhiServerAddonQueryAggregate[];
+  where?: PhiServerAddonQueryCondition;
+  groupBy?: string[];
+  /** The Add-on's ceiling on groups per page. Required with `groupBy`, meaningless without it. */
+  limit?: number;
+};
+
 export type PhiServerAddonQueryDescriptor =
   | PhiServerAddonSelectQueryDescriptor
   | PhiServerAddonInsertQueryDescriptor
   | PhiServerAddonUpdateQueryDescriptor
-  | PhiServerAddonDeleteQueryDescriptor;
+  | PhiServerAddonDeleteQueryDescriptor
+  | PhiServerAddonAggregateQueryDescriptor;
 
 /** The most rows one declared `select` may return, whatever it asks for. */
 export const PHI_SERVER_ADDON_QUERY_MAX_LIMIT = 500 as const;
+
+/**
+ * The most values one `list` parameter may carry.
+ *
+ * A page's worth, because that is what it is for: the keys just read, asked about again. Larger, and it
+ * is the unbounded read paging removed, arriving through the one door that still accepts a caller's
+ * count. Exceeding it is refused rather than truncated -- a silently shortened list answers about some
+ * of the rows and says it answered about all of them.
+ */
+export const PHI_SERVER_ADDON_QUERY_MAX_LIST = 500 as const;
 
 export type PhiServerAddonQueryCatalog = {
   parameters: Readonly<Record<string, PhiServerAddonQueryParameter[]>>;
@@ -228,7 +308,7 @@ export type PhiServerAddonQueryCatalog = {
 };
 
 export type PhiServerAddonQueryArguments = Readonly<
-  Record<string, string | number | boolean | null>
+  Record<string, string | number | boolean | null | readonly (string | number)[]>
 >;
 
 export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
@@ -277,6 +357,17 @@ export type PhiServerDataCapabilityV1 = {
     args?: PhiServerAddonQueryArguments,
     page?: PhiServerAddonQueryPageRequest,
   ): Promise<PhiServerAddonQueryPage>;
+  /**
+   * Counting and summarising, as a page for the same reason a select is one.
+   *
+   * A grouped aggregate has as many rows as there are groups, which is a number the Add-on does not know
+   * either. Ungrouped, the page holds one row and carries no cursor.
+   */
+  aggregate(
+    name: string,
+    args?: PhiServerAddonQueryArguments,
+    page?: PhiServerAddonQueryPageRequest,
+  ): Promise<PhiServerAddonQueryPage>;
   /** Returns the inserted row, with the scope columns Core filled in. */
   insert(name: string, args?: PhiServerAddonQueryArguments): Promise<PhiServerAddonQueryRow | null>;
   update(name: string, args?: PhiServerAddonQueryArguments): Promise<number>;
@@ -284,7 +375,7 @@ export type PhiServerDataCapabilityV1 = {
   /**
    * One unit of work. Everything inside commits together or not at all.
    *
-   * The handle offers the same four operations and nothing else -- no commit, no rollback, no
+   * The handle offers the same five operations and nothing else -- no commit, no rollback, no
    * savepoint. Returning ends the transaction; throwing rolls it back. An Add-on cannot leave one
    * open, because it never holds the thing that would stay open.
    */
