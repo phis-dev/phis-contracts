@@ -1,5 +1,5 @@
 {
-  "name": "@phis/addon-contract",
+  "name": "@phis/contracts",
   "version": "0.1.1",
   "license": "Apache-2.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "access": "public"
   },
   "sideEffects": false,
-  "description": "The types and constants a phi-server Add-on declares or implements. No runtime code.",
+  "description": "The agreements phi-server keeps with what surrounds it: the Add-on ABI, and the authorization vocabulary it shares with the site UI.",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -15,10 +15,15 @@
     "prepack": "npm run build"
   },
   "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "default": "./dist/index.js"
+    "./addon": {
+      "types": "./dist/addon-index.d.ts",
+      "import": "./dist/addon-index.js",
+      "default": "./dist/addon-index.js"
+    },
+    "./access": {
+      "types": "./dist/access.d.ts",
+      "import": "./dist/access.js",
+      "default": "./dist/access.js"
     }
   },
   "files": [
