@@ -94,7 +94,14 @@ export type PhiServerAddonValueColumnDescriptor = {
  */
 export type PhiServerAddonReferenceColumnDescriptor = {
   name: string;
-  /** A Core table under its symbolic name, or one of this Add-on's own tables. */
+  /**
+   * A Core table under its symbolic name, or one of this Add-on's own tables.
+   *
+   * A reference to a Site-scoped table is bound together with its Site, the way a group reference is:
+   * Core writes `(column, site_id)` against the target's `(key, site_id)`, and both tables must be
+   * Site-scoped. The id alone would let a row of one Site name a row of another, and nothing about the
+   * declaration would show it -- the column would look exactly the same and the constraint would hold.
+   */
   references: PhiServerAddonCoreReference | { table: string };
   nullable?: boolean;
   unique?: boolean;
@@ -173,8 +180,14 @@ export type PhiServerAddonTableDescriptor = {
    *
    * This is more than a reference column: it is the boundary a query is compiled against. A table that
    * merely wants to mention a Site uses a reference column instead.
+   *
+   * Required, and required as a word rather than as an absence. `false` is a real answer -- a category
+   * list, a currency table, a set of country codes belong to the Add-on and to no Site -- but it is an
+   * answer somebody has to give. Left optional, the unguarded table is what an author gets for saying
+   * nothing, and every other boundary in this file works the other way round: Core supplies it and the
+   * Add-on cannot forget it. Here it cannot supply it, so it insists on being told.
    */
-  siteScoped?: boolean;
+  siteScoped: boolean;
   /**
    * Core adds the owner column and its foreign key, and answers whether a row belongs to the acting
    * user. The Add-on neither writes the column nor decides what "own" means, which is the point: the
@@ -182,6 +195,12 @@ export type PhiServerAddonTableDescriptor = {
    *
    * The column is nullable and a deleted user leaves it null rather than taking the rows along. A row
    * without an owner therefore belongs to nobody, and no membership level reaches it through ownership.
+   *
+   * Requires `siteScoped`, for the reason a group does. Everywhere else Core weighs a person it weighs
+   * them on a Site -- an authorization is read as a pair, and a disabled membership answers no. Ownership
+   * without a Site is the one place that pair would come apart: the same account would reach a row from
+   * a Site it was never admitted to, and the comparison that let it through looked at nothing but a user
+   * id.
    *
    * This is authority, not history. A table that only wants to record who created a row uses an
    * ordinary `core.user` reference column, which grants nothing.

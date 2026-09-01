@@ -135,6 +135,24 @@ export type PhiServerAddonQueryAssignment = {
 type PhiServerAddonRoleGuarded = {
   /** Names a role this Add-on's manifest declares. Absent means the query needs none. */
   requiresRole?: string;
+  /**
+   * A role that stands in for the row's own authority, where the ladder alone would say no.
+   *
+   * The other direction, and the one moderation needs. `requiresRole` narrows: it asks for the role on
+   * top of the ladder, and on an owned table that means role *and* owner -- which nobody moderating a
+   * stranger's row can ever be. This one widens: the row is judged first, and a caller the ladder turned
+   * down is let through on the role instead. The owner keeps reaching their own row without any role at
+   * all.
+   *
+   * It is a bypass, and it is named so that writing it down feels like declaring one. An Add-on that
+   * hands a role the run of a table is making a real statement about that role, and it should be visible
+   * in the descriptor rather than inferred from the absence of something.
+   *
+   * Only on `update` and `delete`, which are the only places a row is judged, and only on a table that
+   * has authority to bypass. Not combined with `requiresRole`: a query needing both a narrowing and a
+   * widening role is two queries wearing one name.
+   */
+  alsoAllowedByRole?: string;
 };
 
 export type PhiServerAddonSelectQueryDescriptor = PhiServerAddonRoleGuarded & {
