@@ -154,6 +154,26 @@ export type PhiServerAddonRoleDescriptor = {
   grantableBy: PhiServerAddonRoleGrantPolicy;
 };
 
+/**
+ * A group this Add-on needs on every Site that runs it.
+ *
+ * Groups are Core's vocabulary about shared rows, so an Add-on cannot invent one at runtime and cannot
+ * put anybody in it -- the groups capability reads and grants nothing. What it can do is say which ones
+ * it needs, and Core creates them per Site when the Site asks for the Add-on. Who is in them stays with
+ * whoever administers the Site, which is the point: a package should not be able to hand out standing.
+ *
+ * The group carries this Add-on's id as its provider, and Core already filters group claims against the
+ * available providers -- so an Add-on's group stops granting anything the moment the Add-on is gone,
+ * without anybody having to remember to clean up.
+ */
+export type PhiServerAddonGroupDescriptor = {
+  /** Unique within this Add-on. Frozen once a Site has one: memberships point at it by key. */
+  key: string;
+  /** What an administrator sees in the Site's group list. */
+  name: string;
+  description?: string;
+};
+
 export type PhiServerAddonManifestV1 = {
   manifestVersion: typeof PHI_SERVER_ADDON_MANIFEST_VERSION;
   addonId: string;
@@ -184,6 +204,13 @@ export type PhiServerAddonManifestV1 = {
    * points at it, silently, because the grant is stored as text and text does not follow a rename.
    */
   roles?: PhiServerAddonRoleDescriptor[];
+  /**
+   * The groups this Add-on needs. Absent means none.
+   *
+   * Optional like every field added after the manifest version was in the wild, and absent means the
+   * Add-on asks for no group rather than that it forgot to say so.
+   */
+  groups?: PhiServerAddonGroupDescriptor[];
   /**
    * The tables this Add-on owns, or null when it owns none.
    *

@@ -115,7 +115,29 @@ export type PhiServerAddonQueryAssignment = {
  * comparison against a null value matches nothing at all, which would end the paging early rather than
  * loudly.
  */
-export type PhiServerAddonSelectQueryDescriptor = {
+/**
+ * A role the acting user must hold for this query to run at all.
+ *
+ * The one thing Core does with an Add-on's role vocabulary, and it is deliberately the smallest thing
+ * that is useful: it compares a name against what is stored. Core does not learn that `curator` may
+ * moderate -- that meaning stays here, as the pairing of a role with a query, which is the Add-on's own
+ * statement about its own vocabulary.
+ *
+ * It is what makes a table nobody owns writable. Without an owner and without a group, Core has no way
+ * to judge a row and answers no to every update and delete -- correct for a row that should belong to
+ * somebody, wrong for a catalogue, a rate table, or a moderation note, which belong to the Add-on. A
+ * declared role is the missing authority, and being declared is what makes it unforgettable: the check
+ * is in the descriptor rather than at the top of a handler, where it is one refactor from gone.
+ *
+ * On a table that is owned or grouped it narrows rather than replaces: both the role and the ladder
+ * have to be satisfied.
+ */
+type PhiServerAddonRoleGuarded = {
+  /** Names a role this Add-on's manifest declares. Absent means the query needs none. */
+  requiresRole?: string;
+};
+
+export type PhiServerAddonSelectQueryDescriptor = PhiServerAddonRoleGuarded & {
   kind: "select";
   name: string;
   table: string;
@@ -140,7 +162,7 @@ export type PhiServerAddonSelectQueryDescriptor = {
  * context; the group comes from a declared parameter because a row can belong to any group the actor is
  * in, and Core refuses one they are not.
  */
-export type PhiServerAddonInsertQueryDescriptor = {
+export type PhiServerAddonInsertQueryDescriptor = PhiServerAddonRoleGuarded & {
   kind: "insert";
   name: string;
   table: string;
@@ -157,7 +179,7 @@ export type PhiServerAddonInsertQueryDescriptor = {
  * unskippable rather than the discipline. An Add-on that needs to rewrite many rows at once is doing
  * something Core should be doing for it.
  */
-export type PhiServerAddonUpdateQueryDescriptor = {
+export type PhiServerAddonUpdateQueryDescriptor = PhiServerAddonRoleGuarded & {
   kind: "update";
   name: string;
   table: string;
@@ -166,7 +188,7 @@ export type PhiServerAddonUpdateQueryDescriptor = {
   idParameter: string;
 };
 
-export type PhiServerAddonDeleteQueryDescriptor = {
+export type PhiServerAddonDeleteQueryDescriptor = PhiServerAddonRoleGuarded & {
   kind: "delete";
   name: string;
   table: string;

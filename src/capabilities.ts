@@ -188,6 +188,16 @@ export type PhiServerUserProjection = {
  * no question here that reaches past the actor's own membership.
  */
 export type PhiServerGroupsCapabilityV1 = {
+  /**
+   * The groups this Add-on declared, on this Site, with the ids Core gave them.
+   *
+   * The one answer here that is not about the acting user, and it does not have to be: these are the
+   * Add-on's own groups, created because its manifest asked for them. It needs the id to write a
+   * group-scoped row, and there is no other way to learn one -- a key is what the manifest states, an
+   * id is what the database assigns. An unauthenticated hook may ask, because the answer says nothing
+   * about anybody.
+   */
+  declared(): Promise<Array<{ id: number; key: string; name: string }>>;
   /** The groups the acting user belongs to on this Site. */
   myGroups(): Promise<Array<{ id: number; key: string; name: string }>>;
   /** The members of one group the acting user is in, projected as a member sees them. */
