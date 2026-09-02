@@ -344,11 +344,10 @@ export type PhiServerAddonQueryPageRequest = {
  * condition, because an Add-on that could pass one of those at request time would be holding a
  * database handle with extra steps.
  *
- * An `update` answers how many rows it touched. Zero means the row was not there or was not the caller's
- * to change, and the two are deliberately the same answer: telling them apart would report the existence
- * of a row the caller may not have. `insert` and `delete` answer with the row itself and `null` for the
- * same pair of refusals, which withholds exactly as much -- a row comes back only when the write it
- * describes actually happened.
+ * Every mutation answers with the row it wrote and `null` where it wrote none. `null` means the row was
+ * not there or was not the caller's to change, and the two are deliberately the same answer: telling
+ * them apart would report the existence of a row the caller may not have. The row itself withholds
+ * nothing further, because it comes back only when the write it describes actually happened.
  *
  * A select answers with a page. There is no method that returns everything, because the caller who
  * wanted everything is the one who brings the instance down.
@@ -372,7 +371,16 @@ export type PhiServerDataCapabilityV1 = {
   ): Promise<PhiServerAddonQueryPage>;
   /** Returns the inserted row, with the scope columns Core filled in. */
   insert(name: string, args?: PhiServerAddonQueryArguments): Promise<PhiServerAddonQueryRow | null>;
-  update(name: string, args?: PhiServerAddonQueryArguments): Promise<number>;
+  /**
+   * Returns the row as it stands after the write, or `null` when nothing was written.
+   *
+   * The row rather than a count, because what was sent and what is now stored are not the same thing
+   * wherever a default, a constraint, or a column the query did not name had a say.
+   */
+  update(
+    name: string,
+    args?: PhiServerAddonQueryArguments,
+  ): Promise<PhiServerAddonQueryRow | null>;
   /**
    * Returns the row that was removed, or `null` when nothing was.
    *
