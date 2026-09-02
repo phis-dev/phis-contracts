@@ -171,6 +171,45 @@ export type PhiServerAddonIndexDescriptor = {
   unique?: boolean;
 };
 
+/**
+ * A named place on a row where a file belongs.
+ *
+ * The names are the Add-on's -- `logo`, `package`, `screenshots` -- and the set of them is closed, which
+ * is what makes the rest possible. Core can only enforce a size and a type where it knows which slot is
+ * being filled, and it can only tell an abandoned object from a live one where the vocabulary is finite.
+ * An Add-on that needs no files declares none and gets no table.
+ *
+ * The object key is Core's, never the Add-on's. Two rows cannot be made to name the same object, a key
+ * cannot be spelled that reaches outside the Add-on's prefix, and replacing a file writes a new key
+ * rather than overwriting the old -- overwriting destroys the current file before the row that replaces
+ * it is committed, and a new key leaves the old one behind for the sweep to collect.
+ *
+ * Requires `siteScoped`. An object lives in one Site's store, because that is where the Site's Storage
+ * Profile points; a row shared across Sites has no store its file could belong to.
+ */
+export type PhiServerAddonAssetSlotDescriptor = {
+  name: string;
+  /**
+   * `one` is a slot that holds the current file and forgets the previous one; `many` accumulates.
+   *
+   * Enforced on the finished file only. An upload replacing a `one` slot exists alongside the file it
+   * will replace until it is complete, because the alternative is a row with nothing behind it for as
+   * long as the transfer takes -- and a transfer that fails would have destroyed the file it never
+   * managed to replace.
+   */
+  cardinality: "one" | "many";
+  /** Refused before a byte is accepted, and not raisable by the Add-on that declared it. */
+  maxBytes: number;
+  /**
+   * The exact types this slot takes, as full media types. Empty is not "anything", it is refused.
+   *
+   * Stated per slot rather than per Add-on because the answers differ within one package: a logo is a
+   * handful of image types and a release artifact is one archive type, and a single list wide enough for
+   * both permits an image where the archive goes.
+   */
+  contentTypes: string[];
+};
+
 export type PhiServerAddonTableDescriptor = {
   name: string;
   /**
@@ -219,6 +258,15 @@ export type PhiServerAddonTableDescriptor = {
   primaryKey: string[];
   indexes?: PhiServerAddonIndexDescriptor[];
   constraints?: PhiServerAddonTableConstraintDescriptor[];
+  /**
+   * The files rows of this table may carry, which Core keeps in a table of its own beside this one.
+   *
+   * A child table rather than a column per slot, because the slots are the Add-on's to name and their
+   * number is the Add-on's to choose -- and because a gallery is a slot with more than one file in it,
+   * which no column can hold. The child cascades: removing a row removes the rows describing its files,
+   * and the objects they named become collectable.
+   */
+  assets?: PhiServerAddonAssetSlotDescriptor[];
 };
 
 /**
