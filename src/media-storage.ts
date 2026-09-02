@@ -39,6 +39,18 @@ export type PhisMediaObjectStreamInput = {
 };
 
 export type PhisMediaObjectHead = {
+  /**
+   * What this Provider can attest about the object's content, if anything.
+   *
+   * Deliberately not `etag`. An ETag is an HTTP cache validator and each Provider fills it with what it
+   * likes -- a real SHA-256 for Core's own storage, an MD5 for a single-request S3 PUT, and a digest of
+   * part digests above that, which hashes no bytes anyone uploaded. Reading one as a content hash is
+   * how an MD5 ends up recorded as a SHA-256.
+   *
+   * Null is the correct answer wherever the Provider cannot say. A missing digest is a fact Core can
+   * record; a wrong one invites a comparison that quietly finds nothing.
+   */
+  checksum?: { algorithm: PhisMediaChecksumAlgorithm; value: string } | null;
   storageKey: string;
   byteSize: number;
   contentType: string;
@@ -92,18 +104,22 @@ export type PhiMediaUploadPlanInput = {
    */
   proxyUploadUrl: string;
   /**
-   * What the client says it is about to send, as lowercase hex, where the endpoint checks such a claim.
+   * What the client says it is about to send, and under which algorithm, as lowercase hex.
    *
-   * Present only for a Profile whose probe found it verifies: an adapter that receives it must sign it
-   * into the request and name the header the client has to send, so a body that does not match is
-   * refused there and never becomes an object. That refusal is what makes the figure trustworthy --
-   * Core records the client's number because a wrong one would not have got this far, not because the
-   * client is believed.
+   * Present only for a Profile whose probe found the endpoint verifies that algorithm: an adapter that
+   * receives it must sign it into the request and name the header the client has to send, so a body
+   * that does not match is refused there and never becomes an object. That refusal is what makes the
+   * figure trustworthy -- Core records the client's number because a wrong one would not have got this
+   * far, not because the client is believed.
+   *
+   * The algorithm travels with the value because the adapter does not get to pick one. It was settled
+   * for this Profile when it was probed, and a plan that quietly used another would produce a digest
+   * that is correct and yet incomparable with every digest recorded before it.
    *
    * Absent means the digest will be established some other way, which is Core hashing the body as it
    * streams through. An adapter must never invent one.
    */
-  checksumSha256?: string;
+  checksum?: { algorithm: PhisMediaChecksumAlgorithm; value: string };
 };
 
 export type PhiMediaUploadCompletionInput = {
@@ -123,21 +139,85 @@ export type PhiMediaUploadCompletionInput = {
  * forward: today a wrong endpoint, a missing permission or a bucket that does not exist is discovered
  * by whoever uploads first, and reaches them as their error rather than as a misconfiguration.
  */
+/**
+ * The digests this system knows how to record, named so what is stored says what it is.
+ *
+ * One column holding "a checksum" is how an MD5 ends up in a field called SHA-256 and nobody notices:
+ * an `ETag` is whatever a Provider decided to put there, and Providers disagree. Every recorded digest
+ * therefore carries the algorithm that produced it.
+ */
+export const PHIS_MEDIA_CHECKSUM_ALGORITHMS = [
+  "sha256", "sha512", "xxhash128", "crc64nvme", "crc32c", "crc32", "md5",
+] as const;
+
+export type PhisMediaChecksumAlgorithm = (typeof PHIS_MEDIA_CHECKSUM_ALGORITHMS)[number];
+
+/**
+ * The digests strong enough to answer "is this the same file", rather than only "did it arrive intact".
+ *
+ * The distinction is not fussiness. CRC is linear: given a stored object, a second file colliding with
+ * it is algebra rather than computation, and MD5 collisions are a download. Both remain perfectly good
+ * evidence that a transfer was not corrupted, which is the other thing a checksum is for.
+ *
+ * What rides on this is duplicate detection, and a collision there is a refused upload rather than a
+ * substituted file -- so the cost of trusting a weak digest is that someone who may already write to a
+ * Space can stop one file from entering it. Small, but not nothing, and free to avoid.
+ */
+export const PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS: readonly PhisMediaChecksumAlgorithm[] =
+  ["sha256", "sha512"];
+
+export function isPhisMediaIdentityChecksum(algorithm: string | null | undefined) {
+  return PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS.includes(algorithm as PhisMediaChecksumAlgorithm);
+}
+
+/**
+ * Which of the digests an endpoint verifies a Profile will record.
+ *
+ * Chosen once, when the Profile is probed, and never per upload: duplicate detection compares digests,
+ * and two are only comparable under the same algorithm. Deterministic on purpose -- the same measured
+ * endpoint always yields the same answer, so re-probing an unchanged endpoint does not silently start a
+ * second cohort of objects that can never be told to match the first.
+ *
+ * Only identity-grade digests are eligible. A CRC an endpoint also verifies still proves a transfer
+ * intact, and Core records it when that is what arrived; it is simply not what a Profile asks for.
+ */
+export function choosePhisMediaChecksumAlgorithm(
+  probe: { verifiedAlgorithms: readonly PhisMediaChecksumAlgorithm[] } | null | undefined,
+): PhisMediaChecksumAlgorithm | null {
+  if (!probe) return null;
+  for (const candidate of PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS) {
+    if (probe.verifiedAlgorithms.includes(candidate)) return candidate;
+  }
+  return null;
+}
+
 export type PhisMediaStorageProbe = {
   /** Whether a small object could be written, read back, and removed again. */
   writable: boolean;
   /**
-   * Whether the endpoint checks a declared SHA-256 against the bytes it is given.
+   * Which digests the endpoint was found to check against the bytes it is given.
    *
-   * True only when a correct checksum was accepted *and* a deliberately wrong one was refused.
-   * Accepting alone proves nothing: an endpoint that ignores the header accepts everything, and a
-   * checksum nobody verifies is a claim by the uploader wearing the shape of proof.
+   * An algorithm is listed only when a correct digest was accepted *and* a deliberately wrong one was
+   * refused. Accepting alone proves nothing: an endpoint that ignores the header accepts everything,
+   * and a checksum nobody verifies is a claim by the uploader wearing the shape of proof.
    *
    * What it buys is a direct upload that still yields a trustworthy digest -- the bytes go from the
    * client to the storage without passing through Core, and the storage refuses them if they are not
-   * what the client said they were.
+   * what the client said they were. Which of the listed algorithms is used is settled once, per
+   * Profile, rather than per upload: what is recorded has to stay comparable with what was recorded
+   * before it, and an algorithm that changes underneath splits one set of objects into two that can
+   * never be told to be the same.
    */
-  verifiesSha256: boolean;
+  verifiedAlgorithms: PhisMediaChecksumAlgorithm[];
+  /**
+   * Whether a digest survives an object arriving in parts.
+   *
+   * A checksum signed into one PUT covers that PUT. Above the single-request limit an object is
+   * assembled from parts, and the usual answer is a digest of the part digests -- a number that hashes
+   * no bytes anyone uploaded. An endpoint that computes over the whole assembled object instead keeps
+   * the guarantee at any size; one that does not confines it to what fits in one request.
+   */
+  verifiesWholeMultipartObject: boolean;
   /** What did not answer, in an operator's terms. Empty when everything did. */
   findings: string[];
 };

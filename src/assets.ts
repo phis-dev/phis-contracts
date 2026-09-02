@@ -25,14 +25,17 @@ export type PhiServerAddonAssetView = {
   byteSize: number;
   contentType: string;
   /**
-   * Present where the digest was established, absent where it could not be.
+   * The digest that was established, with the algorithm that produced it -- or null where none was.
    *
    * Established means one of two things: the endpoint verified what the client stated and would have
-   * refused anything else, or Core received the body and hashed it in flight. Absent is a truthful
-   * "not established" -- an `etag` is an HTTP header and not a content hash, and a wrong digest here
-   * would be worse than none, because it invites a comparison.
+   * refused anything else, or Core received the body and hashed it in flight. Null is a truthful "not
+   * established" -- an `etag` is an HTTP header and not a content hash, and a wrong digest here would
+   * be worse than none, because it invites a comparison.
+   *
+   * The algorithm is part of the answer and not an assumption. Which one an endpoint can attest to
+   * differs between Providers, so a bare value would be a number whose meaning the reader has to guess.
    */
-  checksumSha256: string | null;
+  checksum: { algorithm: string; value: string } | null;
   createdAt: string;
 };
 
