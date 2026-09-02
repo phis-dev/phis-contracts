@@ -82,6 +82,19 @@ export type PhiMediaUploadPlanInput = {
    * Core owns its route table, so the address is handed to the adapter rather than assembled by it.
    */
   proxyUploadUrl: string;
+  /**
+   * What the client says it is about to send, as lowercase hex, where the endpoint checks such a claim.
+   *
+   * Present only for a Profile whose probe found it verifies: an adapter that receives it must sign it
+   * into the request and name the header the client has to send, so a body that does not match is
+   * refused there and never becomes an object. That refusal is what makes the figure trustworthy --
+   * Core records the client's number because a wrong one would not have got this far, not because the
+   * client is believed.
+   *
+   * Absent means the digest will be established some other way, which is Core hashing the body as it
+   * streams through. An adapter must never invent one.
+   */
+  checksumSha256?: string;
 };
 
 export type PhiMediaUploadCompletionInput = {

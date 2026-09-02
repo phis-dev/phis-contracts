@@ -52,6 +52,15 @@ export const PHI_SERVER_ADDON_CORE_REFERENCES = {
   site: "core.site",
   user: "core.user",
   group: "core.group",
+  /**
+   * A stored file, which is the one Core row an Add-on points at without having written it.
+   *
+   * Core keeps the facts about an object -- where it is, how big, what type, which digest -- in one
+   * place for every upload it has ever handled, whoever asked. An Add-on's asset row names one of them
+   * and holds nothing about it, so there is no second copy to fall out of step, and no key an Add-on
+   * could pass anywhere.
+   */
+  mediaAsset: "core.mediaAsset",
 } as const;
 
 export type PhiServerAddonCoreReference =
@@ -208,6 +217,17 @@ export type PhiServerAddonAssetSlotDescriptor = {
    * both permits an image where the archive goes.
    */
   contentTypes: string[];
+  /**
+   * Who may fetch the file once it is there. `public` when absent.
+   *
+   * Stated per slot for the same reason the types are, and the two cases really do differ: the logo on
+   * a listing has to be readable by anyone who can see the listing, and the release artifact behind it
+   * must not be. Declaring it is what stops a package from having to choose one answer for both.
+   *
+   * It is here rather than left to a later setting because an installed package would otherwise carry
+   * whatever the default happened to be, and a file that was public once has been public.
+   */
+  delivery?: "public" | "authenticated" | "internal";
 };
 
 export type PhiServerAddonTableDescriptor = {
