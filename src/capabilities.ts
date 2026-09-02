@@ -12,6 +12,7 @@
  * at the point where it made the mistake.
  */
 
+import type { PhiServerAssetsCapabilityV1 } from "./assets.js";
 import type { PhiServerDataCapabilityV1 } from "./queries.js";
 
 /**
@@ -99,6 +100,7 @@ export type PhiServerAddonCapabilities = {
   authorization?: PhiServerAuthorizationCapabilityV1;
   data?: PhiServerDataCapabilityV1;
   storage?: PhiServerStorageCapabilityV1;
+  assets?: PhiServerAssetsCapabilityV1;
   secrets?: PhiServerSecretsCapabilityV1;
   groups?: PhiServerGroupsCapabilityV1;
   settings?: PhiServerSettingsCapabilityV1;

@@ -32,6 +32,14 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
   /** Group facts -- which groups exist, who is in them. What follows from them is `authorization`. */
   groups: "@phis/server/groups:v1",
   storage: "@phis/server/storage:v1",
+  /**
+   * The files a row carries, in the slots its table declared.
+   *
+   * Separate from `storage` because they answer different questions. `storage` hands out a key space an
+   * Add-on manages itself; this hands out places Core knows about, which is what makes the file of a
+   * deleted row collectable rather than merely gone from view.
+   */
+  assets: "@phis/server/assets:v1",
   /** Reading the secrets an operator set for this Add-on, and no others. */
   secrets: "@phis/server/secrets:v1",
   /** Reading what an operator configured for this Add-on on this Site. */
