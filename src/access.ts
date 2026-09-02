@@ -33,6 +33,78 @@ export const PhiBaseRole = {
   Accountant: 1 << 6,
 } as const;
 
+/**
+ * What a stored email address says about itself, as bit flags.
+ *
+ * `user_emails` holds several addresses per account and marks one of them primary. That mark is a flag
+ * rather than its own column because the schema keeps every other such answer in `flags`, and a lone
+ * boolean is the one place a reader has to remember an exception.
+ *
+ * The position is fixed from the first row, and here more strictly than elsewhere: the unique index that
+ * enforces "one primary address per account" is partial on this very bit. Move the bit and the index
+ * silently guards a different question.
+ */
+export const PhiUserEmailFlag = {
+  Primary: 1 << 0,
+} as const;
+
+/**
+ * Where a stored email address came from.
+ *
+ * The question this answers is asked after the fact and cannot be reconstructed: did this person type
+ * their address themselves, did an administrator set it, or did an identity provider hand it over? An
+ * account that can be created from a command line makes that difference worth keeping.
+ *
+ * Numbers rather than free text, because the set is Core's and a string column accepts every typo as a
+ * new source. Below 20 are Core's own origins; from 20 upward are named providers, and they are named
+ * rather than left to the Add-on that connects them: the Add-on may be replaced, Google will not be.
+ * A provider without a number is `Provider`, and which one it was stands in `user_auth_identities`.
+ *
+ * There is deliberately no `unknown`. Every writer knows why it writes, and a zero default would let
+ * the one that does not pass unnoticed.
+ */
+export const PhiUserEmailSource = {
+  Operator: 1,
+  Admin: 2,
+  Registration: 3,
+  Self: 4,
+  Directory: 5,
+  Provider: 9,
+  Google: 20,
+  Apple: 21,
+  Microsoft: 22,
+  GitHub: 23,
+} as const;
+
+export type PhiUserEmailSourceValue =
+  (typeof PhiUserEmailSource)[keyof typeof PhiUserEmailSource];
+
+export function isPhiUserEmailSource(value: unknown): value is PhiUserEmailSourceValue {
+  return typeof value === "number"
+    && (Object.values(PhiUserEmailSource) as number[]).includes(value);
+}
+
+/**
+ * Which source a login provider's key stands for.
+ *
+ * The mapping lives here because the numbers do: it is this file that says 20 means Google. A key with
+ * no number of its own is `Provider` rather than a guess, and `user_auth_identities` keeps the detail.
+ */
+export function phiUserEmailSourceForProvider(providerKey: string): PhiUserEmailSourceValue {
+  switch (providerKey.trim().toLowerCase()) {
+    case "google":
+      return PhiUserEmailSource.Google;
+    case "apple":
+      return PhiUserEmailSource.Apple;
+    case "microsoft":
+      return PhiUserEmailSource.Microsoft;
+    case "github":
+      return PhiUserEmailSource.GitHub;
+    default:
+      return PhiUserEmailSource.Provider;
+  }
+}
+
 export type PhiRoleProviderId = `@${string}/${string}`;
 export type PhiGroupProviderId = `@${string}/${string}`;
 
