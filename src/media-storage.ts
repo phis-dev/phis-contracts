@@ -27,6 +27,15 @@ export type PhisMediaObjectStreamInput = {
   body: ReadableStream<Uint8Array>;
   contentType: string;
   metadata?: Record<string, string>;
+  /**
+   * Told that nobody is waiting for this write any more.
+   *
+   * A body that stops arriving does not, on its own, end the write: the Client is gone or silent while
+   * the Provider sits waiting for a byte that will never come. Core aborts the read either way, so an
+   * Adapter that ignores this still ends -- with a torn object it must clean up. Honouring it is how an
+   * Adapter stops paying for the write, and for a remote Provider that is a request in flight.
+   */
+  signal?: AbortSignal;
 };
 
 export type PhisMediaObjectHead = {
