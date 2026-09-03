@@ -11,7 +11,7 @@
  * service.
  */
 
-export const PHI_SERVER_ADDON_SCHEMA_DESCRIPTOR_VERSION = 1 as const;
+export const PHIS_ADDON_SCHEMA_DESCRIPTOR_VERSION = 1 as const;
 
 /**
  * What a column holds, said abstractly so Core can map it.
@@ -19,7 +19,7 @@ export const PHI_SERVER_ADDON_SCHEMA_DESCRIPTOR_VERSION = 1 as const;
  * `identity` is a generated key and may appear only in a primary key; the width is Core's business, not
  * the Add-on's.
  */
-export type PhiServerAddonColumnType =
+export type PhisAddonColumnType =
   | "identity"
   | "smallInteger"
   | "integer"
@@ -33,7 +33,7 @@ export type PhiServerAddonColumnType =
   | "binary";
 
 /** The closed vocabulary a default may be drawn from. Anything wider would be an expression. */
-export type PhiServerAddonColumnDefault =
+export type PhisAddonColumnDefault =
   | { kind: "literal"; value: string | number | boolean }
   | { kind: "now" };
 
@@ -48,7 +48,7 @@ export type PhiServerAddonColumnDefault =
  * binds the pair rather than the id alone. Core never references a group any other way, and an Add-on
  * that could would be able to name a group belonging to a different Site.
  */
-export const PHI_SERVER_ADDON_CORE_REFERENCES = {
+export const PHIS_ADDON_CORE_REFERENCES = {
   site: "core.site",
   user: "core.user",
   group: "core.group",
@@ -63,8 +63,8 @@ export const PHI_SERVER_ADDON_CORE_REFERENCES = {
   mediaAsset: "core.mediaAsset",
 } as const;
 
-export type PhiServerAddonCoreReference =
-  (typeof PHI_SERVER_ADDON_CORE_REFERENCES)[keyof typeof PHI_SERVER_ADDON_CORE_REFERENCES];
+export type PhisAddonCoreReference =
+  (typeof PHIS_ADDON_CORE_REFERENCES)[keyof typeof PHIS_ADDON_CORE_REFERENCES];
 
 /**
  * A delete rule, offered as two values and no third.
@@ -72,11 +72,11 @@ export type PhiServerAddonCoreReference =
  * An Add-on must not be able to refuse a Core deletion: an operator who cannot delete a user because an
  * installed package forbids it is looking at a constraint error from code they may not know they have.
  */
-export type PhiServerAddonDeleteRule = "cascade" | "setNull";
+export type PhisAddonDeleteRule = "cascade" | "setNull";
 
-export type PhiServerAddonValueColumnDescriptor = {
+export type PhisAddonValueColumnDescriptor = {
   name: string;
-  type: PhiServerAddonColumnType;
+  type: PhisAddonColumnType;
   /** Required for `string`, forbidden otherwise. */
   maxLength?: number;
   nullable?: boolean;
@@ -90,7 +90,7 @@ export type PhiServerAddonValueColumnDescriptor = {
    * intended answer rather than a missing feature.
    */
   unique?: boolean;
-  default?: PhiServerAddonColumnDefault;
+  default?: PhisAddonColumnDefault;
 };
 
 /**
@@ -101,7 +101,7 @@ export type PhiServerAddonValueColumnDescriptor = {
  * shape a foreign key takes -- there is no separate list of them, and no composite key, because a
  * reference that needs two columns is pointing at something an Add-on should not be reaching into.
  */
-export type PhiServerAddonReferenceColumnDescriptor = {
+export type PhisAddonReferenceColumnDescriptor = {
   name: string;
   /**
    * A Core table under its symbolic name, or one of this Add-on's own tables.
@@ -111,16 +111,16 @@ export type PhiServerAddonReferenceColumnDescriptor = {
    * Site-scoped. The id alone would let a row of one Site name a row of another, and nothing about the
    * declaration would show it -- the column would look exactly the same and the constraint would hold.
    */
-  references: PhiServerAddonCoreReference | { table: string };
+  references: PhisAddonCoreReference | { table: string };
   nullable?: boolean;
   unique?: boolean;
   /** `setNull` requires a nullable column. */
-  onDelete: PhiServerAddonDeleteRule;
+  onDelete: PhisAddonDeleteRule;
 };
 
-export type PhiServerAddonColumnDescriptor =
-  | PhiServerAddonValueColumnDescriptor
-  | PhiServerAddonReferenceColumnDescriptor;
+export type PhisAddonColumnDescriptor =
+  | PhisAddonValueColumnDescriptor
+  | PhisAddonReferenceColumnDescriptor;
 
 /**
  * A constraint, in structured form.
@@ -132,7 +132,7 @@ export type PhiServerAddonColumnDescriptor =
  * Regular expressions are absent on purpose. Their syntax differs between database systems, and taking
  * them would buy back the dependency this file exists to remove.
  */
-export type PhiServerAddonTableConstraintDescriptor =
+export type PhisAddonTableConstraintDescriptor =
   | {
       kind: "range";
       name: string;
@@ -164,11 +164,11 @@ export type PhiServerAddonTableConstraintDescriptor =
  *
  * Absent means `ordered`: an index declared before this field existed had not forgotten it.
  */
-export type PhiServerAddonIndexKind = "ordered" | "text";
+export type PhisAddonIndexKind = "ordered" | "text";
 
-export type PhiServerAddonIndexDescriptor = {
+export type PhisAddonIndexDescriptor = {
   name: string;
-  kind?: PhiServerAddonIndexKind;
+  kind?: PhisAddonIndexKind;
   columns: string[];
   /**
    * Unique, and read exactly as `unique` on a column: within the Site, on a Site-scoped table, with the
@@ -196,7 +196,7 @@ export type PhiServerAddonIndexDescriptor = {
  * Requires `siteScoped`. An object lives in one Site's store, because that is where the Site's Storage
  * Profile points; a row shared across Sites has no store its file could belong to.
  */
-export type PhiServerAddonAssetSlotDescriptor = {
+export type PhisAddonAssetSlotDescriptor = {
   name: string;
   /**
    * `one` is a slot that holds the current file and forgets the previous one; `many` accumulates.
@@ -230,7 +230,7 @@ export type PhiServerAddonAssetSlotDescriptor = {
   delivery?: "public" | "authenticated" | "internal";
 };
 
-export type PhiServerAddonTableDescriptor = {
+export type PhisAddonTableDescriptor = {
   name: string;
   /**
    * Core adds the Site column, its foreign key, and its cascade, puts the Site filter into every query
@@ -274,10 +274,10 @@ export type PhiServerAddonTableDescriptor = {
    * reference column instead.
    */
   groupScoped?: boolean;
-  columns: PhiServerAddonColumnDescriptor[];
+  columns: PhisAddonColumnDescriptor[];
   primaryKey: string[];
-  indexes?: PhiServerAddonIndexDescriptor[];
-  constraints?: PhiServerAddonTableConstraintDescriptor[];
+  indexes?: PhisAddonIndexDescriptor[];
+  constraints?: PhisAddonTableConstraintDescriptor[];
   /**
    * The files rows of this table may carry, which Core keeps in a table of its own beside this one.
    *
@@ -286,7 +286,7 @@ export type PhiServerAddonTableDescriptor = {
    * which no column can hold. The child cascades: removing a row removes the rows describing its files,
    * and the objects they named become collectable.
    */
-  assets?: PhiServerAddonAssetSlotDescriptor[];
+  assets?: PhisAddonAssetSlotDescriptor[];
 };
 
 /**
@@ -295,8 +295,8 @@ export type PhiServerAddonTableDescriptor = {
  * `version` is the schema version the manifest reports, and Core compares this description against the
  * one it recorded to decide what to run.
  */
-export type PhiServerAddonSchemaDescriptor = {
-  descriptorVersion: typeof PHI_SERVER_ADDON_SCHEMA_DESCRIPTOR_VERSION;
+export type PhisAddonSchemaDescriptor = {
+  descriptorVersion: typeof PHIS_ADDON_SCHEMA_DESCRIPTOR_VERSION;
   version: number;
-  tables: PhiServerAddonTableDescriptor[];
+  tables: PhisAddonTableDescriptor[];
 };

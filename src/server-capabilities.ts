@@ -13,7 +13,7 @@
  * value rather than against a declared type. Bringing that here too would be the next step.
  */
 
-export type PhiServerCapabilityState =
+export type PhiCapabilityState =
   | "available"
   | "missing"
   | "disabled"

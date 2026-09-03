@@ -62,24 +62,24 @@ every third party's schema for never having heard of it.
 
 ## What `/addon` covers
 
-- **Manifest** — `PhiServerAddonManifestV1`: identity, version, required core capabilities,
+- **Manifest** — `PhisAddonManifestV1`: identity, version, required core capabilities,
   the routes an Add-on claims, the services it provides.
-- **Runtime** — `PhiServerAddonRuntimeV1`, `PhiServerAddonHandler`,
-  `PhiServerAddonRequestContext`: the shape the artifact's default export must have.
-- **Schema** — `PhiServerAddonSchemaDescriptor` and its column, index, and constraint
+- **Runtime** — `PhisAddonRuntimeV1`, `PhisAddonHandler`,
+  `PhisAddonRequestContext`: the shape the artifact's default export must have.
+- **Schema** — `PhisAddonSchemaDescriptor` and its column, index, and constraint
   descriptors. Tables are declared, not migrated by hand; phi-server applies them.
 - **Service kinds** — the interfaces an Add-on may provide or consume, currently the media
   storage adapter (`PhisMediaStorageAdapter`, upload plans, object I/O).
-- **What Core offers** — `PHI_SERVER_CORE_CAPABILITIES`, the capability ids an Add-on may
-  require; `PHI_SERVER_SERVICE_KINDS`, the service kinds Core owns; and
-  `PHI_SERVER_SERVICE_INTERFACE_DIGESTS`, the digest of each kind's current interface. Declare
+- **What Core offers** — `PHIS_CORE_CAPABILITIES`, the capability ids an Add-on may
+  require; `PHIS_SERVICE_KINDS`, the service kinds Core owns; and
+  `PHIS_SERVICE_INTERFACE_DIGESTS`, the digest of each kind's current interface. Declare
   against these names rather than spelling them out: Core refuses an Add-on whose digest is not
   the one this release offers, and a literal cannot be checked before you ship it.
 
 This list is a promise, not a plan. A capability appears here when Core delivers it, never
 before.
 
-`PHI_SERVER_ADDON_ABI_VERSION` is the single number a server checks an Add-on against.
+`PHIS_ADDON_ABI_VERSION` is the single number a server checks an Add-on against.
 
 ## Admission rule
 

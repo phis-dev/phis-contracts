@@ -13,48 +13,48 @@
  */
 
 import type {
-  PhiServerAddonCapabilities,
-  PhiServerAddonJobHandler,
-  PhiServerSiteAccess,
+  PhisAddonCapabilities,
+  PhisAddonJobHandler,
+  PhisSiteAccess,
 } from "./capabilities.js";
 import type {
-  PhiServerCoreCapabilityId,
-  PhiServerServiceKind,
+  PhisCoreCapabilityId,
+  PhisServiceKind,
 } from "./core.js";
-import type { PhiServerAddonQueryCatalog } from "./queries.js";
-import type { PhiServerAddonSchemaDescriptor } from "./schema.js";
+import type { PhisAddonQueryCatalog } from "./queries.js";
+import type { PhisAddonSchemaDescriptor } from "./schema.js";
 
-export const PHI_SERVER_ADDON_MANIFEST_VERSION = 1 as const;
-export const PHI_SERVER_ADDON_ABI_VERSION = 1 as const;
+export const PHIS_ADDON_MANIFEST_VERSION = 1 as const;
+export const PHIS_ADDON_ABI_VERSION = 1 as const;
 
-export type PhiServerAddonAuthPolicy =
+export type PhisAddonAuthPolicy =
   | "internal"
   | "site-user"
   | "site-admin"
   | "operator";
 
-export type PhiServerAddonHttpMethod =
+export type PhisAddonHttpMethod =
   | "DELETE"
   | "GET"
   | "PATCH"
   | "POST"
   | "PUT";
 
-export type PhiServerAddonApiRouteDescriptor = {
+export type PhisAddonApiRouteDescriptor = {
   id: string;
-  method: PhiServerAddonHttpMethod;
+  method: PhisAddonHttpMethod;
   path: string;
   handler: string;
-  auth: PhiServerAddonAuthPolicy;
+  auth: PhisAddonAuthPolicy;
   siteScoped: boolean;
   bodyLimitBytes?: number;
   rateLimitClass?: string;
   timeoutMs?: number;
 };
 
-export type PhiServerAddonHookDescriptor = {
+export type PhisAddonHookDescriptor = {
   id: string;
-  method: PhiServerAddonHttpMethod;
+  method: PhisAddonHttpMethod;
   path: string;
   handler: string;
   bodyLimitBytes: number;
@@ -73,7 +73,7 @@ export type PhiServerAddonHookDescriptor = {
   siteScoped?: boolean;
 };
 
-export type PhiServerAddonCapabilityDescriptor = {
+export type PhisAddonCapabilityDescriptor = {
   id: string;
   interfaceDigest: string;
 };
@@ -86,15 +86,15 @@ export type PhiServerAddonCapabilityDescriptor = {
  * reaches the implementation without a dynamic import. The interface digest is checked against what
  * this release offers, so an Add-on built for an older interface is refused rather than called.
  */
-export type PhiServerAddonServiceProviderDescriptor = {
-  serviceKind: PhiServerServiceKind;
+export type PhisAddonServiceProviderDescriptor = {
+  serviceKind: PhisServiceKind;
   providerKey: string;
   interfaceDigest: string;
   factoryExport: string;
-  requiredCoreCapabilities: PhiServerCoreCapabilityId[];
+  requiredCoreCapabilities: PhisCoreCapabilityId[];
 };
 
-export type PhiServerAddonJobDescriptor = {
+export type PhisAddonJobDescriptor = {
   id: string;
   handler: string;
   /**
@@ -114,7 +114,7 @@ export type PhiServerAddonJobDescriptor = {
  * check a value against its type before it is stored -- the same bargain as the schema and query
  * descriptors, one step smaller.
  */
-export type PhiServerAddonSettingDescriptor = {
+export type PhisAddonSettingDescriptor = {
   name: string;
   type: "text" | "integer" | "boolean";
   /** Shown by the CLI when it lists what an Add-on can be configured with. */
@@ -134,8 +134,8 @@ export type PhiServerAddonSettingDescriptor = {
  * `siteAccess` names one of the Site's own claims; `role` names another role of this same Add-on. A
  * Site Admin may always grant any role of any Add-on, so a graph that reaches nobody still has a way in.
  */
-export type PhiServerAddonRoleGrantPolicy =
-  | { siteAccess: PhiServerSiteAccess }
+export type PhisAddonRoleGrantPolicy =
+  | { siteAccess: PhisSiteAccess }
   | { role: string };
 
 /**
@@ -148,10 +148,10 @@ export type PhiServerAddonRoleGrantPolicy =
  * Core never interprets the name. It stores assignments, answers `has()`, and enforces `grantableBy`;
  * what `reviewer` means is the Add-on's business and stays there.
  */
-export type PhiServerAddonRoleDescriptor = {
+export type PhisAddonRoleDescriptor = {
   name: string;
   description?: string;
-  grantableBy: PhiServerAddonRoleGrantPolicy;
+  grantableBy: PhisAddonRoleGrantPolicy;
 };
 
 /**
@@ -166,7 +166,7 @@ export type PhiServerAddonRoleDescriptor = {
  * available providers -- so an Add-on's group stops granting anything the moment the Add-on is gone,
  * without anybody having to remember to clean up.
  */
-export type PhiServerAddonGroupDescriptor = {
+export type PhisAddonGroupDescriptor = {
   /** Unique within this Add-on. Frozen once a Site has one: memberships point at it by key. */
   key: string;
   /** What an administrator sees in the Site's group list. */
@@ -174,18 +174,18 @@ export type PhiServerAddonGroupDescriptor = {
   description?: string;
 };
 
-export type PhiServerAddonManifestV1 = {
-  manifestVersion: typeof PHI_SERVER_ADDON_MANIFEST_VERSION;
+export type PhisAddonManifestV1 = {
+  manifestVersion: typeof PHIS_ADDON_MANIFEST_VERSION;
   addonId: string;
   packageName: string;
   packageVersion: string;
   serverAbi: string;
-  capabilities: PhiServerAddonCapabilityDescriptor[];
-  serviceProviders: PhiServerAddonServiceProviderDescriptor[];
-  requiredCoreCapabilities: PhiServerCoreCapabilityId[];
-  apiRoutes: PhiServerAddonApiRouteDescriptor[];
-  hooks: PhiServerAddonHookDescriptor[];
-  jobs: PhiServerAddonJobDescriptor[];
+  capabilities: PhisAddonCapabilityDescriptor[];
+  serviceProviders: PhisAddonServiceProviderDescriptor[];
+  requiredCoreCapabilities: PhisCoreCapabilityId[];
+  apiRoutes: PhisAddonApiRouteDescriptor[];
+  hooks: PhisAddonHookDescriptor[];
+  jobs: PhisAddonJobDescriptor[];
   /**
    * What an operator may configure. Absent means nothing is.
    *
@@ -195,7 +195,7 @@ export type PhiServerAddonManifestV1 = {
    * fields may demand an explicit `null`, because no stored manifest predates them; later ones must
    * define what absence means and accept it.
    */
-  settings?: PhiServerAddonSettingDescriptor[];
+  settings?: PhisAddonSettingDescriptor[];
   /**
    * The roles this Add-on defines. Absent means it defines none.
    *
@@ -203,14 +203,14 @@ export type PhiServerAddonManifestV1 = {
    * forgotten it. A name is frozen from the first assignment -- renaming one orphans every grant that
    * points at it, silently, because the grant is stored as text and text does not follow a rename.
    */
-  roles?: PhiServerAddonRoleDescriptor[];
+  roles?: PhisAddonRoleDescriptor[];
   /**
    * The groups this Add-on needs. Absent means none.
    *
    * Optional like every field added after the manifest version was in the wild, and absent means the
    * Add-on asks for no group rather than that it forgot to say so.
    */
-  groups?: PhiServerAddonGroupDescriptor[];
+  groups?: PhisAddonGroupDescriptor[];
   /**
    * The Modules this package's other half contributes. Absent means it has no Module half.
    *
@@ -230,7 +230,7 @@ export type PhiServerAddonManifestV1 = {
    * There is no list of migration steps beside it. The descriptor is the desired shape; what has been
    * applied is recorded in the database, and Core derives the difference.
    */
-  schema: PhiServerAddonSchemaDescriptor | null;
+  schema: PhisAddonSchemaDescriptor | null;
   /**
    * The statements this Add-on may run against its own tables, or null when it runs none.
    *
@@ -239,15 +239,15 @@ export type PhiServerAddonManifestV1 = {
    *
    * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
    */
-  queries?: PhiServerAddonQueryCatalog | null;
+  queries?: PhisAddonQueryCatalog | null;
   /** The version of `schema`, or 0 when there is none. */
   migrationVersion: number;
 };
 
-export type PhiServerAddonRequestContext = {
+export type PhisAddonRequestContext = {
   addonId: string;
   requestId: string;
-  method: PhiServerAddonHttpMethod;
+  method: PhisAddonHttpMethod;
   url: string;
   headers: Headers;
   body: Uint8Array;
@@ -279,12 +279,12 @@ export type PhiServerAddonRequestContext = {
    * Only what the manifest declared arrives. A capability is not fetched, looked up, or constructed by
    * the Add-on -- it is here or it is not, and it was already decided before the handler ran.
    */
-  capabilities: PhiServerAddonCapabilities;
+  capabilities: PhisAddonCapabilities;
   signal: AbortSignal;
 };
 
-export type PhiServerAddonHandler = (
-  context: PhiServerAddonRequestContext,
+export type PhisAddonHandler = (
+  context: PhisAddonRequestContext,
 ) => Promise<Response> | Response;
 
 /**
@@ -294,32 +294,32 @@ export type PhiServerAddonHandler = (
  * what makes that agreement checkable. The factory receives schema-validated profile configuration and
  * a restricted context, never a database handle or a general secret accessor.
  */
-export type PhiServerAddonServiceFactory = (
+export type PhisAddonServiceFactory = (
   config: unknown,
   context: unknown,
 ) => unknown;
 
-export type PhiServerAddonRuntimeV1 = {
-  manifest: PhiServerAddonManifestV1;
-  apiHandlers?: Readonly<Record<string, PhiServerAddonHandler>>;
-  hookHandlers?: Readonly<Record<string, PhiServerAddonHandler>>;
-  serviceFactories?: Readonly<Record<string, PhiServerAddonServiceFactory>>;
-  jobHandlers?: Readonly<Record<string, PhiServerAddonJobHandler>>;
+export type PhisAddonRuntimeV1 = {
+  manifest: PhisAddonManifestV1;
+  apiHandlers?: Readonly<Record<string, PhisAddonHandler>>;
+  hookHandlers?: Readonly<Record<string, PhisAddonHandler>>;
+  serviceFactories?: Readonly<Record<string, PhisAddonServiceFactory>>;
+  jobHandlers?: Readonly<Record<string, PhisAddonJobHandler>>;
 };
 
-export type PhiServerAddonRuntimeModuleV1 = {
-  phiServerAddon: PhiServerAddonRuntimeV1;
+export type PhisAddonRuntimeModuleV1 = {
+  phiServerAddon: PhisAddonRuntimeV1;
 };
 
-export type PhiServerAddonBuildEntry = {
+export type PhisAddonBuildEntry = {
   enabled: boolean;
   manifestDigest: string;
-  manifest: PhiServerAddonManifestV1;
-  load: () => Promise<PhiServerAddonRuntimeModuleV1>;
+  manifest: PhisAddonManifestV1;
+  load: () => Promise<PhisAddonRuntimeModuleV1>;
 };
 
-export type PhiServerAddonBuildManifest = Readonly<
-  Record<string, PhiServerAddonBuildEntry>
+export type PhisAddonBuildManifest = Readonly<
+  Record<string, PhisAddonBuildEntry>
 >;
 
 /**
@@ -330,7 +330,7 @@ export type PhiServerAddonBuildManifest = Readonly<
  * digests bind the three apart: `manifestDigest` covers the descriptors below, `artifactDigest` covers
  * the file in the install root, and the loader refuses a file that no longer matches.
  */
-export type PhiServerAddonDesiredStateEntry = {
+export type PhisAddonDesiredStateEntry = {
   addonId: string;
   packageName: string;
   packageVersion: string;
@@ -338,11 +338,11 @@ export type PhiServerAddonDesiredStateEntry = {
   /** SHA-256 of the installed artifact, and the cache key its load address carries. */
   artifactDigest: string;
   /** The validated descriptors, as read from the artifact at installation. */
-  manifest: PhiServerAddonManifestV1;
+  manifest: PhisAddonManifestV1;
   enabled: boolean;
 };
 
-export type PhiServerAddonDesiredState = {
+export type PhisAddonDesiredState = {
   formatVersion: 1;
-  addons: PhiServerAddonDesiredStateEntry[];
+  addons: PhisAddonDesiredStateEntry[];
 };

@@ -12,8 +12,8 @@
  * at the point where it made the mistake.
  */
 
-import type { PhiServerAssetsCapabilityV1 } from "./assets.js";
-import type { PhiServerDataCapabilityV1 } from "./queries.js";
+import type { PhisAssetsCapabilityV1 } from "./assets.js";
+import type { PhisDataCapabilityV1 } from "./queries.js";
 
 /**
  * The cumulative group levels, by name.
@@ -22,9 +22,9 @@ import type { PhiServerDataCapabilityV1 } from "./queries.js";
  * to do arithmetic on them, and a value that never leaves Core is one an Add-on cannot come to depend
  * on. Each level does everything the one before it does and one thing more.
  */
-export const PHI_SERVER_GROUP_LEVELS = ["member", "author", "editor", "manager"] as const;
+export const PHIS_GROUP_LEVELS = ["member", "author", "editor", "manager"] as const;
 
-export type PhiServerGroupLevel = (typeof PHI_SERVER_GROUP_LEVELS)[number];
+export type PhisGroupLevel = (typeof PHIS_GROUP_LEVELS)[number];
 
 /**
  * What an actor wants to do to one row.
@@ -32,7 +32,7 @@ export type PhiServerGroupLevel = (typeof PHI_SERVER_GROUP_LEVELS)[number];
  * Creating is absent on purpose. There is no row to ask about yet, and whether an Add-on may write at
  * all is settled before its handler runs.
  */
-export type PhiServerRowIntent = "read" | "update" | "delete";
+export type PhisRowIntent = "read" | "update" | "delete";
 
 /**
  * A Site capability an Add-on may ask after, named symbolically.
@@ -40,7 +40,7 @@ export type PhiServerRowIntent = "read" | "update" | "delete";
  * An Add-on never states a role flag. Which capabilities are askable is then a decision, and Core is
  * free to change what a role means without an installed Add-on holding a stale bitmask.
  */
-export const PHI_SERVER_SITE_ACCESS = {
+export const PHIS_SITE_ACCESS = {
   siteAdmin: "site-admin",
   developerTools: "developer-tools",
   structureAuthoring: "structure-authoring",
@@ -51,7 +51,7 @@ export const PHI_SERVER_SITE_ACCESS = {
   accounting: "accounting",
 } as const;
 
-export type PhiServerSiteAccess = (typeof PHI_SERVER_SITE_ACCESS)[keyof typeof PHI_SERVER_SITE_ACCESS];
+export type PhisSiteAccess = (typeof PHIS_SITE_ACCESS)[keyof typeof PHIS_SITE_ACCESS];
 
 /**
  * The authorization capability: `@phis/server/authorization:v1`.
@@ -68,7 +68,7 @@ export type PhiServerSiteAccess = (typeof PHI_SERVER_SITE_ACCESS)[keyof typeof P
  * A table that is neither owner- nor group-scoped has nothing for this to decide and always answers
  * false: absence of a scope is not absence of a restriction.
  */
-export type PhiServerAuthorizationCapabilityV1 = {
+export type PhisAuthorizationCapabilityV1 = {
   /**
    * Whether the acting user may do this to one row of one of this Add-on's own tables.
    *
@@ -80,14 +80,14 @@ export type PhiServerAuthorizationCapabilityV1 = {
   mayActOnRow(input: {
     table: string;
     id: number | string;
-    intent: PhiServerRowIntent;
+    intent: PhisRowIntent;
   }): Promise<boolean>;
 
   /** The level the acting user effectively holds in one group, or null when they are not in it. */
-  groupLevel(groupId: number): Promise<PhiServerGroupLevel | null>;
+  groupLevel(groupId: number): Promise<PhisGroupLevel | null>;
 
   /** Whether the acting user holds one Site capability, with the Core Admin override applied. */
-  hasSiteAccess(access: PhiServerSiteAccess): Promise<boolean>;
+  hasSiteAccess(access: PhisSiteAccess): Promise<boolean>;
 };
 
 /**
@@ -96,15 +96,15 @@ export type PhiServerAuthorizationCapabilityV1 = {
  * Optional throughout: presence follows the manifest, and a capability this release does not offer
  * stops the Add-on at the dispatcher rather than arriving as a broken object.
  */
-export type PhiServerAddonCapabilities = {
-  authorization?: PhiServerAuthorizationCapabilityV1;
-  data?: PhiServerDataCapabilityV1;
-  storage?: PhiServerStorageCapabilityV1;
-  assets?: PhiServerAssetsCapabilityV1;
-  secrets?: PhiServerSecretsCapabilityV1;
-  groups?: PhiServerGroupsCapabilityV1;
-  settings?: PhiServerSettingsCapabilityV1;
-  roles?: PhiServerRolesCapabilityV1;
+export type PhisAddonCapabilities = {
+  authorization?: PhisAuthorizationCapabilityV1;
+  data?: PhisDataCapabilityV1;
+  storage?: PhisStorageCapabilityV1;
+  assets?: PhisAssetsCapabilityV1;
+  secrets?: PhisSecretsCapabilityV1;
+  groups?: PhisGroupsCapabilityV1;
+  settings?: PhisSettingsCapabilityV1;
+  roles?: PhisRolesCapabilityV1;
 };
 
 /**
@@ -118,7 +118,7 @@ export type PhiServerAddonCapabilities = {
  * handed over, the same way a stored setting nobody declared is not -- so an Add-on never sees a role it
  * does not know, whatever has accumulated across versions.
  */
-export type PhiServerRolesCapabilityV1 = {
+export type PhisRolesCapabilityV1 = {
   /** Whether the acting user holds this role here. False when nobody is acting. */
   has(role: string): Promise<boolean>;
   /** Every declared role the acting user holds, in declaration order. */
@@ -138,7 +138,7 @@ export type PhiServerRolesCapabilityV1 = {
  * Media Space with its folders, quotas and delivery policies. This is for what an Add-on keeps for
  * itself: a release artifact, a generated preview, an export waiting to be fetched.
  */
-export type PhiServerStorageCapabilityV1 = {
+export type PhisStorageCapabilityV1 = {
   put(input: {
     key: string;
     body: Uint8Array;
@@ -180,7 +180,7 @@ export type PhiServerStorageCapabilityV1 = {
  * There is no writer. An operator sets a secret with `phis secret set`; a package that could write its
  * own would be a package that could plant one.
  */
-export type PhiServerSecretsCapabilityV1 = {
+export type PhisSecretsCapabilityV1 = {
   /** The value, or null when the operator has not configured it. */
   read(name: string): Promise<string | null>;
 };
@@ -191,7 +191,7 @@ export type PhiServerSecretsCapabilityV1 = {
  * Deliberately the same projection one group member gets of another: a display name, a company only
  * where the group discloses it, and never an address. An Add-on renders "listed by" and nothing more.
  */
-export type PhiServerUserProjection = {
+export type PhisUserProjection = {
   userId: number;
   displayName: string | null;
   companyName: string | null;
@@ -206,7 +206,7 @@ export type PhiServerUserProjection = {
  * its actor could already see in them. It cannot become a directory of a Site's users, because there is
  * no question here that reaches past the actor's own membership.
  */
-export type PhiServerGroupsCapabilityV1 = {
+export type PhisGroupsCapabilityV1 = {
   /**
    * The groups this Add-on declared, on this Site, with the ids Core gave them.
    *
@@ -220,14 +220,14 @@ export type PhiServerGroupsCapabilityV1 = {
   /** The groups the acting user belongs to on this Site. */
   myGroups(): Promise<Array<{ id: number; key: string; name: string }>>;
   /** The members of one group the acting user is in, projected as a member sees them. */
-  members(groupId: number): Promise<PhiServerUserProjection[]>;
+  members(groupId: number): Promise<PhisUserProjection[]>;
   /**
    * One person, if the acting user shares a group with them.
    *
    * Null otherwise, and null is the whole point: it is what stops a row's owner id from becoming a
    * lookup into everybody.
    */
-  user(userId: number): Promise<PhiServerUserProjection | null>;
+  user(userId: number): Promise<PhisUserProjection | null>;
 };
 
 /**
@@ -243,7 +243,7 @@ export type PhiServerGroupsCapabilityV1 = {
  * A setting the operator has not set answers with the declared default, so an Add-on has one shape to
  * handle rather than two, and `null` means genuinely unset with no default to fall back to.
  */
-export type PhiServerSettingsCapabilityV1 = {
+export type PhisSettingsCapabilityV1 = {
   read(name: string): Promise<string | number | boolean | null>;
   all(): Promise<Readonly<Record<string, string | number | boolean | null>>>;
 };
@@ -256,17 +256,17 @@ export type PhiServerSettingsCapabilityV1 = {
  * is reachable only from `phis addon job run` and never from a route -- an Add-on that could start its
  * own job from a request would have built itself a way around the ladder.
  */
-export type PhiServerAddonJobContext = {
+export type PhisAddonJobContext = {
   addonId: string;
   jobId: string;
   /** This run, for correlating what the job logs with what the operator started. */
   runId: string;
   /** The Site this run is for. A job always runs against exactly one. */
   site: { id: number; key: string };
-  capabilities: PhiServerAddonCapabilities;
+  capabilities: PhisAddonCapabilities;
   signal: AbortSignal;
 };
 
-export type PhiServerAddonJobHandler = (
-  context: PhiServerAddonJobContext,
+export type PhisAddonJobHandler = (
+  context: PhisAddonJobContext,
 ) => Promise<void> | void;

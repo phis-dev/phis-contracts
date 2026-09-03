@@ -16,7 +16,7 @@ import type { PhiMediaUploadPlan } from "./media-storage.js";
  * What comes back instead is a Media Asset id, which the delivery Core already has takes.
  */
 
-export type PhiServerAddonAssetView = {
+export type PhisAddonAssetView = {
   id: string;
   slot: string;
   ownerId: string;
@@ -45,14 +45,14 @@ export type PhiServerAddonAssetView = {
  * The plan is the Provider's answer, not Core's: an endpoint that can take a body directly says so, and
  * one that cannot names a Core route to stream through. An Add-on passes it to its client unread.
  */
-export type PhiServerAddonAssetReservationView = {
+export type PhisAddonAssetReservationView = {
   /** What the transfer is carried out against, and what `finalize` is called with. */
   token: string;
   plan: PhiMediaUploadPlan;
   expiresAt: string;
 };
 
-export type PhiServerAssetsCapabilityV1 = {
+export type PhisAssetsCapabilityV1 = {
   /**
    * Reserves a place for a file, before any of it is sent.
    *
@@ -78,7 +78,7 @@ export type PhiServerAssetsCapabilityV1 = {
     sha256?: string;
     /** What the file was called where it came from. Core makes one up when there is nothing to use. */
     filename?: string;
-  }): Promise<PhiServerAddonAssetReservationView>;
+  }): Promise<PhisAddonAssetReservationView>;
   /**
    * Settles a reservation once the bytes are there, and makes the file a row.
    *
@@ -94,7 +94,7 @@ export type PhiServerAssetsCapabilityV1 = {
     token: string;
     /** Whatever the plan's issuer asked the client to bring back. Core passes it through unread. */
     completion?: unknown;
-  }): Promise<PhiServerAddonAssetView>;
+  }): Promise<PhisAddonAssetView>;
   /** Gives an unredeemed reservation up. An abandoned one expires on its own; this is the tidy path. */
   abandon(input: { table: string; token: string }): Promise<boolean>;
   /** The files of a row. A reservation in flight is not among them, because it is not a file yet. */
@@ -102,7 +102,7 @@ export type PhiServerAssetsCapabilityV1 = {
     table: string;
     ownerId: string | number;
     slot?: string;
-  }): Promise<PhiServerAddonAssetView[]>;
+  }): Promise<PhisAddonAssetView[]>;
   /** Takes a file out of its slot, and the file with it. */
   remove(input: { table: string; id: string }): Promise<boolean>;
 };

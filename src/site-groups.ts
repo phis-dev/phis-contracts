@@ -4,7 +4,7 @@
  * These numbers cross the wire. A membership row is written by `PATCH .../members/<userId>` carrying
  * `membershipFlags` as an integer, and the administration surface offers the levels to choose from, so
  * the site UI does arithmetic on the same bits phis stores. (The Add-on boundary is the other case:
- * there a level crosses by name, as `PHI_SERVER_GROUP_LEVELS`, because an Add-on has no reason to
+ * there a level crosses by name, as `PHIS_GROUP_LEVELS`, because an Add-on has no reason to
  * know the bits at all.)
  *
  * They were declared on both sides and had drifted, which cost a level. phis counts four --

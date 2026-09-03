@@ -15,7 +15,7 @@
  */
 
 /** The Core capabilities an Add-on may require. */
-export const PHI_SERVER_CORE_CAPABILITIES = {
+export const PHIS_CORE_CAPABILITIES = {
   authentication: "@phis/server/authentication:v1",
   /**
    * "May this actor", in all three of its sources: does the row belong to them, what level do they
@@ -48,8 +48,8 @@ export const PHI_SERVER_CORE_CAPABILITIES = {
   roles: "@phis/server/roles:v1",
 } as const;
 
-export type PhiServerCoreCapabilityId =
-  (typeof PHI_SERVER_CORE_CAPABILITIES)[keyof typeof PHI_SERVER_CORE_CAPABILITIES];
+export type PhisCoreCapabilityId =
+  (typeof PHIS_CORE_CAPABILITIES)[keyof typeof PHIS_CORE_CAPABILITIES];
 
 /**
  * The Core-owned service kinds an Add-on may implement.
@@ -58,13 +58,13 @@ export type PhiServerCoreCapabilityId =
  * is something Core already owns and an Add-on supplies an implementation of -- S3 for Media Storage,
  * LDAP for a Directory. Core keeps selecting the configured implementation itself.
  */
-export const PHI_SERVER_SERVICE_KINDS = {
+export const PHIS_SERVICE_KINDS = {
   mediaStorage: "@phis/server/service/media-storage",
   directory: "@phis/server/service/directory",
 } as const;
 
-export type PhiServerServiceKind =
-  (typeof PHI_SERVER_SERVICE_KINDS)[keyof typeof PHI_SERVER_SERVICE_KINDS];
+export type PhisServiceKind =
+  (typeof PHIS_SERVICE_KINDS)[keyof typeof PHIS_SERVICE_KINDS];
 
 /**
  * The digest of the interface each service kind currently has.
@@ -77,14 +77,14 @@ export type PhiServerServiceKind =
  * The digest is `sha256("phi-server-service-kind:<kind>:v<interface version>")`. That recipe is
  * documented for whoever has to produce the next value; nothing needs to run it to read a manifest.
  */
-export const PHI_SERVER_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhiServerServiceKind, number>> = {
-  [PHI_SERVER_SERVICE_KINDS.mediaStorage]: 1,
-  [PHI_SERVER_SERVICE_KINDS.directory]: 1,
+export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, number>> = {
+  [PHIS_SERVICE_KINDS.mediaStorage]: 1,
+  [PHIS_SERVICE_KINDS.directory]: 1,
 };
 
-export const PHI_SERVER_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhiServerServiceKind, string>> = {
-  [PHI_SERVER_SERVICE_KINDS.mediaStorage]:
+export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
+  [PHIS_SERVICE_KINDS.mediaStorage]:
     "45a871522511f7d77841ca8dd0113b423b3cfd4cb921f143cd1d3d116cab6952",
-  [PHI_SERVER_SERVICE_KINDS.directory]:
+  [PHIS_SERVICE_KINDS.directory]:
     "2cac7397c7beb1b8e71fc67f5cae3be89182dddf096895570a15deafa1adbfc9",
 };

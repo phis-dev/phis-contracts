@@ -14,7 +14,7 @@
  */
 
 /** What a declared parameter holds. Narrower than the column vocabulary: these travel as values. */
-export type PhiServerAddonQueryParameterType =
+export type PhisAddonQueryParameterType =
   | "integer"
   | "bigInteger"
   | "text"
@@ -22,9 +22,9 @@ export type PhiServerAddonQueryParameterType =
   | "instant"
   | "uuid";
 
-export type PhiServerAddonQueryParameter = {
+export type PhisAddonQueryParameter = {
   name: string;
-  type: PhiServerAddonQueryParameterType;
+  type: PhisAddonQueryParameterType;
   /** Whether the caller may pass null. Absent means it may not. */
   nullable?: boolean;
   /**
@@ -51,14 +51,14 @@ export type PhiServerAddonQueryParameter = {
  * bound actor, so the query cannot be aimed at somebody else -- the same reason the capability closes
  * over the Site instead of taking it as an argument.
  */
-export type PhiServerAddonQueryValue =
+export type PhisAddonQueryValue =
   | { kind: "parameter"; name: string }
   | { kind: "literal"; value: string | number | boolean }
   /** The acting user's id, substituted by Core. Null when nobody is acting, which matches nothing. */
   | { kind: "actor" }
   | { kind: "now" };
 
-export type PhiServerAddonQueryComparison = "=" | "<>" | "<" | "<=" | ">" | ">=";
+export type PhisAddonQueryComparison = "=" | "<>" | "<" | "<=" | ">" | ">=";
 
 /**
  * A condition, as a tree of a closed set of shapes.
@@ -69,12 +69,12 @@ export type PhiServerAddonQueryComparison = "=" | "<>" | "<" | "<=" | ">" | ">="
  * replaces it is `contains`, an operator: the Add-on names a column and a value, and Core decides how
  * that is spelled and escaped.
  */
-export type PhiServerAddonQueryCondition =
+export type PhisAddonQueryCondition =
   | {
       kind: "compare";
       column: string;
-      operator: PhiServerAddonQueryComparison;
-      value: PhiServerAddonQueryValue;
+      operator: PhisAddonQueryComparison;
+      value: PhisAddonQueryValue;
     }
   | { kind: "isNull"; column: string; negated?: boolean }
   /**
@@ -88,9 +88,9 @@ export type PhiServerAddonQueryCondition =
    * It wants a `text` index on the column. Without one it still works and reads the whole table to do
    * it, which `phis addon check` reports at install rather than leaving to be discovered in production.
    */
-  | { kind: "contains"; column: string; value: PhiServerAddonQueryValue }
+  | { kind: "contains"; column: string; value: PhisAddonQueryValue }
   /** One of a set fixed in the descriptor: a state, a kind, a handful of names the Add-on knows. */
-  | { kind: "in"; column: string; values: PhiServerAddonQueryValue[]; parameter?: never }
+  | { kind: "in"; column: string; values: PhisAddonQueryValue[]; parameter?: never }
   /**
    * One of a set the caller brings, named by a `list` parameter.
    *
@@ -99,8 +99,8 @@ export type PhiServerAddonQueryCondition =
    * whole table, and neither is a page.
    */
   | { kind: "in"; column: string; parameter: string; values?: never }
-  | { kind: "all"; conditions: PhiServerAddonQueryCondition[] }
-  | { kind: "any"; conditions: PhiServerAddonQueryCondition[] }
+  | { kind: "all"; conditions: PhisAddonQueryCondition[] }
+  | { kind: "any"; conditions: PhisAddonQueryCondition[] }
   /**
    * A condition that applies only when its parameter was given.
    *
@@ -109,16 +109,16 @@ export type PhiServerAddonQueryCondition =
    * are sixteen, each declared, validated and kept in step by hand. The parameter must be nullable, and
    * null means the condition is not there rather than that it matched nothing.
    */
-  | { kind: "whenPresent"; parameter: string; condition: PhiServerAddonQueryCondition };
+  | { kind: "whenPresent"; parameter: string; condition: PhisAddonQueryCondition };
 
-export type PhiServerAddonQueryOrdering = {
+export type PhisAddonQueryOrdering = {
   column: string;
   direction: "asc" | "desc";
 };
 
-export type PhiServerAddonQueryAssignment = {
+export type PhisAddonQueryAssignment = {
   column: string;
-  value: PhiServerAddonQueryValue;
+  value: PhisAddonQueryValue;
 };
 
 /**
@@ -155,7 +155,7 @@ export type PhiServerAddonQueryAssignment = {
  * On a table that is owned or grouped it narrows rather than replaces: both the role and the ladder
  * have to be satisfied.
  */
-type PhiServerAddonRoleGuarded = {
+type PhisAddonRoleGuarded = {
   /** Names a role this Add-on's manifest declares. Absent means the query needs none. */
   requiresRole?: string;
   /**
@@ -178,19 +178,19 @@ type PhiServerAddonRoleGuarded = {
   alsoAllowedByRole?: string;
 };
 
-export type PhiServerAddonSelectQueryDescriptor = PhiServerAddonRoleGuarded & {
+export type PhisAddonSelectQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "select";
   name: string;
   table: string;
   /** Absent means every declared column. Core's scope columns are never among them. */
   columns?: string[];
-  where?: PhiServerAddonQueryCondition;
-  orderBy?: PhiServerAddonQueryOrdering[];
+  where?: PhisAddonQueryCondition;
+  orderBy?: PhisAddonQueryOrdering[];
   /**
    * The largest page this query will ever serve, whatever the caller asks for.
    *
    * The Add-on's own ceiling, not the page size: a call may ask for less, and Core takes the smallest of
-   * the request, this, and `PHI_SERVER_ADDON_QUERY_MAX_LIMIT`.
+   * the request, this, and `PHIS_ADDON_QUERY_MAX_LIMIT`.
    */
   limit: number;
 };
@@ -203,11 +203,11 @@ export type PhiServerAddonSelectQueryDescriptor = PhiServerAddonRoleGuarded & {
  * context; the group comes from a declared parameter because a row can belong to any group the actor is
  * in, and Core refuses one they are not.
  */
-export type PhiServerAddonInsertQueryDescriptor = PhiServerAddonRoleGuarded & {
+export type PhisAddonInsertQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "insert";
   name: string;
   table: string;
-  values: PhiServerAddonQueryAssignment[];
+  values: PhisAddonQueryAssignment[];
   /** Names the parameter carrying the group id, and is required for a group-scoped table. */
   groupParameter?: string;
 };
@@ -220,16 +220,16 @@ export type PhiServerAddonInsertQueryDescriptor = PhiServerAddonRoleGuarded & {
  * unskippable rather than the discipline. An Add-on that needs to rewrite many rows at once is doing
  * something Core should be doing for it.
  */
-export type PhiServerAddonUpdateQueryDescriptor = PhiServerAddonRoleGuarded & {
+export type PhisAddonUpdateQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "update";
   name: string;
   table: string;
-  set: PhiServerAddonQueryAssignment[];
+  set: PhisAddonQueryAssignment[];
   /** Names the parameter carrying the row's primary key value. */
   idParameter: string;
 };
 
-export type PhiServerAddonDeleteQueryDescriptor = PhiServerAddonRoleGuarded & {
+export type PhisAddonDeleteQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "delete";
   name: string;
   table: string;
@@ -243,10 +243,10 @@ export type PhiServerAddonDeleteQueryDescriptor = PhiServerAddonRoleGuarded & {
  * at the first call: a manifest that averages a text column is wrong when it is written, not when it is
  * run. `avg` comes back as a string, because it is `numeric` and a JavaScript number is not.
  */
-export type PhiServerAddonAggregateFunction = "count" | "sum" | "avg" | "min" | "max";
+export type PhisAddonAggregateFunction = "count" | "sum" | "avg" | "min" | "max";
 
-export type PhiServerAddonQueryAggregate = {
-  function: PhiServerAddonAggregateFunction;
+export type PhisAddonQueryAggregate = {
+  function: PhisAddonAggregateFunction;
   column?: string;
   /** What the value is called in the answer. Must not collide with a grouping column. */
   as: string;
@@ -271,26 +271,26 @@ export type PhiServerAddonQueryAggregate = {
  * `NOT NULL`, and why there is no ordering by an aggregated value: ranking by an average would page on a
  * key that is neither unique nor known before the group is computed.
  */
-export type PhiServerAddonAggregateQueryDescriptor = PhiServerAddonRoleGuarded & {
+export type PhisAddonAggregateQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "aggregate";
   name: string;
   table: string;
-  aggregates: PhiServerAddonQueryAggregate[];
-  where?: PhiServerAddonQueryCondition;
+  aggregates: PhisAddonQueryAggregate[];
+  where?: PhisAddonQueryCondition;
   groupBy?: string[];
   /** The Add-on's ceiling on groups per page. Required with `groupBy`, meaningless without it. */
   limit?: number;
 };
 
-export type PhiServerAddonQueryDescriptor =
-  | PhiServerAddonSelectQueryDescriptor
-  | PhiServerAddonInsertQueryDescriptor
-  | PhiServerAddonUpdateQueryDescriptor
-  | PhiServerAddonDeleteQueryDescriptor
-  | PhiServerAddonAggregateQueryDescriptor;
+export type PhisAddonQueryDescriptor =
+  | PhisAddonSelectQueryDescriptor
+  | PhisAddonInsertQueryDescriptor
+  | PhisAddonUpdateQueryDescriptor
+  | PhisAddonDeleteQueryDescriptor
+  | PhisAddonAggregateQueryDescriptor;
 
 /** The most rows one declared `select` may return, whatever it asks for. */
-export const PHI_SERVER_ADDON_QUERY_MAX_LIMIT = 500 as const;
+export const PHIS_ADDON_QUERY_MAX_LIMIT = 500 as const;
 
 /**
  * The most values one `list` parameter may carry.
@@ -300,18 +300,18 @@ export const PHI_SERVER_ADDON_QUERY_MAX_LIMIT = 500 as const;
  * count. Exceeding it is refused rather than truncated -- a silently shortened list answers about some
  * of the rows and says it answered about all of them.
  */
-export const PHI_SERVER_ADDON_QUERY_MAX_LIST = 500 as const;
+export const PHIS_ADDON_QUERY_MAX_LIST = 500 as const;
 
-export type PhiServerAddonQueryCatalog = {
-  parameters: Readonly<Record<string, PhiServerAddonQueryParameter[]>>;
-  queries: PhiServerAddonQueryDescriptor[];
+export type PhisAddonQueryCatalog = {
+  parameters: Readonly<Record<string, PhisAddonQueryParameter[]>>;
+  queries: PhisAddonQueryDescriptor[];
 };
 
-export type PhiServerAddonQueryArguments = Readonly<
+export type PhisAddonQueryArguments = Readonly<
   Record<string, string | number | boolean | null | readonly (string | number)[]>
 >;
 
-export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
+export type PhisAddonQueryRow = Readonly<Record<string, unknown>>;
 
 /**
  * One page of a select, and whether there is another.
@@ -324,13 +324,13 @@ export type PhiServerAddonQueryRow = Readonly<Record<string, unknown>>;
  * The cursor is opaque. It encodes the ordering it was made for and is refused by a query with a
  * different one, because paging on somebody else's order silently skips and repeats rows.
  */
-export type PhiServerAddonQueryPage = {
-  rows: PhiServerAddonQueryRow[];
+export type PhisAddonQueryPage = {
+  rows: PhisAddonQueryRow[];
   cursor: string | null;
 };
 
 /** What a caller asks for a page, beside the query's own parameters. */
-export type PhiServerAddonQueryPageRequest = {
+export type PhisAddonQueryPageRequest = {
   /** A wish. Core takes the smallest of this, the descriptor's `limit`, and the hard maximum. */
   limit?: number;
   /** From a previous page. Absent starts at the beginning. */
@@ -352,12 +352,12 @@ export type PhiServerAddonQueryPageRequest = {
  * A select answers with a page. There is no method that returns everything, because the caller who
  * wanted everything is the one who brings the instance down.
  */
-export type PhiServerDataCapabilityV1 = {
+export type PhisDataCapabilityV1 = {
   select(
     name: string,
-    args?: PhiServerAddonQueryArguments,
-    page?: PhiServerAddonQueryPageRequest,
-  ): Promise<PhiServerAddonQueryPage>;
+    args?: PhisAddonQueryArguments,
+    page?: PhisAddonQueryPageRequest,
+  ): Promise<PhisAddonQueryPage>;
   /**
    * Counting and summarising, as a page for the same reason a select is one.
    *
@@ -366,11 +366,11 @@ export type PhiServerDataCapabilityV1 = {
    */
   aggregate(
     name: string,
-    args?: PhiServerAddonQueryArguments,
-    page?: PhiServerAddonQueryPageRequest,
-  ): Promise<PhiServerAddonQueryPage>;
+    args?: PhisAddonQueryArguments,
+    page?: PhisAddonQueryPageRequest,
+  ): Promise<PhisAddonQueryPage>;
   /** Returns the inserted row, with the scope columns Core filled in. */
-  insert(name: string, args?: PhiServerAddonQueryArguments): Promise<PhiServerAddonQueryRow | null>;
+  insert(name: string, args?: PhisAddonQueryArguments): Promise<PhisAddonQueryRow | null>;
   /**
    * Returns the row as it stands after the write, or `null` when nothing was written.
    *
@@ -379,8 +379,8 @@ export type PhiServerDataCapabilityV1 = {
    */
   update(
     name: string,
-    args?: PhiServerAddonQueryArguments,
-  ): Promise<PhiServerAddonQueryRow | null>;
+    args?: PhisAddonQueryArguments,
+  ): Promise<PhisAddonQueryRow | null>;
   /**
    * Returns the row that was removed, or `null` when nothing was.
    *
@@ -390,8 +390,8 @@ export type PhiServerDataCapabilityV1 = {
    */
   delete(
     name: string,
-    args?: PhiServerAddonQueryArguments,
-  ): Promise<PhiServerAddonQueryRow | null>;
+    args?: PhisAddonQueryArguments,
+  ): Promise<PhisAddonQueryRow | null>;
   /**
    * One unit of work. Everything inside commits together or not at all.
    *
@@ -399,7 +399,7 @@ export type PhiServerDataCapabilityV1 = {
    * savepoint. Returning ends the transaction; throwing rolls it back. An Add-on cannot leave one
    * open, because it never holds the thing that would stay open.
    */
-  transaction<T>(body: (tx: PhiServerDataTransactionV1) => Promise<T>): Promise<T>;
+  transaction<T>(body: (tx: PhisDataTransactionV1) => Promise<T>): Promise<T>;
 };
 
-export type PhiServerDataTransactionV1 = Omit<PhiServerDataCapabilityV1, "transaction">;
+export type PhisDataTransactionV1 = Omit<PhisDataCapabilityV1, "transaction">;
