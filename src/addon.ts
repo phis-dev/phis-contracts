@@ -308,7 +308,7 @@ export type PhisAddonRuntimeV1 = {
 };
 
 export type PhisAddonRuntimeModuleV1 = {
-  phiServerAddon: PhisAddonRuntimeV1;
+  phisAddon: PhisAddonRuntimeV1;
 };
 
 export type PhisAddonBuildEntry = {
