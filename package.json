@@ -25,6 +25,11 @@
       "import": "./dist/access.js",
       "default": "./dist/access.js"
     },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.js",
+      "default": "./dist/http.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",
