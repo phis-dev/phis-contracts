@@ -35,6 +35,11 @@
       "import": "./dist/logging.js",
       "default": "./dist/logging.js"
     },
+    "./server-capabilities": {
+      "types": "./dist/server-capabilities.d.ts",
+      "import": "./dist/server-capabilities.js",
+      "default": "./dist/server-capabilities.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",
