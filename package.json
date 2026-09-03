@@ -30,6 +30,11 @@
       "import": "./dist/http.js",
       "default": "./dist/http.js"
     },
+    "./logging": {
+      "types": "./dist/logging.d.ts",
+      "import": "./dist/logging.js",
+      "default": "./dist/logging.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",
