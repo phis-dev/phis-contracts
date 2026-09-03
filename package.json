@@ -45,6 +45,11 @@
       "import": "./dist/server-capabilities.js",
       "default": "./dist/server-capabilities.js"
     },
+    "./site-groups": {
+      "types": "./dist/site-groups.d.ts",
+      "import": "./dist/site-groups.js",
+      "default": "./dist/site-groups.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",
