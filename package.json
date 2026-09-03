@@ -35,6 +35,11 @@
       "import": "./dist/logging.js",
       "default": "./dist/logging.js"
     },
+    "./media": {
+      "types": "./dist/media.d.ts",
+      "import": "./dist/media.js",
+      "default": "./dist/media.js"
+    },
     "./server-capabilities": {
       "types": "./dist/server-capabilities.d.ts",
       "import": "./dist/server-capabilities.js",
