@@ -13,14 +13,24 @@
  * wrong or wants a Core service.
  */
 
-/** What a declared parameter holds. Narrower than the column vocabulary: these travel as values. */
+/**
+ * What a declared parameter holds. Narrower than the column vocabulary: these travel as values.
+ *
+ * `json` is the one that is not a scalar, and it is deliberately the one that cannot be compared. It
+ * may be assigned to a `json` column and used nowhere else -- not in `compare`, not in `contains`, not
+ * in `in`, not in `whenPresent`. A document one could filter on would need paths, operators and an
+ * index vocabulary to go with them, and that is a second query language growing inside the one this
+ * file exists to keep small. What it is for is the other half: a column declared `json` had no way to
+ * be written at all, so an Add-on could store a document only by never storing one.
+ */
 export type PhisAddonQueryParameterType =
   | "integer"
   | "bigInteger"
   | "text"
   | "boolean"
   | "instant"
-  | "uuid";
+  | "uuid"
+  | "json";
 
 export type PhisAddonQueryParameter = {
   name: string;
@@ -307,8 +317,21 @@ export type PhisAddonQueryCatalog = {
   queries: PhisAddonQueryDescriptor[];
 };
 
+/**
+ * A document a `json` parameter carries, which is whatever survives a round trip through JSON.
+ *
+ * Not narrowed further, because the column is not narrowed either: a `json` column takes any document,
+ * and a type here that took less would describe a restriction the store does not have.
+ */
+export type PhisAddonQueryJson =
+  | { readonly [key: string]: unknown }
+  | readonly unknown[];
+
 export type PhisAddonQueryArguments = Readonly<
-  Record<string, string | number | boolean | null | readonly (string | number)[]>
+  Record<
+    string,
+    string | number | boolean | null | readonly (string | number)[] | PhisAddonQueryJson
+  >
 >;
 
 export type PhisAddonQueryRow = Readonly<Record<string, unknown>>;
