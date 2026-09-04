@@ -82,7 +82,19 @@ manifest carries its Modules' categories as plain strings, Core checks the shape
 question is asked where a registry is actually held. The same split as `/signals`.
 
 The labels an operator reads are not here. Those are label-set keys, translated per site, and they
-belong to the UI; this subpath holds the identifiers the three parties spell the same way.
+belong to the UI; this subpath holds the identifiers the parties spell the same way.
+
+Beside the vocabulary sits the shape a Module package declares itself in, under `phis` in its
+package.json: which Modules it carries, each one's category, and the language their titles and
+descriptions are written in. A Module is compiled UI code, so reading that out of it means executing a
+stranger's package -- inside the `phis` CLI, or inside a marketplace taking a submission. Neither
+should, and a registry serves package.json without anybody fetching a tarball.
+
+It is not a second manifest. A package carries one product at one version: the Add-on manifest is what
+phi-server is handed when an artifact is installed, this is what a catalogue reads about the half that
+never reaches phi-server. Same package, same version, different readers. And it is derived from the
+definitions, never composed by hand -- a package whose declaration disagrees with its own Modules has a
+build problem, not two opinions.
 
 ## What `/addon` covers
 

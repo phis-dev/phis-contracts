@@ -71,3 +71,89 @@ export function isPhiRuntimeModuleCategory(value: unknown): value is PhiRuntimeM
 export function readPhiRuntimeModuleCategory(value: unknown): PhiRuntimeModuleCategory {
   return isPhiRuntimeModuleCategory(value) ? value : "other";
 }
+
+/** The package.json key a Module package declares itself under. */
+export const PHIS_MODULE_PACKAGE_KEY = "phis" as const;
+
+/** One Module a package contributes, as its package.json states it. */
+export type PhisModulePackageEntry = {
+  moduleId: string;
+  /**
+   * Shape, not membership. A category this build has never heard of is still a well-formed
+   * declaration; whether it is a category *we* offer is the question a party with the list asks, and
+   * asks at intake, where refusing costs the publisher a message rather than the operator a page.
+   */
+  category: string;
+};
+
+/**
+ * What a Module package says about itself, without being run.
+ *
+ * A Module is compiled UI code: React, the Site's bundler, four fixed entry points. Reading a category
+ * out of it means executing a stranger's package inside whatever process asked -- the `phis` CLI, or a
+ * marketplace taking a submission. Neither should, so the package states it instead, in the one file it
+ * already has and that a registry serves without anybody fetching a tarball.
+ *
+ * Not a second manifest. A package carries one product at one version: the Add-on manifest is what
+ * phi-server is handed when an artifact is installed, and this is what a catalogue reads about the half
+ * that never reaches phi-server at all. Same package, same version, different readers.
+ *
+ * Derived, never composed by hand -- the definitions are the truth and this is their shadow. A package
+ * whose declaration and definitions disagree has a build problem, not two opinions.
+ */
+export type PhisModulePackageDeclaration = {
+  /**
+   * The language the Modules' own titles and descriptions are written in. Null means `en`.
+   *
+   * Per package rather than per Module: one package carries one product, written by one hand. A
+   * catalogue that translates has to know what it is translating from -- told the wrong source it does
+   * not fail, it produces fluent nonsense, which is the one kind of wrong nobody sees.
+   */
+  sourceLocale: string | null;
+  modules: PhisModulePackageEntry[];
+};
+
+/**
+ * Reads the declaration out of a parsed package.json.
+ *
+ * Null when the key is absent, which is a legitimate answer: a storage adapter is an Add-on and nothing
+ * else, and has no Module half to describe. Present but malformed throws, because that is an author's
+ * mistake and silence would file it next to the honest absence.
+ */
+export function readPhisModulePackageDeclaration(
+  packageJson: unknown,
+): PhisModulePackageDeclaration | null {
+  if (typeof packageJson !== "object" || packageJson === null) {
+    return null;
+  }
+  const declared = (packageJson as Record<string, unknown>)[PHIS_MODULE_PACKAGE_KEY];
+  if (declared === undefined) {
+    return null;
+  }
+  if (typeof declared !== "object" || declared === null || Array.isArray(declared)) {
+    throw new Error(`"${PHIS_MODULE_PACKAGE_KEY}" in package.json must be an object.`);
+  }
+  const block = declared as Record<string, unknown>;
+  const sourceLocale = block.sourceLocale;
+  if (sourceLocale !== undefined && (typeof sourceLocale !== "string" || !sourceLocale.trim())) {
+    throw new Error(`"${PHIS_MODULE_PACKAGE_KEY}.sourceLocale" must be a non-empty string when stated.`);
+  }
+  if (!Array.isArray(block.modules)) {
+    throw new Error(`"${PHIS_MODULE_PACKAGE_KEY}.modules" must be an array.`);
+  }
+  const modules = block.modules.map((entry, index) => {
+    const at = `${PHIS_MODULE_PACKAGE_KEY}.modules[${index}]`;
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      throw new Error(`"${at}" must be an object.`);
+    }
+    const { moduleId, category } = entry as Record<string, unknown>;
+    if (typeof moduleId !== "string" || !moduleId.trim()) {
+      throw new Error(`"${at}.moduleId" must be a non-empty string.`);
+    }
+    if (typeof category !== "string" || !category.trim()) {
+      throw new Error(`"${at}.category" must be a non-empty string.`);
+    }
+    return { moduleId, category };
+  });
+  return { sourceLocale: typeof sourceLocale === "string" ? sourceLocale : null, modules };
+}
