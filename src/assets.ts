@@ -20,8 +20,23 @@ export type PhisAddonAssetView = {
   id: string;
   slot: string;
   ownerId: string;
-  /** The file itself, as Core records it. This is what a delivery URL is built from. */
+  /** The file itself, as Core records it. */
   mediaAssetId: number;
+  /**
+   * Where the file is served from, Site-relative, as Core addresses its own Media.
+   *
+   * Given rather than left to be composed, because composing it means knowing two things an Add-on has
+   * no way to be told: the route, and the cache revision it carries. A path built without the revision
+   * still delivers the file and never gets an immutable cache -- every viewer revalidates every time,
+   * and nothing about the result looks wrong enough to investigate.
+   *
+   * Read at the moment it is used, never stored. The revision rotates whenever the file's delivery
+   * changes, and a path kept from an earlier read would then be the stale one it exists to retire.
+   *
+   * What the path answers with is the slot's `delivery`: `public` to anyone, `authenticated` to a
+   * session, `internal` only to Core's own caller. The address is not the permission.
+   */
+  contentPath: string;
   byteSize: number;
   contentType: string;
   /**
@@ -117,4 +132,29 @@ export type PhisAssetsCapabilityV1 = {
    * that is not there answers `false` rather than refusing, because a refusal would say it exists.
    */
   remove(input: { table: string; id: string }): Promise<boolean>;
+  /**
+   * What this Add-on's files take up on this Site, and what they are allowed to.
+   *
+   * Here for the reason `storage:v1` has the same call: the ceiling is the operator's and Core enforces
+   * it whether or not anybody read this first, so this exists to let an Add-on say *why*. A refusal an
+   * interface can explain before a person picks a file beats one that arrives after they waited for the
+   * upload, and a vendor who can see they are at their limit does not report it as a fault.
+   *
+   * The two figures are separate because both are spent. `bytes` is what is stored; `reservedBytes` is
+   * held for uploads in flight and is as unavailable as stored bytes until they finish or lapse. Room
+   * for one more file is `quotaBytes - (bytes + reservedBytes)`, which is the comparison `begin` makes.
+   *
+   * `quotaBytes` is the effective ceiling after inheritance -- the Space's own override where there is
+   * one, the Site's default for Add-on Spaces otherwise -- so it is the figure that will actually be
+   * applied and not a raw column. `null` means no ceiling. An explicit `0` is a revocation, not an
+   * absence.
+   *
+   * No object count, unlike `storage:v1`. Core keeps a running total of bytes and none of files, and
+   * counting them on demand would be the unbounded read the ceiling exists to prevent.
+   */
+  usage(): Promise<{
+    bytes: number;
+    reservedBytes: number;
+    quotaBytes: number | null;
+  }>;
 };
