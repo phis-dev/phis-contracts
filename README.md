@@ -7,7 +7,7 @@ between different parties and freeze at different moments.
 @phis/contracts/addon     what phi-server and a separately shipped Add-on promise each other
 @phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
 @phis/contracts/signals   the signal vocabulary the UI declares against and phi-server validates
-@phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market filters on
+@phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market will filter on
 ```
 
 There is deliberately no root export. A package you can import from the top invites everything that
@@ -66,9 +66,14 @@ every third party's schema for never having heard of it.
 What a Module is for, as one closed list: `foundation`, `workspace`, `content`, `commerce`, `people`,
 `operations`, `other`.
 
-Three parties read it. An Add-on declares it per Module -- per Module, because a package may ship a
-shop and a report and neither answer would be true of the other. The site UI groups the Modules page
-by it. A marketplace, itself an Add-on, refuses an offering naming a category nobody knows.
+An Add-on declares it per Module -- per Module, because a package may ship a shop and a report and
+neither answer would be true of the other. The site UI groups the Modules page by it, and a Module may
+read another's category and show it.
+
+It is here rather than in the site UI package because of the reader that cannot follow it there. A
+marketplace is a phi-server Add-on: it compiles against this package and nothing else, never against
+React, and it is meant to let a shopper filter on category. That filter is not built yet -- an
+offering's category is still free text -- but it is why this list is a contract.
 
 It is not in `/addon` on purpose. `/addon` is the frozen ABI a third party compiles against, and this
 list grows as the product does -- an eighth category would lift the package everybody builds against,

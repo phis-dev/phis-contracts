@@ -1,11 +1,14 @@
 /**
  * What a Module is for, as an operator reads it on the Modules page.
  *
- * Three parties read this one list. An Add-on declares it, per Module and not per package, because a
- * package may ship a shop and a report and neither answer would be true of the other. The site UI
- * groups the Modules page by it. A marketplace -- itself an Add-on -- refuses an offering that names a
- * category nobody knows. One list, because when a vocabulary like this was two lists it drifted, and
- * the drift surfaced as a save being refused rather than as a mismatch anyone could see.
+ * An Add-on declares it, per Module and not per package, because a package may ship a shop and a
+ * report and neither answer would be true of the other. The site UI groups the Modules page by it, and
+ * a Module may read another's category and show it.
+ *
+ * Here rather than in the site UI package because of the reader that cannot follow it there: a
+ * marketplace is a phi-server Add-on, it compiles against this package and nothing else, and it is
+ * meant to let a shopper filter on category. That filter is not built yet -- the offering's category is
+ * still free text -- but it is the reason this list is a contract and not a UI detail.
  *
  * Deliberately not in `/addon`. That subpath is the frozen ABI a third party compiles against, and this
  * list grows as the product does: an eighth category would lift the package everybody builds against,
