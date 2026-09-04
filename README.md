@@ -1,12 +1,13 @@
 # @phis/contracts
 
-The agreements phi-server keeps with what surrounds it. Two of them, under two subpaths, because
-they hold between different parties and freeze at different moments.
+The agreements phi-server keeps with what surrounds it. Each under its own subpath, because they hold
+between different parties and freeze at different moments.
 
 ```
 @phis/contracts/addon     what phi-server and a separately shipped Add-on promise each other
 @phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
 @phis/contracts/signals   the signal vocabulary the UI declares against and phi-server validates
+@phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market filters on
 ```
 
 There is deliberately no root export. A package you can import from the top invites everything that
@@ -60,6 +61,24 @@ which one, and `isPhiSignalValueSchemaShape` is exactly that much: shape, not me
 the stricter question, because it holds the module registry; phi-server must not, or it would refuse
 every third party's schema for never having heard of it.
 
+## `/catalog`
+
+What a Module is for, as one closed list: `foundation`, `workspace`, `content`, `commerce`, `people`,
+`operations`, `other`.
+
+Three parties read it. An Add-on declares it per Module -- per Module, because a package may ship a
+shop and a report and neither answer would be true of the other. The site UI groups the Modules page
+by it. A marketplace, itself an Add-on, refuses an offering naming a category nobody knows.
+
+It is not in `/addon` on purpose. `/addon` is the frozen ABI a third party compiles against, and this
+list grows as the product does -- an eighth category would lift the package everybody builds against,
+for a change that concerns none of them. Nor does phi-server ask the membership question: a package
+manifest carries its Modules' categories as plain strings, Core checks the shape, and the strict
+question is asked where a registry is actually held. The same split as `/signals`.
+
+The labels an operator reads are not here. Those are label-set keys, translated per site, and they
+belong to the UI; this subpath holds the identifiers the three parties spell the same way.
+
 ## What `/addon` covers
 
 - **Manifest** — `PhisAddonManifestV1`: identity, version, required core capabilities,
@@ -91,6 +110,10 @@ never implementations.
 Into `/access`: only what **phi-server and `@phis/ui` must both evaluate**, because each decides it
 in its own process. Not what both happen to use — a date formatter used on both sides is shared
 convenience, not a contract, and belongs to neither.
+
+Into `/catalog`: only the vocabularies an Add-on **declares a Module in** and another party then reads
+back — closed lists, identifiers only, never the words an operator sees. A vocabulary only the UI ever
+reads stays with the UI.
 
 The test for either is the same: name the two parties and the sentence they are promising each
 other. If that sentence cannot be written down, it does not go in here.
