@@ -97,12 +97,24 @@ export type PhisAssetsCapabilityV1 = {
   }): Promise<PhisAddonAssetView>;
   /** Gives an unredeemed reservation up. An abandoned one expires on its own; this is the tidy path. */
   abandon(input: { table: string; token: string }): Promise<boolean>;
-  /** The files of a row. A reservation in flight is not among them, because it is not a file yet. */
+  /**
+   * The files of a row. A reservation in flight is not among them, because it is not a file yet.
+   *
+   * Refused where the acting user may not read the row. Asking what a row carries is reading the row,
+   * and a slot's `delivery` does not answer it: a file whose id, name and size come back to anyone has
+   * already given up most of what `internal` was keeping.
+   */
   list(input: {
     table: string;
     ownerId: string | number;
     slot?: string;
   }): Promise<PhisAddonAssetView[]>;
-  /** Takes a file out of its slot, and the file with it. */
+  /**
+   * Takes a file out of its slot, and the file with it.
+   *
+   * Refused where the acting user may not change the row, which is the same authority `begin` is
+   * measured against -- taking a file away changes the row exactly as putting one there does. A file
+   * that is not there answers `false` rather than refusing, because a refusal would say it exists.
+   */
   remove(input: { table: string; id: string }): Promise<boolean>;
 };
