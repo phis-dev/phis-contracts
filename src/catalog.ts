@@ -98,8 +98,11 @@ export type PhisModulePackageEntry = {
  * phi-server is handed when an artifact is installed, and this is what a catalogue reads about the half
  * that never reaches phi-server at all. Same package, same version, different readers.
  *
- * Derived, never composed by hand -- the definitions are the truth and this is their shadow. A package
- * whose declaration and definitions disagree has a build problem, not two opinions.
+ * Written by the author, like every other field in that file, and their responsibility to keep true to
+ * their own Modules. Nothing compares the two automatically: `phis module` can say whether the entries
+ * are there and well formed, but whether `events` is the right answer for that Module is a judgement
+ * only the author holds. A package that says nothing here, or says it wrongly, is refused by a
+ * marketplace rather than listed on a guess.
  */
 export type PhisModulePackageDeclaration = {
   /**

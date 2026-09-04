@@ -92,9 +92,12 @@ should, and a registry serves package.json without anybody fetching a tarball.
 
 It is not a second manifest. A package carries one product at one version: the Add-on manifest is what
 phi-server is handed when an artifact is installed, this is what a catalogue reads about the half that
-never reaches phi-server. Same package, same version, different readers. And it is derived from the
-definitions, never composed by hand -- a package whose declaration disagrees with its own Modules has a
-build problem, not two opinions.
+never reaches phi-server. Same package, same version, different readers.
+
+The author writes it, as they write every other field in that file. `phis module` can check that the
+entries are present and well formed; whether `events` is the right answer for a given Module is a
+judgement only the author holds. A package that declares nothing, or declares it wrongly, is refused at
+intake rather than listed on a guess.
 
 ## What `/addon` covers
 
