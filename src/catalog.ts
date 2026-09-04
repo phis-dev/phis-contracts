@@ -36,7 +36,7 @@ export const PHI_RUNTIME_MODULE_CATEGORIES = [
   "workspace",
   "content",
   "commerce",
-  "people",
+  "identity",
   "operations",
   "other",
 ] as const;
