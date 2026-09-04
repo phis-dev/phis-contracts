@@ -45,3 +45,17 @@ const PHI_RUNTIME_MODULE_CATEGORY_SET = new Set<string>(PHI_RUNTIME_MODULE_CATEG
 export function isPhiRuntimeModuleCategory(value: unknown): value is PhiRuntimeModuleCategory {
   return typeof value === "string" && PHI_RUNTIME_MODULE_CATEGORY_SET.has(value);
 }
+
+/**
+ * The category to file a Module under, for a reader that did not compile against this list.
+ *
+ * A separately shipped Add-on may name a category added after the site it is installed on was built.
+ * Refusing it would cost the operator the whole Modules page over one unknown word, so an unrecognised
+ * category reads as `other` -- which is what an Add-on that fits nothing is meant to say anyway.
+ *
+ * A Module built in the same tree never reaches this: its category is typed, so a typo is a compile
+ * error long before anything renders. This is for the values that arrive already compiled.
+ */
+export function readPhiRuntimeModuleCategory(value: unknown): PhiRuntimeModuleCategory {
+  return isPhiRuntimeModuleCategory(value) ? value : "other";
+}
