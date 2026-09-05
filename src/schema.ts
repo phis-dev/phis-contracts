@@ -228,6 +228,25 @@ export type PhisAddonAssetSlotDescriptor = {
    * whatever the default happened to be, and a file that was public once has been public.
    */
   delivery?: "public" | "authenticated" | "internal";
+  /**
+   * A column on the owning table that Core keeps the file's delivery path in.
+   *
+   * Without it, showing a row's picture means asking for its files -- one question per row, so a page
+   * of fifty costs fifty. With it the path arrives with the row, in the statement that was being run
+   * anyway, and a listing is one query again.
+   *
+   * The column is Core's: it is created from this declaration, written when a file is settled, rewritten
+   * when a file replaces it, cleared when it is taken away, and refused as an assignment in every
+   * declared query. An Add-on that could write it could point a row at somebody else's file.
+   *
+   * The path rather than the Media Asset id, because the path is what gets used and the id alone is not
+   * enough to build one: a delivery path carries the cache revision, and reading that back would be the
+   * join this exists to avoid.
+   *
+   * Only on a `one` slot. A slot that accumulates has no single path to mirror, and a column holding the
+   * newest of several would be a fact nobody asked for.
+   */
+  mirrorColumn?: string;
 };
 
 export type PhisAddonTableDescriptor = {

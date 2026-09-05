@@ -283,6 +283,15 @@ export type PhisAddonRequestContext = {
     | {
         id: number;
         key: string;
+        /**
+         * Where this Site answers from, as the outside world reaches it.
+         *
+         * Core's own addresses are Site-relative, which is right for a page of that Site and useless in
+         * anything that leaves it: a listing another Core fetches, a link in an email, a picture in a
+         * feed. A handler cannot derive this -- a request carries the host it happened to arrive on, and
+         * an internal one carries none at all -- so it is the Site's own record that says it.
+         */
+        publicBaseUrl: string;
       }
     | null;
   actor:
