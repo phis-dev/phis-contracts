@@ -13,7 +13,6 @@
  */
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
-import type { PhiGroupMembershipFlagValue } from "./site-groups.js";
 import type { PhisDataCapabilityV1 } from "./queries.js";
 
 /**
@@ -218,8 +217,14 @@ export type PhisGroupsCapabilityV1 = {
    * about anybody.
    */
   declared(): Promise<Array<{ id: number; key: string; name: string }>>;
-  /** The groups the acting user belongs to on this Site. */
-  myGroups(): Promise<Array<{ id: number; key: string; name: string }>>;
+  /**
+   * The groups the acting user belongs to on this Site, and how far into each one they stand.
+   *
+   * The level is here because an Add-on that administers its own groups has to be able to ask "is this
+   * person a Manager of *this* group" -- Core's own check is per Add-on and cannot answer it. Without
+   * it, an Add-on whose policy admits its vendors would let any of them into any of its groups.
+   */
+  myGroups(): Promise<Array<{ id: number; key: string; name: string; level: PhisGroupLevel }>>;
   /** The members of one group the acting user is in, projected as a member sees them. */
   members(groupId: number): Promise<PhisUserProjection[]>;
   /**
@@ -247,11 +252,7 @@ export type PhisGroupsCapabilityV1 = {
    * Refused for a group this Add-on does not own, and for somebody who is not a member of the Site --
    * a row owned by an account that cannot sign in here is a row nobody can reach.
    */
-  addMember(input: {
-    groupId: number;
-    userId: number;
-    level: PhiGroupMembershipFlagValue;
-  }): Promise<boolean>;
+  addMember(input: { groupId: number; userId: number; level: PhisGroupLevel }): Promise<boolean>;
   /** Takes somebody out again. False where there was nothing to take out. */
   removeMember(input: { groupId: number; userId: number }): Promise<boolean>;
   /**
