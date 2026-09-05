@@ -148,6 +148,16 @@ export type PhisAddonRoleGrantPolicy =
  * Core never interprets the name. It stores assignments, answers `has()`, and enforces `grantableBy`;
  * what `reviewer` means is the Add-on's business and stays there.
  */
+export type PhisAddonGroupWriterDescriptor = {
+  /**
+   * Who may cause this Add-on to create a group or change who is in one.
+   *
+   * The same policy shape a role's `grantableBy` uses, evaluated the same way, and with the same floor:
+   * a Site Admin always may, so a badly declared condition never locks a Site out of its own groups.
+   */
+  allowedBy: PhisAddonRoleGrantPolicy;
+};
+
 export type PhisAddonRoleDescriptor = {
   name: string;
   description?: string;
@@ -211,6 +221,22 @@ export type PhisAddonManifestV1 = {
    * Add-on asks for no group rather than that it forgot to say so.
    */
   groups?: PhisAddonGroupDescriptor[];
+  /**
+   * Whether this Add-on may create groups of its own while it runs, and who may cause it to.
+   *
+   * The declared list above is for the groups a Site always has -- one per Add-on, known when the
+   * manifest was written. This is for the ones a Site produces as it runs: one per vendor, per team, per
+   * tenant, whose number and names nobody knew in advance.
+   *
+   * It stays a declaration rather than a capability an Add-on simply has, for the reason `grantableBy`
+   * exists: the manifest is covered by a digest the running code cannot rewrite, so the author states
+   * who may cause a group, and Core decides whether the condition is met. Without it, "an Add-on may
+   * make groups" would mean "an Add-on may make itself an authority container and fill it".
+   *
+   * What it may do is bounded by ownership either way: a group it creates carries its own id as the
+   * provider, and every write here refuses a group carrying anybody else's.
+   */
+  groupWriter?: PhisAddonGroupWriterDescriptor;
   /**
    * The Modules this package's other half contributes. Absent means it has no Module half.
    *

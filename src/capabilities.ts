@@ -13,6 +13,7 @@
  */
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
+import type { PhiGroupMembershipFlagValue } from "./site-groups.js";
 import type { PhisDataCapabilityV1 } from "./queries.js";
 
 /**
@@ -228,6 +229,38 @@ export type PhisGroupsCapabilityV1 = {
    * lookup into everybody.
    */
   user(userId: number): Promise<PhisUserProjection | null>;
+  /**
+   * Makes a group of this Add-on's own, or hands back the one that is already there.
+   *
+   * Only where the manifest declares a `groupWriter`, and only for an acting user its policy admits.
+   * Asking twice is the way to learn an id: the key is the Add-on's to choose and the id is the
+   * database's to assign, so the call is an upsert rather than a create that fails the second time.
+   *
+   * The group carries this Add-on as its provider, which is what every write below checks. Core already
+   * filters group claims against the available providers, so one of these stops granting anything the
+   * moment the Add-on is gone -- and comes back with it, members included.
+   */
+  create(input: { key: string; name: string }): Promise<{ id: number; key: string; name: string }>;
+  /**
+   * Puts somebody in one of this Add-on's groups, at one level.
+   *
+   * Refused for a group this Add-on does not own, and for somebody who is not a member of the Site --
+   * a row owned by an account that cannot sign in here is a row nobody can reach.
+   */
+  addMember(input: {
+    groupId: number;
+    userId: number;
+    level: PhiGroupMembershipFlagValue;
+  }): Promise<boolean>;
+  /** Takes somebody out again. False where there was nothing to take out. */
+  removeMember(input: { groupId: number; userId: number }): Promise<boolean>;
+  /**
+   * Retires one of this Add-on's groups.
+   *
+   * Not deleting: the row and its key stay, because access policies are serialized against the
+   * provider-qualified key and releasing it would let a later group of the same name inherit them.
+   */
+  retire(input: { groupId: number }): Promise<boolean>;
 };
 
 /**
