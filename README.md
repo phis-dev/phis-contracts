@@ -8,6 +8,7 @@ between different parties and freeze at different moments.
 @phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
 @phis/contracts/signals   the signal vocabulary the UI declares against and phi-server validates
 @phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market will filter on
+@phis/contracts/cms       the CMS node identity both sides derive, and must derive alike
 ```
 
 There is deliberately no root export. A package you can import from the top invites everything that
@@ -45,6 +46,24 @@ looked wrong on its own, which is why it went unnoticed.
 
 Each side keeps its own viewer type and passes a projection onto `PhiAccessSubject`, so neither
 package has to adopt the other's shape.
+
+## `/cms`
+
+The encoding of a CMS node's identity: how a Preset node's id is derived from the Module, the preset and
+the node key, and how a draft node's id is derived from the revision it was made in.
+
+This one is not a shape check. It is an arithmetic, and it is here for the opposite of the usual reason:
+not because the two sides ask the same question, but because they must compute the same answer. A Preset
+id is derived rather than allocated, so the site UI can address a node before any row exists and
+phi-server can check that stored wiring points at nodes that are really there.
+
+It stood in two copies until 2026-09-07 -- 170 lines in phi-server, 260 in `@phis/ui`, with
+`hashPresetIdentity` identical line for line. Nothing would have announced a divergence. A changed
+constant on one side produces ids that are still well formed and simply name nothing: Pages stop
+resolving, drafts point at nodes that are not there, and both copies look correct on their own.
+
+The two conveniences built on top stay with `@phis/ui`: the Page-key convention and the map helper are
+its own, and phi-server has no use for either.
 
 ## `/signals`
 

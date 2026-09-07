@@ -25,6 +25,11 @@
       "import": "./dist/access.js",
       "default": "./dist/access.js"
     },
+    "./cms": {
+      "types": "./dist/cms.d.ts",
+      "import": "./dist/cms.js",
+      "default": "./dist/cms.js"
+    },
     "./catalog": {
       "types": "./dist/catalog.d.ts",
       "import": "./dist/catalog.js",
