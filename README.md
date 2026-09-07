@@ -6,7 +6,7 @@ between different parties and freeze at different moments.
 ```
 @phis/contracts/addon     what phi-server and a separately shipped Add-on promise each other
 @phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
-@phis/contracts/signals   the signal vocabulary the UI declares against and phi-server validates
+@phis/contracts/signals   the signal vocabulary and address grammar the UI declares in, phi-server validates
 @phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market will filter on
 @phis/contracts/cms       the CMS node identity both sides derive, and must derive alike
 ```
@@ -74,6 +74,14 @@ A widget declares what it emits and listens for, the Builder stores that, and ph
 the way in. Two lists, one meaning; and when they were two lists they drifted. `@phis/ui` had grown
 `date`, `time` and `length`; phi-server had not. A length control's change signal -- from a widget the
 same release shipped -- was refused on save with "valueType is invalid".
+
+The address families are here for a sharper reason than the vocabularies. A wiring is stored by the
+Builder, checked by phi-server on the way in, and delivered by the site UI at runtime, so all three
+parse the same string -- and two of them parsed it from separate copies until 2026-09-07. The server's
+said so in its own comment: it "mirrors the grammar in @phis/ui", because it could not import it. With
+them the rule that says which receivers a scope admits, which had been written out on both sides in
+different words, and the one controller address the Site scope privileges, which is only worth
+anything if both sides name the same string.
 
 Which schemas exist stays with the UI. phi-server checks that a JSON signal names *a* schema, never
 which one, and `isPhiSignalValueSchemaShape` is exactly that much: shape, not membership. The UI asks
