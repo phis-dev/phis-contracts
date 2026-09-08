@@ -1,4 +1,89 @@
 /**
+ * The numbers a CMS row carries, in the one reading both sides must give them.
+ *
+ * A status, a Region type, a visibility mask and a flag set are written by the site UI, checked and
+ * stored by phi-server, and read back by both -- as columns, as fields of a write payload, and as
+ * values inside a stored tree. They are the same kind of agreement as the identity below and were
+ * kept the same way the arithmetic was: two files, identical line for line, in two repositories.
+ *
+ * The visibility mask is the one that shows what that costs. Its bits are not dense -- public 1,
+ * app 2, admin 8, editor 16, accounting 64, builder 256 -- so a side that renumbered them would not
+ * fail anything loudly. It would store a Page in a different Area than the other side reads it from,
+ * and every row would look correct where it was written.
+ */
+
+export const PhiCmsPageType = {
+  Standard: 0,
+  Landing: 1,
+  Legal: 2,
+  System: 3,
+  Redirect: 4,
+} as const;
+
+export const PhiCmsStatus = {
+  Draft: 0,
+  Published: 1,
+  Archived: 2,
+  Deleted: 3,
+} as const;
+
+export const PhiCmsRegionStatus = {
+  Draft: 0,
+  Active: 1,
+  Disabled: 2,
+} as const;
+
+/** Numbered with room between the groups, so a Region can be added beside its neighbours. */
+export const PhiCmsRegionType = {
+  HeaderTop: 10,
+  HeaderMain: 11,
+  HeaderBottom: 12,
+  SiderLeft: 20,
+  SiderRight: 21,
+  Hero: 25,
+  Content: 30,
+  FooterTop: 39,
+  Footer: 40,
+  FooterBottom: 41,
+  Drawer: 50,
+} as const;
+
+export type PhiCmsRegionTypeValue =
+  (typeof PhiCmsRegionType)[keyof typeof PhiCmsRegionType];
+
+/**
+ * Which Areas a row is visible in, as one value per Area rather than a running number.
+ *
+ * Bits 2, 5 and 7 are unassigned. That is what makes the numbers worth stating once: 8 reads like the
+ * fourth Area and is the third, and phi-server stores it as `area_id` where nothing spells it out.
+ */
+export const PhiCmsVisibilityContext = {
+  PublicArea: 1 << 0,
+  AppArea: 1 << 1,
+  AdminArea: 1 << 3,
+  EditorArea: 1 << 4,
+  AccountingArea: 1 << 6,
+  BuilderArea: 1 << 8,
+} as const;
+
+export const PhiCmsFlags = {
+  SiteCustom: 1 << 0,
+  Hidden: 1 << 1,
+  MobileOnly: 1 << 2,
+  DesktopOnly: 1 << 3,
+  Collapsed: 1 << 4,
+  NoTranslate: 1 << 5,
+} as const;
+
+export const PhiCmsRevisionFlags = {
+  Draft: 1 << 0,
+  Published: 1 << 1,
+  Deleted: 1 << 2,
+} as const;
+
+export const DEFAULT_PHI_CMS_VISIBILITY_MASK = PhiCmsVisibilityContext.PublicArea;
+
+/**
  * The identity a CMS node carries, in the one encoding both sides must compute alike.
  *
  * A node id is not allocated, it is derived: a Preset node's id is a hash of the Module, the preset
