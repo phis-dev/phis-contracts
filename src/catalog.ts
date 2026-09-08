@@ -29,7 +29,11 @@
  * have built.
  *
  * An Area's base Module is `foundation` whatever the Area does, because it is not a Module the
- * operator chose -- it is the ground the Area stands on, and the row for it is the locked one.
+ * operator chose -- it is the ground the Area stands on, and the row for it is the locked one. So is a
+ * Module no site can sensibly do without: locales, logs, revisions, the theme, the user table. Those
+ * are switchable and the base Modules are not, but the question the category answers is what a Module
+ * is for, not whether it can be turned off -- and the answer for all of them is the same: they are what
+ * a site is administered with, not something it was extended by.
  *
  * Distinct from the plugin categories the site UI keeps, which file a Widget or Layout into a drawer of
  * the Builder's insert picker. That is a question about where a block is found, not about what a Module
