@@ -66,6 +66,17 @@ export const PhiCmsVisibilityContext = {
   BuilderArea: 1 << 8,
 } as const;
 
+/**
+ * The flags a CMS row carries, in the one numbering both sides read them from.
+ *
+ * Not every flag reaches every kind of row -- `Collapsed` is a Region's answer and `MobileOnly` a
+ * renderable's -- but they share one space, because a row is stored as a row whatever it holds.
+ *
+ * `NoIndex` is a Page's, and it is the Site's answer rather than the preset's: a Module states what a
+ * Page it ships starts out as, and the Builder's switch is what decides from then on. That is why it
+ * lives here, on the record, and not on the route descriptor -- a descriptor is read fresh on every
+ * request and would overrule the Operator on every one of them.
+ */
 export const PhiCmsFlags = {
   SiteCustom: 1 << 0,
   Hidden: 1 << 1,
@@ -73,6 +84,7 @@ export const PhiCmsFlags = {
   DesktopOnly: 1 << 3,
   Collapsed: 1 << 4,
   NoTranslate: 1 << 5,
+  NoIndex: 1 << 6,
 } as const;
 
 export const PhiCmsRevisionFlags = {
