@@ -85,6 +85,15 @@ export const PhiMediaKind = {
   Document: "document",
   Archive: "archive",
   /*
+   * A typeface, kept because a Site owns its lettering the way it owns its pictures.
+   *
+   * Neither `Document` nor `Binary` would do. A font is not read and not handed over as a download: a
+   * stylesheet loads it, and the Theme that names it has to be able to find it again years later --
+   * including after the Module that once brought it was switched off. A kind of its own is what makes
+   * that a query rather than a guess about content types.
+   */
+  Font: "font",
+  /*
    * Arbitrary bytes, offered as a download and nothing else.
    *
    * Separate from `Other` because the two mean opposite things to a declaration: `Binary` is a Module
@@ -140,6 +149,7 @@ export function normalizePhiMediaKind(kind: string | null | undefined) {
     normalized === PhiMediaKind.Markdown ||
     normalized === PhiMediaKind.Document ||
     normalized === PhiMediaKind.Archive ||
+    normalized === PhiMediaKind.Font ||
     normalized === PhiMediaKind.Binary
   ) {
     return normalized;
@@ -162,6 +172,22 @@ export function resolvePhiMediaKindFromContentType(contentType: string | null | 
   }
   if (normalized.startsWith("audio/")) {
     return PhiMediaKind.Audio;
+  }
+  /*
+   * `font/*` is the registered tree (RFC 8081); the `application/...` spellings below it are what older
+   * tools still send for the same bytes.
+   */
+  if (
+    normalized.startsWith("font/") ||
+    normalized === "application/font-woff" ||
+    normalized === "application/x-font-woff" ||
+    normalized === "application/x-font-ttf" ||
+    normalized === "application/x-font-otf" ||
+    normalized === "application/x-font-truetype" ||
+    normalized === "application/x-font-opentype" ||
+    normalized === "application/vnd.ms-fontobject"
+  ) {
+    return PhiMediaKind.Font;
   }
   if (normalized === "application/pdf") {
     return PhiMediaKind.Pdf;
