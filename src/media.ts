@@ -449,3 +449,45 @@ export function resolvePhiFontSubsetRanges(key: PhiFontSubsetKeyValue, coverage:
 export function isPhiFontSubsetKey(value: unknown): value is PhiFontSubsetKeyValue {
   return typeof value === "number" && (Object.values(PhiFontSubsetKey) as number[]).includes(value);
 }
+
+/*
+ * Which cuts a page in one language needs before it paints, beyond `Latin` -- which every page needs,
+ * because spaces, digits and most punctuation live there whatever the script.
+ *
+ * This decides what is preloaded and nothing else: every cut a font covers is still declared, so a
+ * glyph outside the list is fetched when it appears rather than missing. A language not listed here
+ * preloads `Latin` alone, which is the right answer for most Latin-script languages and a harmless one
+ * for a script this list does not name -- its cut is then discovered by the browser, one round-trip later.
+ */
+const PHI_FONT_SUBSET_PRELOAD_BY_LANGUAGE: Readonly<Record<string, readonly PhiFontSubsetKeyValue[]>> = {
+  // Latin script with letters beyond Latin-1: č, ł, ő, ș, ğ, ž and their kin.
+  az: [PhiFontSubsetKey.LatinExt], bs: [PhiFontSubsetKey.LatinExt], cs: [PhiFontSubsetKey.LatinExt],
+  cy: [PhiFontSubsetKey.LatinExt], et: [PhiFontSubsetKey.LatinExt], hr: [PhiFontSubsetKey.LatinExt],
+  hu: [PhiFontSubsetKey.LatinExt], lt: [PhiFontSubsetKey.LatinExt], lv: [PhiFontSubsetKey.LatinExt],
+  mt: [PhiFontSubsetKey.LatinExt], pl: [PhiFontSubsetKey.LatinExt], ro: [PhiFontSubsetKey.LatinExt],
+  sk: [PhiFontSubsetKey.LatinExt], sl: [PhiFontSubsetKey.LatinExt], tr: [PhiFontSubsetKey.LatinExt],
+  vi: [PhiFontSubsetKey.Vietnamese],
+  be: [PhiFontSubsetKey.Cyrillic], bg: [PhiFontSubsetKey.Cyrillic], mk: [PhiFontSubsetKey.Cyrillic],
+  ru: [PhiFontSubsetKey.Cyrillic], sr: [PhiFontSubsetKey.Cyrillic], uk: [PhiFontSubsetKey.Cyrillic],
+  // Cyrillic with letters the basic block lacks: қ, ң, ө, ү, ҳ.
+  kk: [PhiFontSubsetKey.Cyrillic, PhiFontSubsetKey.CyrillicExt], ky: [PhiFontSubsetKey.Cyrillic, PhiFontSubsetKey.CyrillicExt],
+  mn: [PhiFontSubsetKey.Cyrillic, PhiFontSubsetKey.CyrillicExt], tg: [PhiFontSubsetKey.Cyrillic, PhiFontSubsetKey.CyrillicExt],
+  el: [PhiFontSubsetKey.Greek],
+};
+
+/**
+ * The cuts to preload for a page in `locale`, `Latin` first, restricted to what the font covers.
+ *
+ * `locale` is a BCP 47 tag; its script subtag overrides the language's usual one, so `sr-Latn` preloads
+ * `LatinExt` where `sr` preloads `Cyrillic`.
+ */
+export function resolvePhiFontPreloadSubsetKeys(locale: string | null | undefined, coverage: PhiFontCoverage): PhiFontSubsetKeyValue[] {
+  const [language = "", ...subtags] = (locale ?? "").trim().toLowerCase().split(/[-_]/);
+  const script = subtags.find((subtag) => subtag.length === 4);
+  const extra = script === "latn"
+    ? [PhiFontSubsetKey.LatinExt]
+    : script === "cyrl"
+      ? [PhiFontSubsetKey.Cyrillic]
+      : PHI_FONT_SUBSET_PRELOAD_BY_LANGUAGE[language] ?? [];
+  return [PhiFontSubsetKey.Latin, ...extra].filter((key) => coverage.subsets.includes(key));
+}
