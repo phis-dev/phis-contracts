@@ -313,3 +313,41 @@ export const PhiMediaDeliveryPolicy = {
   Group: 4,
   Internal: 5,
 } as const;
+
+/**
+ * What a typeface says about its own proportions.
+ *
+ * Shared because the numbers cross: phis reads them out of the uploaded file once and keeps them on the
+ * Asset, and the site UI turns them into the `size-adjust` and `*-override` descriptors of a fallback
+ * `@font-face`. Without that face a browser sets the page in a local substitute and reflows when the
+ * real file lands, which is the one thing a viewer actually sees.
+ *
+ * Everything is in font units on the `unitsPerEm` grid, so a reader divides rather than assumes 1000.
+ */
+export type PhiFontMetrics = {
+  /** The container the numbers were read from. */
+  format: "sfnt" | "woff" | "woff2";
+  familyName: string | null;
+  unitsPerEm: number;
+  ascent: number;
+  descent: number;
+  lineGap: number;
+  capHeight: number | null;
+  xHeight: number | null;
+  /**
+   * How wide running text sets, as an advance width.
+   *
+   * `glyphs` is the frequency-weighted advance of the characters prose is made of. `os2` is the font's
+   * own `xAvgCharWidth`, which averages every glyph in the file and is therefore wrong for a Latin page
+   * in a family that also carries Greek -- the source travels so a reader can tell the two apart.
+   */
+  xWidthAvg: number | null;
+  xWidthAvgSource: "glyphs" | "os2" | null;
+  /**
+   * What the file classifies itself as, and `null` where it classifies itself as nothing.
+   *
+   * Plenty of good fonts leave both PANOSE and the `OS/2` family class empty, so the absence is a fact
+   * about the file rather than a reason to guess: whoever picks the local substitute decides instead.
+   */
+  category: "serif" | "sans-serif" | "monospace" | null;
+};
