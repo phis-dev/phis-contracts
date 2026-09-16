@@ -126,6 +126,31 @@ entries are present and well formed; whether `events` is the right answer for a 
 judgement only the author holds. A package that declares nothing, or declares it wrongly, is refused at
 intake rather than listed on a guess.
 
+## `/media`
+
+The words and numbers a Site and phis both have to read the same way about an Asset: the Space kind's
+wire name, the media kinds, the Folder flags, the presentation flags, the image variant keys, and the
+two closed vocabularies that decide deliverability -- `lifecycle_status` and `delivery_policy`.
+
+It is here because the values themselves travel and are then judged on the other side. The site UI
+sends a flag mask as a list filter and an array of flag values when metadata is saved, and phis answers
+the filter with `presentation_flags & mask <> 0` and refuses a value it does not know. An Asset's
+payload carries `lifecycleStatus` and `deliveryPolicy` as the numbers they are in the row, and the UI
+decides from them whether `next/image` may be pointed at the original.
+
+What made it worth moving is what the copies did while nobody looked. Both sides kept their own table,
+and phis still carried `Private`, `Archived` and `Restricted` long after lifecycle and delivery had
+become columns of their own -- so the set of values its metadata route accepted was not the set the UI
+offered. Nothing failed loudly; a drifting copy of a number never does.
+
+The resolvers come with their vocabulary. `normalizePhiMediaKind` and
+`resolvePhiMediaKindFromContentType` are total functions onto the kind list, and a content type that
+lands on `document` in the browser and on `other` on the server files an upload as one thing and lists
+it as another.
+
+What stays outside: how a delivery URL is built, which is each side's own business, and phis's
+`smallint` Space kind, which never reaches a Site -- the wire carries the name instead.
+
 ## What `/addon` covers
 
 - **Manifest** — `PhisAddonManifestV1`: identity, version, required core capabilities,
@@ -161,6 +186,11 @@ convenience, not a contract, and belongs to neither.
 Into `/catalog`: only the vocabularies an Add-on **declares a Module in** and another party then reads
 back — closed lists, identifiers only, never the words an operator sees. A vocabulary only the UI ever
 reads stays with the UI.
+
+Into `/media`: only what **crosses the wire as a value and is judged on the other side** — a number
+stored in a column that a request filters on, a name a payload carries. Not a helper both sides happen
+to have written twice: a copy is only a contract when disagreeing about it changes what a request
+returns.
 
 The test for either is the same: name the two parties and the sentence they are promising each
 other. If that sentence cannot be written down, it does not go in here.
