@@ -115,6 +115,44 @@ export const PhisSiteThreadKindFlag = {
   Support: 1 << 3,
 } as const;
 
+/**
+ * How a Module names the kind it needs, in the Area preset.
+ *
+ * A declaration travels as text, not as a number: it is written into a published Area preset by the
+ * Builder and read back by the control plane, and a stored bit would freeze the numbering of a
+ * vocabulary that is still allowed to grow. Two ends therefore have to spell these identically, which
+ * is why they are here and not in either of them.
+ *
+ * The order is the serialization order, so an unchanged selection writes byte-identically.
+ */
+export const PHIS_DECLARABLE_THREAD_KINDS = [
+  "direct",
+  "group",
+  "crossGroup",
+  "support",
+] as const;
+
+export type PhisDeclarableThreadKind = (typeof PHIS_DECLARABLE_THREAD_KINDS)[number];
+
+/** What a declared name means, for whoever has to turn one into a thread or a Site flag. */
+export const PHIS_THREAD_KIND_BY_DECLARATION: Readonly<
+  Record<PhisDeclarableThreadKind, PhisThreadKindValue>
+> = {
+  direct: PhisThreadKind.Direct,
+  group: PhisThreadKind.Group,
+  crossGroup: PhisThreadKind.CrossGroup,
+  support: PhisThreadKind.Support,
+};
+
+export const PHIS_SITE_THREAD_KIND_FLAG_BY_DECLARATION: Readonly<
+  Record<PhisDeclarableThreadKind, number>
+> = {
+  direct: PhisSiteThreadKindFlag.Direct,
+  group: PhisSiteThreadKindFlag.Group,
+  crossGroup: PhisSiteThreadKindFlag.CrossGroup,
+  support: PhisSiteThreadKindFlag.Support,
+};
+
 /** One thread, as a list shows it. */
 export type PhisThreadSummary = {
   id: number;
