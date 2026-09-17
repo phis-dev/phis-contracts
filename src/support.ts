@@ -35,6 +35,17 @@ export const PhisSupportTicketTypeFlag = {
 } as const;
 
 /**
+ * What is true of a Support queue, as bit flags.
+ *
+ * `Entry` is where work arrives when nobody named a queue. It is a mark a Site sets rather than a
+ * default Core picks, because an unrouted ticket is a ticket nobody is looking at: without one, opening
+ * a ticket without naming a queue is refused instead of landing wherever the first row happens to be.
+ */
+export const PhisSupportQueueFlag = {
+  Entry: 1 << 0,
+} as const;
+
+/**
  * What ends a ticket of this type.
  *
  * `Resolved` and `Closed` stay distinct throughout: resolved is technically done, closed is confirmed.
