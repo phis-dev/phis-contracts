@@ -13,7 +13,10 @@
  */
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
+import type { PhisAddonEventId } from "./core.js";
 import type { PhisDataCapabilityV1 } from "./queries.js";
+import type { PhisResourceLinksCapabilityV1 } from "./resource-links.js";
+import type { PhisThreadsCapabilityV1 } from "./threads.js";
 
 /**
  * The cumulative group levels, by name.
@@ -104,6 +107,7 @@ export type PhisAddonCapabilities = {
   secrets?: PhisSecretsCapabilityV1;
   groups?: PhisGroupsCapabilityV1;
   threads?: PhisThreadsCapabilityV1;
+  resourceLinks?: PhisResourceLinksCapabilityV1;
   settings?: PhisSettingsCapabilityV1;
   roles?: PhisRolesCapabilityV1;
 };
@@ -303,95 +307,32 @@ export type PhisAddonJobContext = {
 };
 
 /**
- * The threads capability: `@phis/server/threads:v1`.
+ * One event Core hands an Add-on after the fact.
  *
- * Core's internal support threads, bounded by the acting user exactly as `groups:v1` is: an Add-on
- * reads the threads its actor is in and nothing else. A thread is visible to whoever created it, was
- * named a recipient of it, or stands in a team that was -- there is no listing that steps outside that,
- * because a Site's threads are its people talking and an Add-on is not a party to them.
+ * A handler runs with no actor -- nobody called it, something happened -- and reaches exactly what the
+ * link that caused the delivery reaches. It is the counterpart of a hook: a hook is the outside telling
+ * this Site something, an event is this Site telling an Add-on something, and both run as the Add-on
+ * rather than as a person.
  *
- * **Without an actor only `create` is offered.** A job and a hook run as the Add-on rather than as a
- * person, and a person is what thread visibility is made of: an Add-on with no actor is in no thread,
- * so there is nothing for it to list, read or answer. It may still open one -- naming its recipients as
- * it goes -- which is what an integration reporting an outside event needs. How such an integration
- * later appends to the thread it opened is deliberately left unanswered here: it wants a thread the
- * Add-on owns, and ownership of a thread is a thing to design once something real needs it rather than
- * to guess at now.
+ * Delivery is bounded by the same link. An Add-on is told about a thread it is synced with and about no
+ * other, because a Site-wide feed of everything anybody writes is the listing `threads:v1` refuses,
+ * arriving by push instead of by pull.
  */
-export type PhisThreadsCapabilityV1 = {
-  /** The threads the acting user is in, newest activity first. */
-  list(options?: {
-    page?: number;
-    pageSize?: number;
-    unreadOnly?: boolean;
-  }): Promise<PhisThreadSummary[]>;
-  /** One thread with a window of its messages, or null where the actor is not in it. */
-  get(
-    threadId: number,
-    options?: { messageLimit?: number; beforeMessageId?: number | null },
-  ): Promise<PhisThreadDetail | null>;
-  /**
-   * Opens a thread.
-   *
-   * The one call an Add-on may make with no actor behind it. Recipients are named as user ids, team
-   * ids, or both, and every one is checked against this Site before anything is written.
-   */
-  create(input: {
-    subject?: string | null;
-    message: string;
-    messageMarkdown?: string | null;
-    recipientUserIds?: number[];
-    recipientTeamIds?: number[];
-  }): Promise<PhisThreadDetail>;
-  /** Adds a message to a thread the acting user is in. */
-  reply(input: {
-    threadId: number;
-    message: string;
-    messageMarkdown?: string | null;
-  }): Promise<PhisThreadDetail | null>;
-  /** Brings more people into a thread the acting user is in. Adds only; it never removes. */
-  addRecipients(input: {
-    threadId: number;
-    recipientUserIds?: number[];
-    recipientTeamIds?: number[];
-  }): Promise<PhisThreadDetail | null>;
-  /**
-   * Takes a thread out of the active list, for everyone in it.
-   *
-   * One row carries the status, so this is the thread being closed rather than one reader hiding it.
-   */
-  archive(threadId: number): Promise<boolean>;
-  /** Marks the thread read for the acting user, up to its newest message or to one named. */
-  markRead(input: { threadId: number; messageId?: number | null }): Promise<boolean>;
+export type PhisAddonEventContext = {
+  addonId: string;
+  event: PhisAddonEventId;
+  /** This delivery, stable across retries, so a handler can recognise one it already settled. */
+  deliveryId: string;
+  site: { id: number; key: string };
+  /** The thread the event happened in, and the message where the event is about one. */
+  subject: { threadId: number; messageId: number | null };
+  capabilities: PhisAddonCapabilities;
+  signal: AbortSignal;
 };
 
-export type PhisThreadSummary = {
-  id: number;
-  subject: string | null;
-  status: number;
-  type: number;
-  createdAt: string;
-  updatedAt: string;
-  latestMessageAt: string | null;
-  unread: boolean;
-};
-
-export type PhisThreadMessage = {
-  id: number;
-  bodyText: string;
-  bodyMarkdown: string | null;
-  author: PhisUserProjection | null;
-  createdAt: string;
-};
-
-export type PhisThreadDetail = {
-  thread: PhisThreadSummary;
-  messages: PhisThreadMessage[];
-  /** Whether older messages remain beyond the window `messages` carries. */
-  hasMoreMessages: boolean;
-  recipientUserIds: number[];
-  recipientTeamIds: number[];
-};
+export type PhisAddonEventHandler = (
+  context: PhisAddonEventContext,
+) => Promise<void> | void;
 
 export type PhisAddonJobHandler = (
   context: PhisAddonJobContext,

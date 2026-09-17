@@ -31,6 +31,19 @@ export const PhiBaseRole = {
   Developer: 1 << 4,
   Supporter: 1 << 5,
   Accountant: 1 << 6,
+  /**
+   * Works here, and needs nothing else.
+   *
+   * It grants no capability at all, which is what it is for: being Staff decides who may be written to
+   * and who may open a thread with a colleague, and until this bit existed the only way to say it was to
+   * hand out a role that also grants something -- a developer bit to somebody who never touches a log.
+   *
+   * Staff is whoever holds *any* Core role, so every role above implies it and this is the one to give
+   * somebody who holds none of them. Roles an Add-on defines never make anybody Staff: they are
+   * provider-local and say what a person may do inside that Add-on, which is how somebody outside the
+   * company can hold one and remain outside it.
+   */
+  Staff: 1 << 7,
 } as const;
 
 /**

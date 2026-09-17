@@ -55,6 +55,11 @@
       "import": "./dist/media.js",
       "default": "./dist/media.js"
     },
+    "./resource-links": {
+      "types": "./dist/resource-links.d.ts",
+      "import": "./dist/resource-links.js",
+      "default": "./dist/resource-links.js"
+    },
     "./server-capabilities": {
       "types": "./dist/server-capabilities.d.ts",
       "import": "./dist/server-capabilities.js",
@@ -65,10 +70,20 @@
       "import": "./dist/site-groups.js",
       "default": "./dist/site-groups.js"
     },
+    "./support": {
+      "types": "./dist/support.d.ts",
+      "import": "./dist/support.js",
+      "default": "./dist/support.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",
       "default": "./dist/signals.js"
+    },
+    "./threads": {
+      "types": "./dist/threads.d.ts",
+      "import": "./dist/threads.js",
+      "default": "./dist/threads.js"
     }
   },
   "files": [

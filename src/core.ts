@@ -52,6 +52,31 @@ export type PhisCoreCapabilityId =
   (typeof PHIS_CORE_CAPABILITIES)[keyof typeof PHIS_CORE_CAPABILITIES];
 
 /**
+ * What Core tells an Add-on about after the fact.
+ *
+ * An integration that mirrors a conversation cannot wait to be asked: somebody writes a reply here and
+ * it has to appear over there, and no request the Add-on serves is involved. Polling would be the
+ * alternative, and polling for "did anybody write anything" is the Site-wide read every capability here
+ * is shaped to prevent.
+ *
+ * An event is delivered only to an Add-on linked to the thread it happened in, and a message this same
+ * Add-on imported is never announced back to it -- which is what stops a mirror from echoing.
+ *
+ * The list is short on purpose and grows when an Add-on needs an entry, the way the capability catalogue
+ * does. Every event a Site could emit, declared in advance, would be a contract to get wrong.
+ */
+export const PHIS_ADDON_EVENTS = {
+  threadMessageCreated: "thread.message.created",
+  threadMessageUpdated: "thread.message.updated",
+  threadStatusChanged: "thread.status.changed",
+  /** The link itself is gone; what follows from that is the Add-on's own business. */
+  threadLinkRemoved: "thread.link.removed",
+} as const;
+
+export type PhisAddonEventId =
+  (typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS];
+
+/**
  * The Core-owned service kinds an Add-on may implement.
  *
  * A service kind is not a capability. A capability is something Core offers an Add-on; a service kind

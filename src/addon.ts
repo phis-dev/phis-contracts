@@ -14,10 +14,12 @@
 
 import type {
   PhisAddonCapabilities,
+  PhisAddonEventHandler,
   PhisAddonJobHandler,
   PhisSiteAccess,
 } from "./capabilities.js";
 import type {
+  PhisAddonEventId,
   PhisCoreCapabilityId,
   PhisServiceKind,
 } from "./core.js";
@@ -52,6 +54,29 @@ export type PhisAddonApiRouteDescriptor = {
   timeoutMs?: number;
 };
 
+/**
+ * How Core establishes that a hook request is from who it claims to be.
+ *
+ * A hook is unauthenticated by construction, and until Core could check a signature itself, "verified"
+ * was a thing each handler asserted about itself -- so the rule that a request with no actor may not
+ * write had to hold for every hook, including the ones that had in fact proved their caller. Stating the
+ * check here moves it in front of the handler: Core verifies over the raw body, and a handler that runs
+ * has already been vouched for.
+ *
+ * `secret` names one of this Add-on's own declared secrets, so the value an operator set is never in the
+ * manifest. `deliveryIdHeader` names the header the provider identifies a delivery with; where it is
+ * given, Core refuses a delivery it has already accepted, which is what makes a webhook retried after a
+ * timeout harmless.
+ */
+export type PhisAddonHookVerificationDescriptor = {
+  scheme: "hmac-sha256";
+  header: string;
+  /** What the header value is prefixed with, where it is -- GitHub sends `sha256=`. */
+  prefix?: string;
+  secret: string;
+  deliveryIdHeader?: string;
+};
+
 export type PhisAddonHookDescriptor = {
   id: string;
   method: PhisAddonHttpMethod;
@@ -60,6 +85,14 @@ export type PhisAddonHookDescriptor = {
   bodyLimitBytes: number;
   rateLimitClass: string;
   timeoutMs: number;
+  /**
+   * How this hook's caller is checked, or absent where it cannot be.
+   *
+   * Absent is not a lesser variant of present: an unverified hook writes nothing at all -- not through
+   * `data:v1`, not by opening a thread -- because nothing distinguishes its caller from anybody who
+   * found the address. A hook that needs to write declares how it can be believed.
+   */
+  verification?: PhisAddonHookVerificationDescriptor;
   /**
    * Whether this hook is told which Site it was called for, through `x-phis-site-key`.
    *
@@ -184,6 +217,19 @@ export type PhisAddonGroupDescriptor = {
   description?: string;
 };
 
+/**
+ * One event this Add-on wants to be told about.
+ *
+ * Declared like a route: Core reaches the handler by the name the runtime exports it under, so nothing
+ * registers itself and what an Add-on listens to is readable before it runs. Several handlers may name
+ * the same event; each is delivered separately and retried separately.
+ */
+export type PhisAddonEventHandlerDescriptor = {
+  id: string;
+  event: PhisAddonEventId;
+  handler: string;
+};
+
 export type PhisAddonManifestV1 = {
   manifestVersion: typeof PHIS_ADDON_MANIFEST_VERSION;
   addonId: string;
@@ -196,6 +242,14 @@ export type PhisAddonManifestV1 = {
   apiRoutes: PhisAddonApiRouteDescriptor[];
   hooks: PhisAddonHookDescriptor[];
   jobs: PhisAddonJobDescriptor[];
+  /**
+   * The events this Add-on wants delivered. Absent means none.
+   *
+   * Optional like every field added after this manifest version was in the wild. Declaring one is not
+   * receiving it: an event reaches this Add-on only for a thread it holds a synced link to, so an
+   * Add-on that declares them and links nothing is told nothing.
+   */
+  eventHandlers?: PhisAddonEventHandlerDescriptor[];
   /**
    * What an operator may configure. Absent means nothing is.
    *
@@ -340,6 +394,7 @@ export type PhisAddonRuntimeV1 = {
   hookHandlers?: Readonly<Record<string, PhisAddonHandler>>;
   serviceFactories?: Readonly<Record<string, PhisAddonServiceFactory>>;
   jobHandlers?: Readonly<Record<string, PhisAddonJobHandler>>;
+  eventHandlers?: Readonly<Record<string, PhisAddonEventHandler>>;
 };
 
 export type PhisAddonRuntimeModuleV1 = {
