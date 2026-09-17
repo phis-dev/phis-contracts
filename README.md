@@ -1,202 +1,185 @@
 # @phis/contracts
 
-The agreements phi-server keeps with what surrounds it. Each under its own subpath, because they hold
-between different parties and freeze at different moments.
+The agreements phis (`@phis/server`) keeps with what surrounds it: the site UI (`@phis/ui`), Sites, and
+separately shipped Add-ons. Each lives under its own subpath, because they hold between different parties
+and change at different moments.
 
 ```
-@phis/contracts/addon     what phi-server and a separately shipped Add-on promise each other
-@phis/contracts/access    the authorization vocabulary phi-server and @phis/ui both evaluate
-@phis/contracts/signals   the signal vocabulary and address grammar the UI declares in, phi-server validates
-@phis/contracts/catalog   the Module category an Add-on declares, the UI groups by, a market will filter on
-@phis/contracts/cms       the CMS node identity both sides derive, and must derive alike
+@phis/contracts/addon                what phis and a separately shipped Add-on promise each other
+@phis/contracts/access               the authorization vocabulary phis and @phis/ui both evaluate
+@phis/contracts/signals              the signal vocabulary and address grammar the UI declares in and phis validates
+@phis/contracts/catalog              the Module categories an Add-on declares, the UI groups by and a market filters on
+@phis/contracts/cms                  the CMS node identity both sides derive, and must derive alike
+@phis/contracts/media                the Asset vocabularies both sides store, filter on and judge
+@phis/contracts/http                 the request headers phis and the site UI must spell the same way
+@phis/contracts/locale               the locale this software is authored in
+@phis/contracts/logging              the structured log vocabulary a Site writes and phis reads back
+@phis/contracts/server-capabilities  the capability snapshot phis reports and the UI acts on
+@phis/contracts/site-groups          the membership levels of a Site group, as both ends count them
 ```
 
-There is deliberately no root export. A package you can import from the top invites everything that
-two of our packages happen to share; a subpath makes you say which agreement you mean.
+There is deliberately no root export. A package you can import from the top invites everything two of
+our packages happen to share; a subpath makes you say which agreement you mean.
+
+```sh
+npm install @phis/contracts
+```
 
 ## `/addon`
 
-The types and constants a phi-server Add-on declares or implements. Types and constants only — no
-runtime code, no `server-only`, no React, no Next.
+The types and constants an Add-on declares or implements. Types and constants only: no runtime code, no
+`server-only`, no React, no Next.
 
-An Add-on is compiled to a single ESM artifact and installed into a running phi-server through the
-`phis` CLI. It is never built into the server. This subpath is the only thing an Add-on compiles
-against; it must not depend on phi-server itself.
+An Add-on is compiled to a single ESM artifact and installed into a running phis through the `phis` CLI;
+it is never built into the server. This subpath is the only thing an Add-on compiles against, and it must
+not depend on phis itself. For an Add-on author it is a build-time dependency: everything it exports is
+erased at compile time apart from a handful of constants.
 
-```sh
-npm install --save-dev @phis/contracts
-```
+What it covers:
 
-For an Add-on author it is a build-time dependency: everything `/addon` exports is erased at compile
-time, apart from a handful of constants.
+- **Manifest** -- `PhisAddonManifestV1`: identity, version, required Core capabilities, the routes an
+  Add-on claims, the services it provides.
+- **Runtime** -- `PhisAddonRuntimeV1`, `PhisAddonHandler`, `PhisAddonRequestContext`. The artifact
+  exports it under the name `phisAddon` (`PhisAddonRuntimeModuleV1`).
+- **Schema** -- `PhisAddonSchemaDescriptor` and its column, index and constraint descriptors. Tables are
+  declared, not migrated by hand; phis applies them.
+- **Service kinds** -- the Core-owned kinds an Add-on may supply an implementation of: Media Storage
+  (`PhisMediaStorageAdapter`, upload plans, object I/O) and Directory. `PHIS_SERVICE_KINDS` names them
+  and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
+  Add-on built against a different digest at install.
+- **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the capability ids an Add-on may require. Declare
+  against these constants rather than spelling the ids out. The list is the vocabulary and may reserve a
+  name before Core delivers it (`resource-links`, `support`); an Add-on that requires a capability this
+  release does not deliver is refused rather than handed a missing object.
+
+`PHIS_ADDON_ABI_VERSION` is the single number phis checks an Add-on against.
+
+How an Add-on is laid out, compiled, installed, activated and upgraded is described in phis's
+[`ADDON_HOWTO.md`](https://github.com/phis-dev/phis-server/blob/main/ADDON_HOWTO.md); the rules behind it
+are in [`SERVER_ADDONS.md`](https://github.com/phis-dev/phis-server/blob/main/SERVER_ADDONS.md).
 
 ## `/access`
 
-Claim shapes, policy shapes, and the evaluator that decides them. Unlike `/addon`, this one **is**
-runtime code, and it is a real dependency of both packages that use it.
+Claim shapes, policy shapes, and the evaluator that decides them. Unlike `/addon`, this is runtime code
+and a real dependency of both packages that use it.
 
-Two processes decide the same question. phi-server decides it in its guards and API routes; the site
-decides it while rendering — per navigation entry, per tree node, and in the browser, where
-phi-server is not reachable without a round trip. Neither can defer to the other, so both evaluate,
-and one compiled source is the only way both can agree.
+Two processes decide the same question. phis decides it in its guards and API routes; a Site decides it
+while rendering -- per navigation entry, per tree node, and in the browser, where phis is not reachable
+without a round trip. Neither can defer to the other, so both evaluate, and one compiled source is the
+only way both reach the same answer: a stored claim normalised on one side and not on the other admits
+on one and refuses on the other, and neither copy looks wrong on its own.
 
-They did not agree before this subpath existed. A stored claim with `flags: -1` admitted everything
-on the server and nothing in the UI: one side normalised the value, the other did not. Neither copy
-looked wrong on its own, which is why it went unnoticed.
-
-Each side keeps its own viewer type and passes a projection onto `PhiAccessSubject`, so neither
-package has to adopt the other's shape.
+Each side keeps its own viewer type and passes a projection onto `PhiAccessSubject`, so neither package
+adopts the other's shape.
 
 ## `/cms`
 
 The encoding of a CMS node's identity: how a Preset node's id is derived from the Module, the preset and
 the node key, and how a draft node's id is derived from the revision it was made in.
 
-This one is not a shape check. It is an arithmetic, and it is here for the opposite of the usual reason:
-not because the two sides ask the same question, but because they must compute the same answer. A Preset
-id is derived rather than allocated, so the site UI can address a node before any row exists and
-phi-server can check that stored wiring points at nodes that are really there.
-
-It stood in two copies until 2026-09-07 -- 170 lines in phi-server, 260 in `@phis/ui`, with
-`hashPresetIdentity` identical line for line. Nothing would have announced a divergence. A changed
-constant on one side produces ids that are still well formed and simply name nothing: Pages stop
-resolving, drafts point at nodes that are not there, and both copies look correct on their own.
-
-The two conveniences built on top stay with `@phis/ui`: the Page-key convention and the map helper are
-its own, and phi-server has no use for either.
+It is arithmetic both sides must compute alike. A Preset id is derived rather than allocated, so the site
+UI can address a node before any row exists and phis can check that stored wiring points at nodes that
+really exist. A changed constant on one side produces ids that are still well formed and simply name
+nothing. The Page-key convention and the map helper built on top stay with `@phis/ui`.
 
 ## `/signals`
 
-The closed vocabularies a widget's wiring is written in -- scopes, actions, value types -- and the shape
-of a value schema name.
+The closed vocabularies a Widget's wiring is written in -- scopes, actions, value types -- the shape of a
+value schema name, and the address families.
 
-A widget declares what it emits and listens for, the Builder stores that, and phi-server validates it on
-the way in. Two lists, one meaning; and when they were two lists they drifted. `@phis/ui` had grown
-`date`, `time` and `length`; phi-server had not. A length control's change signal -- from a widget the
-same release shipped -- was refused on save with "valueType is invalid".
+A Widget declares what it emits and listens for, the Builder stores that, phis validates it on the way
+in, and the Site delivers it at runtime, so all of them parse the same strings. The rule that says which
+receivers a scope admits, and the controller address the Site scope privileges, live here for the same
+reason.
 
-The address families are here for a sharper reason than the vocabularies. A wiring is stored by the
-Builder, checked by phi-server on the way in, and delivered by the site UI at runtime, so all three
-parse the same string -- and two of them parsed it from separate copies until 2026-09-07. The server's
-said so in its own comment: it "mirrors the grammar in @phis/ui", because it could not import it. With
-them the rule that says which receivers a scope admits, which had been written out on both sides in
-different words, and the one controller address the Site scope privileges, which is only worth
-anything if both sides name the same string.
-
-Which schemas exist stays with the UI. phi-server checks that a JSON signal names *a* schema, never
-which one, and `isPhiSignalValueSchemaShape` is exactly that much: shape, not membership. The UI asks
-the stricter question, because it holds the module registry; phi-server must not, or it would refuse
-every third party's schema for never having heard of it.
+Which schemas exist stays with the UI. phis checks that a JSON signal names *a* schema, never which one:
+`isPhiSignalValueSchemaShape` checks the shape, not membership. The UI asks the stricter question because
+it holds the Module registry; phis must not, or it would refuse every third party's schema.
 
 ## `/catalog`
 
-What a Module is for, as one closed list: `foundation`, `workspace`, `content`, `commerce`, `people`,
-`operations`, `other`.
+What a Module is for, as one closed list: `foundation`, `workspace`, `content`, `media`, `commerce`,
+`identity`, `communication`, `events`, `analytics`, `integration`, `operations`, `other`
+(`PHI_RUNTIME_MODULE_CATEGORIES`).
 
-An Add-on declares it per Module -- per Module, because a package may ship a shop and a report and
-neither answer would be true of the other. The site UI groups the Modules page by it, and a Module may
-read another's category and show it.
+An Add-on declares it per Module, because a package may ship a shop and a report and neither answer would
+be true of the other. The site UI groups the Modules page by it, and a marketplace Add-on -- which
+compiles against this package and nothing else -- filters on it.
 
-It is here rather than in the site UI package because of the reader that cannot follow it there. A
-marketplace is a phi-server Add-on: it compiles against this package and nothing else, never against
-React, and it is meant to let a shopper filter on category. That filter is not built yet -- an
-offering's category is still free text -- but it is why this list is a contract.
-
-It is not in `/addon` on purpose. `/addon` is the frozen ABI a third party compiles against, and this
-list grows as the product does -- an eighth category would lift the package everybody builds against,
-for a change that concerns none of them. Nor does phi-server ask the membership question: a package
-manifest carries its Modules' categories as plain strings, Core checks the shape, and the strict
-question is asked where a registry is actually held. The same split as `/signals`.
-
-The labels an operator reads are not here. Those are label-set keys, translated per site, and they
-belong to the UI; this subpath holds the identifiers the parties spell the same way.
+It is not in `/addon` on purpose: `/addon` is the ABI a third party compiles against, and this list grows
+with the product. phis does not ask the membership question either; a manifest carries categories as
+plain strings, Core checks the shape, and the strict question is asked where a registry is held. The
+labels an operator reads are label-set keys owned by the UI; this subpath holds identifiers only.
 
 Beside the vocabulary sits the shape a Module package declares itself in, under `phis` in its
-package.json: which Modules it carries, each one's category, and the language their titles and
-descriptions are written in. A Module is compiled UI code, so reading that out of it means executing a
-stranger's package -- inside the `phis` CLI, or inside a marketplace taking a submission. Neither
-should, and a registry serves package.json without anybody fetching a tarball.
-
-It is not a second manifest. A package carries one product at one version: the Add-on manifest is what
-phi-server is handed when an artifact is installed, this is what a catalogue reads about the half that
-never reaches phi-server. Same package, same version, different readers.
-
-The author writes it, as they write every other field in that file. `phis module` can check that the
-entries are present and well formed; whether `events` is the right answer for a given Module is a
-judgement only the author holds. A package that declares nothing, or declares it wrongly, is refused at
-intake rather than listed on a guess.
+`package.json`: which Modules it carries, each one's category, and the language their titles and
+descriptions are written in. Reading that from `package.json` means nobody has to execute a stranger's
+package to list it. The author writes it; `phis module` checks that the entries are present and well
+formed, and a package that declares nothing is refused at intake.
 
 ## `/media`
 
-The words and numbers a Site and phis both have to read the same way about an Asset: the Space kind's
-wire name, the media kinds, the Folder flags, the presentation flags, the image variant keys, and the
-two closed vocabularies that decide deliverability -- `lifecycle_status` and `delivery_policy`.
+The words and numbers a Site and phis must read the same way about an Asset: the Space kind's wire name,
+the media kinds, the Folder flags, the presentation flags, the image variant keys, and the two closed
+vocabularies that decide deliverability -- `lifecycle_status` and `delivery_policy`.
 
-It is here because the values themselves travel and are then judged on the other side. The site UI
-sends a flag mask as a list filter and an array of flag values when metadata is saved, and phis answers
-the filter with `presentation_flags & mask <> 0` and refuses a value it does not know. An Asset's
-payload carries `lifecycleStatus` and `deliveryPolicy` as the numbers they are in the row, and the UI
-decides from them whether `next/image` may be pointed at the original.
+These values travel and are judged on the other side. The site UI sends a flag mask as a list filter and
+flag values when metadata is saved, and phis filters with `presentation_flags & mask <> 0` and refuses a
+value it does not know. An Asset payload carries `lifecycleStatus` and `deliveryPolicy` as stored, and
+the UI decides from them whether `next/image` may be pointed at the original.
 
-What made it worth moving is what the copies did while nobody looked. Both sides kept their own table,
-and phis still carried `Private`, `Archived` and `Restricted` long after lifecycle and delivery had
-become columns of their own -- so the set of values its metadata route accepted was not the set the UI
-offered. Nothing failed loudly; a drifting copy of a number never does.
+The resolvers come with their vocabulary: `normalizePhiMediaKind` and `resolvePhiMediaKindFromContentType`
+map onto the kind list, so an upload is filed and listed as the same kind on both sides. How a delivery
+URL is built stays with each side, and phis's numeric Space kind never reaches a Site.
 
-The resolvers come with their vocabulary. `normalizePhiMediaKind` and
-`resolvePhiMediaKindFromContentType` are total functions onto the kind list, and a content type that
-lands on `document` in the browser and on `other` on the server files an upload as one thing and lists
-it as another.
+## `/http`
 
-What stays outside: how a delivery URL is built, which is each side's own business, and phis's
-`smallint` Space kind, which never reaches a Site -- the wire carries the name instead.
+The request header names phis reads and the site UI writes: `PHIS_TOKEN_HEADER` (`x-phis-token`),
+`PHIS_SITE_KEY_HEADER`, `PHIS_AREA_HEADER`, `PHIS_REQUEST_PATH_HEADER` and `PHIS_REQUEST_SEARCH_HEADER`.
+A disagreement here is not a type error but a 403 or 400 at runtime.
 
-## What `/addon` covers
+## `/locale`
 
-- **Manifest** — `PhisAddonManifestV1`: identity, version, required core capabilities,
-  the routes an Add-on claims, the services it provides.
-- **Runtime** — `PhisAddonRuntimeV1`, `PhisAddonHandler`,
-  `PhisAddonRequestContext`: the shape the artifact's default export must have.
-- **Schema** — `PhisAddonSchemaDescriptor` and its column, index, and constraint
-  descriptors. Tables are declared, not migrated by hand; phi-server applies them.
-- **Service kinds** — the interfaces an Add-on may provide or consume, currently the media
-  storage adapter (`PhisMediaStorageAdapter`, upload plans, object I/O).
-- **What Core offers** — `PHIS_CORE_CAPABILITIES`, the capability ids an Add-on may
-  require; `PHIS_SERVICE_KINDS`, the service kinds Core owns; and
-  `PHIS_SERVICE_INTERFACE_DIGESTS`, the digest of each kind's current interface. Declare
-  against these names rather than spelling them out: Core refuses an Add-on whose digest is not
-  the one this release offers, and a literal cannot be checked before you ship it.
+`PHI_CANONICAL_SOURCE_LOCALE`: the locale every label, email template and global message is authored in,
+and therefore the one a translation starts from. It is not a Site's default locale, which is per-Site
+configuration.
 
-This list is a promise, not a plan. A capability appears here when Core delivers it, never
-before.
+## `/logging`
 
-`PHIS_ADDON_ABI_VERSION` is the single number a server checks an Add-on against.
+The structured log vocabulary: `PhiLogService` (`phis`, `ui`, `site`, `cli`), `PhiLogLevel`,
+`PhiLoggerContext`, `PhiLogEvent` and the `PhiLogger` interface. A Site and phis both write these records
+to journald, and the log surface in phis parses them back, filtering by exactly these services and
+fields. How a line is serialised is each writer's own concern.
+
+## `/server-capabilities`
+
+The snapshot `/api/v1/site/capabilities` reports: per provider (Core or an Add-on), the capabilities it
+offers and its state (`PhiCapabilitySnapshot`, `PhiCapabilityProvider`, `PhiCapabilityState`). phis
+decides the verdict; the site UI acts on it, deactivating a Module whose provider is not `available` and
+naming the reason in its diagnostics.
+
+## `/site-groups`
+
+The membership ladder of a Site group: `PhiGroupMembershipFlags` (`Member`, `Author`, `Editor`,
+`Manager`, cumulative bits), `PHI_GROUP_MEMBERSHIP_LEVELS` and `readPhiGroupMembershipLevel`. The site UI
+sends `membershipFlags` as an integer and offers the levels to choose from, so both ends must count the
+same bits. The Add-on boundary names levels instead (`PHIS_GROUP_LEVELS` in `/addon`).
 
 ## Admission rule
 
-Per subpath, and both halves are narrow on purpose.
+Per subpath, and narrow on purpose. Name the two parties and the sentence they promise each other; if that
+sentence cannot be written down, it does not go in here.
 
-Into `/addon`: only what **phi-server and a separately shipped Add-on must agree on**. Declarations,
-never implementations.
+- `/addon`: only what phis and a separately shipped Add-on must agree on. Declarations, never
+  implementations.
+- `/access`: only what phis and `@phis/ui` must both evaluate, each in its own process. A helper both
+  happen to use is convenience, not a contract.
+- `/catalog`: only vocabularies an Add-on declares a Module in and another party reads back -- closed
+  lists of identifiers, never the words an operator sees.
+- `/media`, `/http`, `/logging`, `/site-groups`, `/server-capabilities`: only what crosses the wire as a
+  value and is judged on the other side. A copy is a contract when disagreeing about it changes what a
+  request returns.
 
-Into `/access`: only what **phi-server and `@phis/ui` must both evaluate**, because each decides it
-in its own process. Not what both happen to use — a date formatter used on both sides is shared
-convenience, not a contract, and belongs to neither.
+## License
 
-Into `/catalog`: only the vocabularies an Add-on **declares a Module in** and another party then reads
-back — closed lists, identifiers only, never the words an operator sees. A vocabulary only the UI ever
-reads stays with the UI.
-
-Into `/media`: only what **crosses the wire as a value and is judged on the other side** — a number
-stored in a column that a request filters on, a name a payload carries. Not a helper both sides happen
-to have written twice: a copy is only a contract when disagreeing about it changes what a request
-returns.
-
-The test for either is the same: name the two parties and the sentence they are promising each
-other. If that sentence cannot be written down, it does not go in here.
-
-## Documentation
-
-The full walkthrough — how an Add-on is laid out, compiled, installed, activated, and
-upgraded — lives in phi-server's `ADDON_HOWTO.md`, with the design rationale in
-`SERVER_ADDONS.md`.
+Apache-2.0. See `LICENSE` and `NOTICE`.

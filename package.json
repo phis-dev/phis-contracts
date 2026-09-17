@@ -7,7 +7,7 @@
     "access": "public"
   },
   "sideEffects": false,
-  "description": "The agreements phi-server keeps with what surrounds it: the Add-on ABI, and the authorization vocabulary it shares with the site UI.",
+  "description": "The agreements phis keeps with the site UI, Sites and Add-ons: the Add-on ABI, access, signals, catalog, CMS identity, media, HTTP headers, locale, logging, capabilities and group levels.",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
