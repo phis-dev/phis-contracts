@@ -195,6 +195,27 @@ export type PhisThreadMessageAuthor =
     }
   | { kind: "system" };
 
+/**
+ * A file hanging on a message.
+ *
+ * Readable by whoever may read the message it hangs on, which is the whole rule: it travels inside the
+ * message rather than beside it, so an attachment on a note this reader is not shown is not in their
+ * copy of the conversation at all. Where the bytes sit -- a person's own Space, an Add-on's -- says who
+ * pays for them and who administers them, and answers nothing about who reads.
+ *
+ * There is no address on the Asset itself. Its delivery policy is `Internal`, and the only way to its
+ * bytes is the message that names it.
+ */
+export type PhisThreadMessageAsset = {
+  assetId: number;
+  fileName: string;
+  contentType: string;
+  byteSize: number;
+  flags: number;
+  /** Where the bytes are fetched from, relative to the Site. */
+  href: string;
+};
+
 export type PhisThreadMessage = {
   id: number;
   author: PhisThreadMessageAuthor;
@@ -202,6 +223,8 @@ export type PhisThreadMessage = {
   bodyText: string | null;
   bodyMarkdown: string | null;
   flags: number;
+  /** What hangs on it, in the order it was attached. Empty for a message carrying only text. */
+  assets: PhisThreadMessageAsset[];
   createdAt: string;
   updatedAt: string;
 };
