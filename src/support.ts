@@ -126,3 +126,106 @@ export type PhisDeclaredSupportTicketType = {
   /** Absent is `Confirm`, the only policy available without a code change. */
   readonly closePolicy?: PhisSupportClosePolicyValue;
 };
+
+/**
+ * One ticket, as an Add-on that is linked to it may see it.
+ *
+ * Without its conversation, which is the thread and is read through `threads:v1` with the reader's own
+ * visibility applied -- internal notes withheld, confidential bodies withheld. Reproducing that rule
+ * here would be a second answer to a question that already has one.
+ *
+ * The type is carried whole rather than as an id, because what an integration has to decide it decides
+ * from the type: whether anything may leave the Site at all, and what ends the ticket. An Add-on asking
+ * for the id and then for the type would be two calls to learn one thing.
+ */
+export type PhisSupportTicket = {
+  id: number;
+  /** Its conversation, to be read and appended to through `threads:v1`. */
+  threadId: number;
+  subject: string;
+  /** `SUPPORT_TICKET_STATUS_*`: new, triaged, assigned, in progress, waiting, escalated, resolved, closed. */
+  status: number;
+  /** The queue it was taken into, or none while it is still in triage. */
+  queueId: number | null;
+  type: {
+    id: number;
+    key: string;
+    /** `PhisSupportTicketTypeFlag`. */
+    flags: number;
+    closePolicy: PhisSupportClosePolicyValue;
+  };
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * One piece of work on a ticket.
+ *
+ * An issue or a pull request hangs on a task rather than on the ticket, because one ticket may need
+ * several and because resolving an issue does not resolve the Support work. A task is completed by
+ * whoever did it; the ticket decides for itself when it is done.
+ */
+export type PhisSupportTicketTask = {
+  id: number;
+  ticketId: number;
+  /** `SUPPORT_TICKET_TASK_TYPE_*`; `2` is engineering. */
+  type: number;
+  /** `SUPPORT_TICKET_TASK_STATUS_*`: open, in progress, blocked, done, canceled. */
+  status: number;
+  title: string;
+  description: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/**
+ * The Support capability: `@phis/server/support:v1`.
+ *
+ * The workflow record around a conversation -- the type, the queue, the status, the work -- for an
+ * integration that mirrors that conversation somewhere else. It exists so that a package in its own
+ * repository can reach a Site's tickets without depending on `@phis/support`, which is only the
+ * Module: the tables and the rules are Core's.
+ *
+ * **Reach is the thread's answer, never a second one.** A ticket is readable when its thread is, which
+ * for an Add-on with nobody behind it means one of the two ways in `threads:v1` has: it opened the
+ * thread itself, or a person who could see the thread linked it to something of this Add-on's and
+ * marked that link synced. There is no listing, and no search. An Add-on finds a ticket it was given
+ * and never walks a Site's.
+ *
+ * **What it may not do.** It does not move a ticket's status. Closing is the ticket's own rule -- an
+ * issue completes its task, and whether that resolves the Support work depends on the type's close
+ * policy and on the other tasks -- so an integration that could set the status directly would be
+ * deciding something it cannot see all of.
+ */
+export type PhisSupportCapabilityV1 = {
+  /** One ticket, or null where it is out of reach or absent. */
+  get(ticketId: number): Promise<PhisSupportTicket | null>;
+  /** The ticket a thread belongs to, for an event that arrived naming the conversation. */
+  findByThread(threadId: number): Promise<PhisSupportTicket | null>;
+  /**
+   * Opens a ticket, its thread owned by this Add-on.
+   *
+   * For work that arrived from the other side -- an issue opened in a watched repository. The type and
+   * the queue are the Site's own rows and are named by key, because an id means nothing in an Add-on's
+   * configuration and would not survive the Site being rebuilt.
+   */
+  create(input: {
+    typeKey: string;
+    queueKey?: string;
+    subject: string;
+    message: string;
+    externalRef?: string;
+  }): Promise<PhisSupportTicket>;
+  /** The work on one ticket, in the order the Site keeps it. */
+  listTasks(ticketId: number): Promise<PhisSupportTicketTask[]>;
+  /** Records a piece of work, which is what a linked issue hangs on. */
+  addTask(input: {
+    ticketId: number;
+    type: number;
+    title: string;
+    description?: string;
+  }): Promise<PhisSupportTicketTask>;
+  /** Moves one task, and only the task. */
+  setTaskStatus(input: { taskId: number; status: number }): Promise<PhisSupportTicketTask>;
+};

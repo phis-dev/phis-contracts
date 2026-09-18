@@ -6,4 +6,5 @@ export * from "./media-storage.js";
 export * from "./queries.js";
 export * from "./resource-links.js";
 export * from "./schema.js";
+export * from "./support.js";
 export * from "./threads.js";

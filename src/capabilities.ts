@@ -16,6 +16,7 @@ import type { PhisAssetsCapabilityV1 } from "./assets.js";
 import type { PhisAddonEventId } from "./core.js";
 import type { PhisDataCapabilityV1 } from "./queries.js";
 import type { PhisResourceLinksCapabilityV1 } from "./resource-links.js";
+import type { PhisSupportCapabilityV1 } from "./support.js";
 import type { PhisThreadsCapabilityV1 } from "./threads.js";
 
 /**
@@ -108,6 +109,7 @@ export type PhisAddonCapabilities = {
   groups?: PhisGroupsCapabilityV1;
   threads?: PhisThreadsCapabilityV1;
   resourceLinks?: PhisResourceLinksCapabilityV1;
+  support?: PhisSupportCapabilityV1;
   settings?: PhisSettingsCapabilityV1;
   roles?: PhisRolesCapabilityV1;
 };
