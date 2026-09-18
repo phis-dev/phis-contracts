@@ -144,13 +144,37 @@ export type PhisRolesCapabilityV1 = {
  * itself: a release artifact, a generated preview, an export waiting to be fetched.
  */
 export type PhisStorageCapabilityV1 = {
+  /**
+   * Both directions are streams, because two of the three things this store is for -- a release
+   * artifact and an export waiting to be fetched -- are the things that grow. A buffer would make the
+   * Site's largest allowed object the memory one call costs, on a path that only moves bytes.
+   *
+   * `byteSize` is declared rather than measured. The store's ceiling is booked before a byte is
+   * written, so that a write arriving at the same time as another cannot find room that the other
+   * already took, and nothing can be booked that has not been stated. Core counts while it writes and
+   * refuses a body that turns out not to be the size it claimed, so the declaration is a promise the
+   * Add-on is held to rather than one it is trusted on.
+   *
+   * An Add-on that already holds its bytes wraps them in a one-chunk `ReadableStream` and states
+   * `bytes.byteLength`.
+   */
   put(input: {
     key: string;
-    body: Uint8Array;
+    body: ReadableStream<Uint8Array>;
+    byteSize: number;
     contentType: string;
   }): Promise<{ key: string; byteSize: number }>;
-  /** Null rather than throwing for an object that is not there. */
-  get(key: string): Promise<{ body: Uint8Array; contentType: string } | null>;
+  /**
+   * Null rather than throwing for an object that is not there.
+   *
+   * The body arrives as it is read. `byteSize` comes with it so a caller that does need every byte can
+   * decide before it starts collecting them.
+   */
+  get(key: string): Promise<{
+    body: ReadableStream<Uint8Array>;
+    byteSize: number;
+    contentType: string;
+  } | null>;
   head(key: string): Promise<{ key: string; byteSize: number; contentType: string } | null>;
   /** Whether an object was removed. Removing what is not there is not an error. */
   remove(key: string): Promise<boolean>;

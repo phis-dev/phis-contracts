@@ -233,7 +233,25 @@ export interface PhisMediaStorageAdapter {
   probeCapabilities(): Promise<PhisMediaStorageProbe>;
   putObject(input: PhisMediaObjectInput): Promise<PhisMediaObjectHead>;
   putObjectStream(input: PhisMediaObjectStreamInput): Promise<PhisMediaObjectHead>;
+  /**
+   * The whole object at once, for code that has to look at every byte.
+   *
+   * Image processing, font subsetting and content sniffing are what this is for: they hold the bytes
+   * because they read them, and no stream would change that. Serving an object to somebody is not one
+   * of those cases -- see `getObjectStream`.
+   */
   getObject(storageKey: string): Promise<Buffer | null>;
+  /**
+   * The object as it arrives, for code that only passes it on.
+   *
+   * Delivery reads nothing: it copies bytes from the Provider to whoever asked, and holding the whole
+   * object to do that makes the largest object a Site accepts the amount of memory one download costs.
+   * A Provider that stores remotely hands back its own response body, and the Local adapter a file read
+   * stream, so nothing between the two ever holds more than what is in flight.
+   *
+   * `null` means the object is not there, the same answer `getObject` gives.
+   */
+  getObjectStream(storageKey: string): Promise<ReadableStream<Uint8Array> | null>;
   /**
    * The first bytes of an object, for deciding what it actually is without moving it.
    *
