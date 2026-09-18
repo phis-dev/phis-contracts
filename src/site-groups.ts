@@ -53,3 +53,19 @@ export function readPhiGroupMembershipLevel(value: unknown): PhiGroupMembershipF
   if ((value & 2) !== 0) return PhiGroupMembershipFlags.Author;
   return PhiGroupMembershipFlags.Member;
 }
+
+/**
+ * A group a Module needs the Site to have, named rather than created.
+ *
+ * It travels in a Module's `seed` and is written when the Area carrying that Module is published. The
+ * key is the Module's own and never changes: it is what makes a second publish find the group it made
+ * the first time instead of making another. `provider_id` is the Module's id and is supplied by the
+ * materialization, not by the declaration, so a Module cannot claim a group belonging to another.
+ *
+ * The name is a starting value. Once the row exists it is the Site's, and administration renames it
+ * without the next publish undoing that.
+ */
+export type PhisDeclaredSiteGroup = {
+  readonly key: string;
+  readonly name: string;
+};
