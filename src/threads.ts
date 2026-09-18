@@ -286,6 +286,16 @@ export type PhisThreadsCapabilityV1 = {
     messageFlags?: number;
     participantUserIds?: number[];
     participantGroupIds?: number[];
+    /**
+     * Files to hang on the message, from this Add-on's own Space.
+     *
+     * Custody follows the uploader: an Add-on attaches what it wrote through `assets:v1`, never a
+     * person's file, because attaching somebody else's would put a record on their quota they did not
+     * agree to carry. Who may read it is the message's answer and never the Space's -- so a file an
+     * Add-on attaches is read by everyone in the conversation, and one it is shown is not thereby its
+     * own.
+     */
+    assetIds?: number[];
     /** This Add-on's own reference for the message, unique within this Add-on. */
     externalRef?: string;
     externalAuthor?: { name: string; url?: string };
@@ -301,6 +311,8 @@ export type PhisThreadsCapabilityV1 = {
     message: string;
     messageMarkdown?: string | null;
     messageFlags?: number;
+    /** Files to hang on the reply, from this Add-on's own Space. See `create`. */
+    assetIds?: number[];
     externalRef?: string;
     externalAuthor?: { name: string; url?: string };
   }): Promise<PhisThreadDetail | null>;
