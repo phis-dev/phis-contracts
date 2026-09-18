@@ -128,6 +128,81 @@ export type PhisDeclaredSupportTicketType = {
 };
 
 /**
+ * The stretch of time a requester's allowance is counted over.
+ *
+ * Calendar periods rather than a rolling window of days, which is the other clock Support keeps
+ * (`requester_window_days`) and is deliberately not this one. That clock measures one ticket's silence,
+ * where a rolling window is right because it starts when the ticket does. This is a budget, and a budget
+ * a person can plan around is one whose start they can name: "five this year" is a sentence, "five in
+ * any three hundred and sixty-five days" is an audit.
+ */
+export const PhisSupportAllowancePeriod = {
+  /** No period, which is what a type without a limit has. */
+  None: 0,
+  /** From the first of the month. */
+  Month: 1,
+  /** From the first of January. */
+  Year: 2,
+} as const;
+
+export type PhisSupportAllowancePeriodValue =
+  (typeof PhisSupportAllowancePeriod)[keyof typeof PhisSupportAllowancePeriod];
+
+/**
+ * What one person may still ask for, of one ticket type.
+ *
+ * Two numbers that are not the same kind of thing, and keeping them apart is the point. `limit` is the
+ * Site's periodic allowance -- it renews, and what goes unused at the end of the period is gone.
+ * `granted` is a stock somebody handed over, which does not renew and is not lost at the boundary: it
+ * sits there until it is used or it expires. A ticket spends the periodic allowance first and only
+ * reaches the stock when that is empty, so a person who bought ten does not find them quietly eaten in a
+ * month where the free five would have covered it.
+ *
+ * `limit` of `null` is no limit at all, and then `remaining` is `null` too -- absent rather than a large
+ * number, because "unlimited" and "very many left" are different answers and a surface that cannot tell
+ * them apart will eventually print one as the other.
+ */
+export type PhisSupportAllowance = {
+  readonly typeKey: string;
+  /** The periodic allowance, or `null` where this type has none. */
+  readonly limit: number | null;
+  readonly period: PhisSupportAllowancePeriodValue;
+  /** Where the current period began, or `null` where there is no limit. */
+  readonly periodStart: string | null;
+  /** Tickets this person opened for themselves of this type since then. */
+  readonly used: number;
+  /** Still-live stock from grants: handed over, not yet spent, not expired, not revoked. */
+  readonly granted: number;
+  /** What they may still open, counting both, or `null` where there is no limit. */
+  readonly remaining: number | null;
+};
+
+/**
+ * A stock of requests handed to one person by whoever is entitled to hand it over.
+ *
+ * `reference` is the granting Add-on's own name for the occasion -- an order number, a contract line --
+ * and it is required rather than optional because it is what makes the grant idempotent. A payment
+ * provider retries its webhook; a shop that had no reference to give would grant the ten twice and have
+ * no way to notice. Granting the same reference again is therefore not an error and not a second grant:
+ * it answers with the one that already exists.
+ */
+export type PhisSupportAllowanceGrant = {
+  readonly id: number;
+  readonly typeKey: string;
+  readonly userId: number;
+  /** The Add-on that handed it over. */
+  readonly providerId: string;
+  readonly reference: string;
+  readonly amount: number;
+  /** How much of it has been spent on tickets. */
+  readonly consumed: number;
+  /** When it stops counting, or `null` for never. */
+  readonly expiresAt: string | null;
+  readonly revokedAt: string | null;
+  readonly createdAt: string;
+};
+
+/**
  * One ticket, as an Add-on that is linked to it may see it.
  *
  * Without its conversation, which is the thread and is read through `threads:v1` with the reader's own
@@ -228,4 +303,50 @@ export type PhisSupportCapabilityV1 = {
   }): Promise<PhisSupportTicketTask>;
   /** Moves one task, and only the task. */
   setTaskStatus(input: { taskId: number; status: number }): Promise<PhisSupportTicketTask>;
+
+  /**
+   * What one person may still ask for, of one type.
+   *
+   * The read behind a "you have two left" before somebody writes, and the read a shop does before it
+   * offers to sell more. It names a person, which nothing else on this capability does -- see `grant`
+   * for why that is allowed here and what bounds it.
+   */
+  allowance(input: { userId: number; typeKey: string }): Promise<PhisSupportAllowance>;
+
+  /**
+   * Hands somebody a stock of requests.
+   *
+   * This is the call the rest of the allowance exists for. A Site's periodic limit is the Site's to set,
+   * but "this customer bought ten more" is knowledge no part of Support has: it lives in whatever sold
+   * them, and that is by design a package Support does not know about. So Support states the arithmetic
+   * and lets somebody else move the number.
+   *
+   * **Naming a person is bounded by the Site, not by reach.** Every other call here reaches a ticket it
+   * was given and walks nothing; this one takes a user id, as `groups:v1` does for the same unavoidable
+   * reason -- there is no ticket yet, and the grant is about the person. The bound is the same one
+   * `groups:v1` uses: the user must be a member of this Site, and an unverified hook reaches none of it.
+   * What that leaves an Add-on able to do is give a member of its own Site something, which is what it
+   * was installed to do.
+   *
+   * Granting is idempotent on `reference`; see `PhisSupportAllowanceGrant`.
+   */
+  grant(input: {
+    userId: number;
+    typeKey: string;
+    amount: number;
+    reference: string;
+    /** ISO 8601. Absent is never.  */
+    expiresAt?: string | null;
+  }): Promise<PhisSupportAllowanceGrant>;
+
+  /**
+   * Takes back a stock that has not been spent, by the reference it was granted under.
+   *
+   * A refund, a chargeback, a contract that ended. What it does not do is undo the tickets already
+   * opened against it: those are conversations somebody is having, and a payment reversed later does not
+   * make them not have happened. So the unspent remainder stops counting and the spent part stands.
+   *
+   * An Add-on revokes only what it granted. Null where there is no such grant of its own.
+   */
+  revokeGrant(input: { reference: string }): Promise<PhisSupportAllowanceGrant | null>;
 };
