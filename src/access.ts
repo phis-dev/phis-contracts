@@ -118,6 +118,75 @@ export function phiUserEmailSourceForProvider(providerKey: string): PhiUserEmail
   }
 }
 
+/**
+ * Which half of a Theme an account asked to be shown.
+ *
+ * Stored on the account rather than in a cookie, because the answer belongs to the person and not to
+ * the browser they happen to be sitting at. A cookie still carries it -- the static proxy and the
+ * script that runs before the first paint resolve the mode before any session exists, and neither can
+ * see one -- but the account is where it is decided.
+ *
+ * There is deliberately no number for "system". Following the browser is the absence of a choice, and
+ * the column says that with NULL; a second way to say the same thing is a second thing to keep in
+ * agreement. That is also why the numbers start at 1: a zero would read as an answer while meaning
+ * nothing, which is the one mistake NULL cannot make.
+ */
+export const PhiUserThemeMode = {
+  Light: 1,
+  Dark: 2,
+} as const;
+
+export type PhiUserThemeModeValue =
+  (typeof PhiUserThemeMode)[keyof typeof PhiUserThemeMode];
+
+export function isPhiUserThemeMode(value: unknown): value is PhiUserThemeModeValue {
+  return typeof value === "number"
+    && (Object.values(PhiUserThemeMode) as number[]).includes(value);
+}
+
+/**
+ * The three names the answer travels under, and the numbers are not among them.
+ *
+ * What crosses the wire is `light`, `dark` or `system`, because the number is a storage detail of one
+ * column and the client resolving `system` against the browser never sees that column. The naming
+ * lives here for the same reason the numbers do: one file says which name means which row.
+ */
+export type PhiUserThemeModeName = "light" | "dark" | "system";
+
+export function phiUserThemeModeName(
+  themeMode: PhiUserThemeModeValue | null,
+): PhiUserThemeModeName {
+  if (themeMode === PhiUserThemeMode.Light) {
+    return "light";
+  }
+  return themeMode === PhiUserThemeMode.Dark ? "dark" : "system";
+}
+
+/**
+ * The stored value a name asks for, or `undefined` for a name that is not one of the three.
+ *
+ * `system` answers `null`, which is a choice being withdrawn and not a missing one -- the two are told
+ * apart by the `undefined` that an unreadable name returns, so a typo is refused rather than quietly
+ * read as "follow the browser".
+ */
+export function phiUserThemeModeFromName(
+  value: unknown,
+): PhiUserThemeModeValue | null | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  switch (value.trim().toLowerCase()) {
+    case "light":
+      return PhiUserThemeMode.Light;
+    case "dark":
+      return PhiUserThemeMode.Dark;
+    case "system":
+      return null;
+    default:
+      return undefined;
+  }
+}
+
 export type PhiRoleProviderId = `@${string}/${string}`;
 export type PhiGroupProviderId = `@${string}/${string}`;
 
