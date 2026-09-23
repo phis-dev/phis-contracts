@@ -86,6 +86,15 @@ export type PhisAddonEventId =
 export const PHIS_SERVICE_KINDS = {
   mediaStorage: "@phis/server/service/media-storage",
   directory: "@phis/server/service/directory",
+  /**
+   * Turning text in one language into text in another.
+   *
+   * A kind rather than a capability for the same reason as the two above: Core owns the question and
+   * keeps asking it, and what an implementation talks to -- a vendor, a model on the machine, a
+   * catalogue it maintains itself -- is its own business. Several may be installed at once; the
+   * operator selects which one an installation uses.
+   */
+  translation: "@phis/server/service/translation",
 } as const;
 
 export type PhisServiceKind =
@@ -105,6 +114,7 @@ export type PhisServiceKind =
 export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, number>> = {
   [PHIS_SERVICE_KINDS.mediaStorage]: 1,
   [PHIS_SERVICE_KINDS.directory]: 1,
+  [PHIS_SERVICE_KINDS.translation]: 1,
 };
 
 export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
@@ -112,4 +122,6 @@ export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, st
     "45a871522511f7d77841ca8dd0113b423b3cfd4cb921f143cd1d3d116cab6952",
   [PHIS_SERVICE_KINDS.directory]:
     "2cac7397c7beb1b8e71fc67f5cae3be89182dddf096895570a15deafa1adbfc9",
+  [PHIS_SERVICE_KINDS.translation]:
+    "9bae2e7b92ded5cdde9321939a3bb8cd589f6e1ef8bca7bc5f65608313b3207d",
 };
