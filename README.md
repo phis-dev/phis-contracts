@@ -16,6 +16,7 @@ and change at different moments.
 @phis/contracts/logging              the structured log vocabulary a Site writes and phis reads back
 @phis/contracts/server-capabilities  the capability snapshot phis reports and the UI acts on
 @phis/contracts/site-groups          the membership levels of a Site group, as both ends count them
+@phis/contracts/user-state           the shapes a Module may keep a person's decisions in, and the key grammar
 ```
 
 There is deliberately no root export. A package you can import from the top invites everything two of
@@ -165,6 +166,15 @@ The membership ladder of a Site group: `PhiGroupMembershipFlags` (`Member`, `Aut
 sends `membershipFlags` as an integer and offers the levels to choose from, so both ends must count the
 same bits. The Add-on boundary names levels instead (`PHIS_GROUP_LEVELS` in `/addon`).
 
+## `/user-state`
+
+What a Module may keep per Site about a person who decided something: the closed shape set
+(`PHIS_USER_STATE_SHAPES` -- `flag`, `marker`, `value`, `set`), the `<package>/<key>` grammar, the
+declaration a Module makes (`PhisDeclarableUserStateKey`), and `readPhisUserStateWrite`, which both ends
+call so a refused write is refused the same way in both. phis stores it and is the only party that
+validates; the site UI declares the keys and reads them while rendering. Core's own account facts stay
+bit flags on the membership and account rows and are not this.
+
 ## Admission rule
 
 Per subpath, and narrow on purpose. Name the two parties and the sentence they promise each other; if that
@@ -179,6 +189,8 @@ sentence cannot be written down, it does not go in here.
 - `/media`, `/http`, `/logging`, `/site-groups`, `/server-capabilities`: only what crosses the wire as a
   value and is judged on the other side. A copy is a contract when disagreeing about it changes what a
   request returns.
+- `/user-state`: only the shapes and the key grammar both ends check a write against. What a Module keeps
+  under its keys is the Module's business and never named here.
 
 ## License
 

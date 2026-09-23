@@ -84,6 +84,11 @@
       "types": "./dist/threads.d.ts",
       "import": "./dist/threads.js",
       "default": "./dist/threads.js"
+    },
+    "./user-state": {
+      "types": "./dist/user-state.d.ts",
+      "import": "./dist/user-state.js",
+      "default": "./dist/user-state.js"
     }
   },
   "files": [
