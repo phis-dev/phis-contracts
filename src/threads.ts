@@ -222,6 +222,14 @@ export type PhisThreadMessage = {
   /** Null where the text is withheld from this reader: redacted, or confidential to an Add-on. */
   bodyText: string | null;
   bodyMarkdown: string | null;
+  /**
+   * The language the body is written in, as the writer declared it. Null is `not declared`.
+   *
+   * Never to be read as the Site's default. Two people writing to each other in different languages is
+   * the case it exists for, so it sits on the message and not on the thread, and a message written
+   * before anybody was asked keeps its null rather than acquiring a guess.
+   */
+  sourceLang: string | null;
   flags: number;
   /** What hangs on it, in the order it was attached. Empty for a message carrying only text. */
   assets: PhisThreadMessageAsset[];
@@ -283,6 +291,14 @@ export type PhisThreadsCapabilityV1 = {
     subject?: string | null;
     message: string;
     messageMarkdown?: string | null;
+    /**
+     * What the opening message is written in, where the integration knows.
+     *
+     * A locale key the platform holds; anything else is refused rather than stored. An integration that
+     * does not know leaves it out, and the message carries null -- which is the honest answer and the
+     * one a translation control reads as `ask the provider to detect`.
+     */
+    messageSourceLang?: string | null;
     messageFlags?: number;
     participantUserIds?: number[];
     participantGroupIds?: number[];
@@ -310,6 +326,8 @@ export type PhisThreadsCapabilityV1 = {
     threadId: number;
     message: string;
     messageMarkdown?: string | null;
+    /** What this message is written in, on the terms `create` states. */
+    messageSourceLang?: string | null;
     messageFlags?: number;
     /** Files to hang on the reply, from this Add-on's own Space. See `create`. */
     assetIds?: number[];
