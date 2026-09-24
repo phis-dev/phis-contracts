@@ -223,11 +223,16 @@ export type PhisThreadMessage = {
   bodyText: string | null;
   bodyMarkdown: string | null;
   /**
-   * The language the body is written in, as the writer declared it. Null is `not declared`.
+   * The language the body is written in, where an integration recorded it. Null is `not declared`.
    *
-   * Never to be read as the Site's default. Two people writing to each other in different languages is
-   * the case it exists for, so it sits on the message and not on the thread, and a message written
-   * before anybody was asked keeps its null rather than acquiring a guess.
+   * Never to be read as the Site's default. Nobody is asked for this: a person writing on a Site is
+   * offered no language picker, because a translator determines the source language itself. What fills
+   * it is an integration that already knows -- a mail header, the locale of the page a form came from --
+   * and every message written by a person therefore carries null, which is the honest answer and the one
+   * a translation reads as "you detect it".
+   *
+   * It sits on the message and not on the thread, because two people writing to each other in different
+   * languages is the case it exists for.
    */
   sourceLang: string | null;
   flags: number;
@@ -294,9 +299,13 @@ export type PhisThreadsCapabilityV1 = {
     /**
      * What the opening message is written in, where the integration knows.
      *
-     * A locale key the platform holds; anything else is refused rather than stored. An integration that
-     * does not know leaves it out, and the message carries null -- which is the honest answer and the
-     * one a translation control reads as `ask the provider to detect`.
+     * This is the **only** way the field is ever written: no Site route accepts it and no surface offers
+     * it, so a value present means an integration said so. An integration that does not know leaves it
+     * out, and the message carries null.
+     *
+     * A locale key the platform holds; anything else is refused rather than stored. Core checks that the
+     * key is well-formed and not that it is true -- naming a language over text in another one misleads
+     * every reader of it, and nothing contradicts the claim.
      */
     messageSourceLang?: string | null;
     messageFlags?: number;
