@@ -99,6 +99,21 @@ export const PhisThreadMessageFlag = {
   Redacted: 1 << 3,
   /** Written by an integration from something outside, and therefore never exported back to it. */
   Imported: 1 << 4,
+  /**
+   * `sourceLang` was recognised by a translator rather than declared by whoever delivered the message.
+   *
+   * The difference between an assertion and a guess, which is why it is a flag and not a shrug. An
+   * integration states the language from something it actually has -- a mail header, the locale of the
+   * page a form was submitted from -- and a translator states what a model made of the text: right for a
+   * paragraph, a coin toss for "bongo". Anything routing or counting on the column has to be able to see
+   * which of the two it is looking at.
+   *
+   * It is set where a translation reported a language for a message that declared none, because the
+   * recognition arrives as a field on a translation that was paid for anyway and throwing it away would
+   * leave the column empty for every message a person ever wrote. Never set by a caller: Core sets it
+   * together with the value, and a declared language is never overwritten by a detected one.
+   */
+  LangDetected: 1 << 5,
 } as const;
 
 /**
@@ -226,10 +241,15 @@ export type PhisThreadMessage = {
    * The language the body is written in, where an integration recorded it. Null is `not declared`.
    *
    * Never to be read as the Site's default. Nobody is asked for this: a person writing on a Site is
-   * offered no language picker, because a translator determines the source language itself. What fills
-   * it is an integration that already knows -- a mail header, the locale of the page a form came from --
-   * and every message written by a person therefore carries null, which is the honest answer and the one
-   * a translation reads as "you detect it".
+   * offered no language picker, because a translator determines the source language itself. What fills it
+   * is an integration that already knows -- a mail header, the locale of the page a form came from -- so a
+   * message written by a person arrives carrying null, which is the honest answer and the one a
+   * translation reads as "you detect it".
+   *
+   * It is also filled afterwards, by the translation of a message that declared none: the language comes
+   * back as a field on a translation somebody paid for, and dropping it would keep the column empty for
+   * everything a person ever wrote. Such a value carries `LangDetected`, because a recognition is a guess
+   * and an integration's declaration is not, and a declared language is never overwritten by one.
    *
    * It sits on the message and not on the thread, because two people writing to each other in different
    * languages is the case it exists for.
