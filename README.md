@@ -19,6 +19,19 @@ and change at different moments.
 @phis/contracts/user-state           the shapes a Module may keep a person's decisions in, and the key grammar
 ```
 
+## Before the v1 release, interface versions stay at 1
+
+`PHIS_SERVICE_INTERFACE_VERSIONS` and `PHIS_SERVICE_INTERFACE_DIGESTS` in `@phis/contracts/addon` are not
+raised while phis is pre-v1, however much an interface changes. The mechanism they drive is real and
+deliberate -- Core refuses an Add-on whose recorded manifest names a digest this release does not offer --
+and that is exactly why raising a version now is the wrong move: there is no released Add-on to protect, so
+it buys no compatibility, and it takes the installation down. The recorded manifest in
+`config/phis-addons.json` stops matching, the capability snapshot refuses the desired state, and every
+request that resolves a viewer answers 500 until each installed Add-on has been rebundled and upgraded.
+
+An interface that changes before v1 is simply the interface. Both sides are rebuilt from one tree, and the
+version is raised once, when there is something in the field that a wrong assumption would break.
+
 There is deliberately no root export. A package you can import from the top invites everything two of
 our packages happen to share; a subpath makes you say which agreement you mean.
 

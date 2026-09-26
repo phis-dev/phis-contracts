@@ -110,6 +110,13 @@ export type PhisServiceKind =
  *
  * The digest is `sha256("phi-server-service-kind:<kind>:v<interface version>")`. That recipe is
  * documented for whoever has to produce the next value; nothing needs to run it to read a manifest.
+ *
+ * **Before the v1 release every version here stays at 1, whatever changes shape.** There is no released
+ * Add-on to protect and nothing in the field built against an older interface, so raising a version buys
+ * no compatibility and costs the installation: the recorded manifest of every installed Add-on stops
+ * matching, `buildPhisCapabilitySnapshot` refuses the desired state, and every request that resolves a
+ * viewer answers 500 until each Add-on has been rebundled and upgraded. An interface that changes before
+ * v1 is simply the interface, and both sides are rebuilt from one tree.
  */
 export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, number>> = {
   [PHIS_SERVICE_KINDS.mediaStorage]: 1,

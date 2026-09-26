@@ -38,6 +38,22 @@ export type PhisMediaObjectStreamInput = {
   signal?: AbortSignal;
 };
 
+/** Which bytes of an object somebody wants: the first one, and how many. */
+export type PhisMediaObjectRange = {
+  /** The first byte, counted from zero and inside the object. */
+  offset: number;
+  /** How many bytes are wanted. An implementation may serve fewer, and then says so. */
+  length: number;
+};
+
+export type PhisMediaObjectRangeStream = {
+  body: ReadableStream<Uint8Array>;
+  /** What was served, which is what a `Content-Range` may claim -- never merely what was asked for. */
+  range: PhisMediaObjectRange;
+  /** The object's whole size, so a `Content-Range` can name the total it is a part of. */
+  byteSize: number;
+};
+
 export type PhisMediaObjectHead = {
   /**
    * What this Provider can attest about the object's content, if anything.
@@ -87,6 +103,35 @@ export type PhiMediaUploadPlan =
       method: "PUT";
       headers: Record<string, string>;
       expiresAt: string;
+    }
+  | {
+      /**
+       * The body in several requests, assembled by the Provider.
+       *
+       * What this buys is not a larger ceiling but a resumable one. A single request that fails at ninety
+       * per cent has to be sent again from the first byte, and above a few hundred megabytes on an
+       * ordinary connection that is the usual outcome rather than the unlucky one. Each part here fails
+       * and repeats on its own.
+       *
+       * The parts are in order and each covers `partSizeBytes`, except the last, which covers what is
+       * left. That is the whole addressing scheme: part *n* is the bytes from `(n - 1) * partSizeBytes`,
+       * and a Client that can slice a file needs nothing else.
+       *
+       * `uploadId` travels out and comes back. The Client returns it, with each part's entity tag, as the
+       * `completion` that `completeUpload` assembles from -- and Core keeps its own copy, because the one
+       * thing a Client cannot be asked to do is report an upload it has stopped existing to report.
+       */
+      kind: "multipart-put";
+      method: "PUT";
+      uploadId: string;
+      partSizeBytes: number;
+      parts: readonly {
+        /** One-based and contiguous, the way every part API counts. */
+        partNumber: number;
+        url: string;
+        headers?: Record<string, string>;
+      }[];
+      expiresAt: string;
     };
 
 export type PhiMediaUploadPlanKindKey = PhiMediaUploadPlan["kind"];
@@ -120,6 +165,21 @@ export type PhiMediaUploadPlanInput = {
    * streams through. An adapter must never invent one.
    */
   checksum?: { algorithm: PhisMediaChecksumAlgorithm; value: string };
+  /**
+   * Whether this Profile may answer with an object assembled from parts.
+   *
+   * Core's decision and not the Provider's, for the same reason `checksum` above is: it follows from what
+   * the Profile's probe established, and a Provider does not get to grade its own endpoint. What the probe
+   * settles here is `verifiesWholeMultipartObject` -- whether a digest survives the assembly.
+   *
+   * Where it does not, an object built from parts carries a checksum that is a digest of part digests,
+   * which hashes no bytes anybody uploaded. Duplicate detection reads that digest, so granting multipart
+   * on such an endpoint would quietly cost every object above one part its identity. Hence a permission
+   * rather than a capability: the Provider may be perfectly able, and still not be asked.
+   *
+   * Absent means no. A Provider that cannot assemble parts ignores it either way.
+   */
+  mayAssembleFromParts?: boolean;
 };
 
 export type PhiMediaUploadCompletionInput = {
@@ -252,6 +312,30 @@ export interface PhisMediaStorageAdapter {
    * `null` means the object is not there, the same answer `getObject` gives.
    */
   getObjectStream(storageKey: string): Promise<ReadableStream<Uint8Array> | null>;
+  /**
+   * Part of an object as it arrives, for serving a `Range` request.
+   *
+   * What this is for is seeking. A browser asked for a video cannot start in the middle without it, and
+   * Safari commonly declines to play at all where a server answers `200` to a `Range` -- so delivery
+   * without this is delivery of files people download, not of media people scrub through.
+   *
+   * It reports the range it **actually** produced rather than echoing the one it was given, and that is
+   * the point of the shape. A `Content-Range` is a claim about bytes; a Provider that quietly ignored the
+   * request and returned the whole object would otherwise turn that claim into a lie, and the caller
+   * would frame a complete body as a partial one. Comparing what was asked with what came back is what
+   * lets delivery answer `200` in that case instead.
+   *
+   * `offset` is the first byte, `length` is how many are wanted. An implementation clamps `length` to the
+   * end of the object and says so in what it returns; the caller has already established that the offset
+   * is inside the object, because it knows the size and a range beyond it is a `416` rather than a read.
+   * A `length` of zero -- asked for, or left after clamping -- is an empty body and not an error.
+   *
+   * `null` means the object is not there, the same answer `getObjectStream` gives.
+   */
+  getObjectRangeStream(
+    storageKey: string,
+    range: PhisMediaObjectRange,
+  ): Promise<PhisMediaObjectRangeStream | null>;
   /**
    * The first bytes of an object, for deciding what it actually is without moving it.
    *
