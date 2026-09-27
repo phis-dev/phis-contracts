@@ -200,6 +200,37 @@ export type PhiMediaUploadPlanInput = {
   mayAssembleFromParts?: boolean;
 };
 
+/**
+ * What a storage is asked to clean up on its own, and how long it must wait first.
+ *
+ * Both figures follow from how long an upload session may live, which is Core's to know. They are days
+ * because that is the only unit an object lifecycle rule takes, and they are more than one day because such
+ * a rule is evaluated asynchronously -- a rule of "one day" can fire on an upload that still has hours to
+ * run, and aborting a body somebody is in the middle of sending is worse than paying for it a while longer.
+ *
+ * `stagingKeyPrefixes` are Core's key space, without whatever prefix a Provider adds of its own; the
+ * Provider prepends that the same way it does for an object key.
+ *
+ * **An empty prefix list means no expiry rule at all, and an implementation must treat it that way.** An
+ * expiry rule matching everything would delete every object in the storage after two days, which is the one
+ * mistake in this area that cannot be undone -- so "expire nothing" and "expire everything" must never be
+ * the same argument.
+ */
+export type PhisMediaLifecyclePolicy = {
+  /**
+   * Days after an upload was started before the storage may abort what was never completed.
+   *
+   * This is the whole reason the rule exists. A Client that reports its own failure is handled without any
+   * of this, and one that crashes, loses its connection or has its tab killed reports nothing -- and what it
+   * leaves behind is parts that are paid for and cannot be listed.
+   */
+  abortIncompleteMultipartUploadAfterDays: number;
+  /** Key prefixes, in Core's key space, under which a body is staged before it becomes an Asset. */
+  stagingKeyPrefixes: readonly string[];
+  /** Days a staged object may sit under those prefixes before the storage removes it. */
+  expireStagedObjectsAfterDays: number;
+};
+
 export type PhiMediaUploadCompletionInput = {
   storageKey: string;
   /** Whatever the plan's issuer asked the Client to bring back. Core passes it through unread. */
@@ -436,6 +467,25 @@ export interface PhisMediaStorageAdapter {
    * to check, because a Provider that cannot say no to a body it never receives has nothing to say.
    */
   applyCorsPolicy(origins: readonly string[]): Promise<void>;
+  /**
+   * States what the storage is to clean up by itself, because Core cannot see it and never will.
+   *
+   * The reason this is not a sweeper is that the two things it names are invisible to the side that would
+   * have to sweep them. An unfinished multipart upload is billed from the moment it opens and appears in no
+   * object listing at all: only the storage knows it exists, and only the Client that has gone away could
+   * have named it. A staged object whose session expired is findable, but reaching it means opening
+   * Providers on behalf of sessions a request has no business touching -- which is why expiry deliberately
+   * releases the reservation and leaves storage alone.
+   *
+   * So the rule is written once, when a Profile is written, exactly as the CORS rule is. What Core knows is
+   * how long an upload may take and which keys are staging; what the storage knows is how to express "stop
+   * paying for this".
+   *
+   * Replaced whole, never merged, for the same reason CORS is: a rule has to state what is true now rather
+   * than accumulate what once was. A Provider with no such notion, such as the Local one, implements it as
+   * a no-op -- its files are Core's own and an operator command is what removes them.
+   */
+  applyLifecyclePolicy(policy: PhisMediaLifecyclePolicy): Promise<void>;
   /**
    * What makes two Storage Profiles the same physical storage.
    *
