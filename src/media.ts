@@ -491,3 +491,71 @@ export function resolvePhiFontPreloadSubsetKeys(locale: string | null | undefine
       : PHI_FONT_SUBSET_PRELOAD_BY_LANGUAGE[language] ?? [];
   return [PhiFontSubsetKey.Latin, ...extra].filter((key) => coverage.subsets.includes(key));
 }
+
+/**
+ * How a body above one part is divided, as a rule rather than as a Provider's private arithmetic.
+ *
+ * It lives here because two parties have to agree on it and neither can be told by the other in time. The
+ * Provider needs the part size to sign one request per part; the Client needs it *before* the plan exists,
+ * because a digest can only be signed into a request if it is known when the request is signed -- so the
+ * Client has to hash the same divisions the Provider is about to address. A rule both compute from the
+ * byte size is the only arrangement where that holds without an extra round trip.
+ *
+ * **Frozen once objects exist under it.** A `sha256-composite` value is a digest of part digests, so it
+ * answers "the same bytes divided the same way". Change the division and the same file yields a different
+ * value, which splits duplicate detection into cohorts that can never match across the change. The value
+ * carries the part size for exactly this reason: a changed rule produces non-matches, never false matches.
+ * Changing it is therefore a decision about the whole corpus, not a tuning knob.
+ *
+ * `PHIS_MEDIA_UPLOAD_MAX_PART_COUNT` is well under S3's ten thousand on purpose. Every part is signed up
+ * front, so the count is also the size of the plan a Client receives and Core holds in memory.
+ */
+export const PHIS_MEDIA_UPLOAD_PART_SIZE_BYTES = 16 * 1024 * 1024;
+export const PHIS_MEDIA_UPLOAD_MAX_PART_COUNT = 1000;
+
+/**
+ * The part size for one body, and the same answer wherever it is asked.
+ *
+ * Sixteen mebibytes until that would need more parts than are allowed, and from there the smallest whole
+ * mebibyte that fits the body into the allowance. Whole mebibytes keep the number short where it is
+ * recorded and keep the arithmetic exact in a browser, where sizes are doubles.
+ */
+export function resolvePhiMediaUploadPartSizeBytes(sizeBytes: number): number {
+  const mebibyte = 1024 * 1024;
+  if (sizeBytes <= PHIS_MEDIA_UPLOAD_PART_SIZE_BYTES * PHIS_MEDIA_UPLOAD_MAX_PART_COUNT) {
+    return PHIS_MEDIA_UPLOAD_PART_SIZE_BYTES;
+  }
+  return Math.ceil(Math.ceil(sizeBytes / PHIS_MEDIA_UPLOAD_MAX_PART_COUNT) / mebibyte) * mebibyte;
+}
+
+/** How many parts one body is divided into under `resolvePhiMediaUploadPartSizeBytes`. */
+export function resolvePhiMediaUploadPartCount(sizeBytes: number): number {
+  return Math.max(1, Math.ceil(sizeBytes / resolvePhiMediaUploadPartSizeBytes(sizeBytes)));
+}
+
+/**
+ * The recorded form of a `sha256-composite` digest: the digest, the part count, the part size.
+ *
+ * Duplicate detection compares these values as strings, so everything that decides whether two of them
+ * mean the same thing has to be inside the string. The digest alone would not: the same bytes divided
+ * differently hash differently, and a value that did not say how it was divided would look like a plain
+ * SHA-256 that simply failed to match. Naming the division makes a mismatch legible instead of puzzling.
+ */
+export function formatPhiMediaCompositeChecksum(
+  digestHex: string,
+  partCount: number,
+  partSizeBytes: number,
+): string {
+  return `${digestHex.toLowerCase()}-${partCount}-${partSizeBytes}`;
+}
+
+export function parsePhiMediaCompositeChecksum(
+  value: string,
+): { digest: string; partCount: number; partSizeBytes: number } | null {
+  const match = /^([0-9a-f]{64})-(\d{1,5})-(\d{1,12})$/u.exec(value.trim().toLowerCase());
+  if (!match) return null;
+  const partCount = Number(match[2]);
+  const partSizeBytes = Number(match[3]);
+  if (partCount < 1 || partSizeBytes < 1) return null;
+  return { digest: match[1]!, partCount, partSizeBytes };
+}

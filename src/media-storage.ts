@@ -152,10 +152,13 @@ export type PhiMediaUploadPlanInput = {
    * What the client says it is about to send, and under which algorithm, as lowercase hex.
    *
    * Present only for a Profile whose probe found the endpoint verifies that algorithm: an adapter that
-   * receives it must sign it into the request and name the header the client has to send, so a body
-   * that does not match is refused there and never becomes an object. That refusal is what makes the
-   * figure trustworthy -- Core records the client's number because a wrong one would not have got this
-   * far, not because the client is believed.
+   * receives it must sign it into the request, so a body that does not match is refused there and never
+   * becomes an object. That refusal is what makes the figure trustworthy -- Core records the client's
+   * number because a wrong one would not have got this far, not because the client is believed.
+   *
+   * Signed, and not also named as a header for the Client to repeat. Signing a request that has no body
+   * yet puts the digest in the query string, where the signature covers it; a checksum header outside the
+   * signed set is refused by a strict endpoint, so naming it costs the upload instead of securing it.
    *
    * The algorithm travels with the value because the adapter does not get to pick one. It was settled
    * for this Profile when it was probed, and a plan that quietly used another would produce a digest
@@ -166,16 +169,31 @@ export type PhiMediaUploadPlanInput = {
    */
   checksum?: { algorithm: PhisMediaChecksumAlgorithm; value: string };
   /**
+   * One digest per part, in part order, as lowercase hex, for a body that is to arrive in parts.
+   *
+   * The same bargain as `checksum` and for the same reason, one level down: each part's digest is signed
+   * into that part's request, so a part whose bytes do not match is refused and never joins the object.
+   * Present only together with `mayAssembleFromParts`, and only where the Profile's base algorithm is
+   * SHA-256 -- these are SHA-256 digests and an adapter must not offer them under another name.
+   *
+   * The divisions are `resolvePhiMediaUploadPartSizeBytes` over the same `sizeBytes`, which is how the
+   * Client could compute them before this plan existed. An adapter that receives a count not matching that
+   * rule must refuse the plan rather than address the parts it was given: the mismatch means the two sides
+   * divided the body differently, and every digest after the first would be signed against other bytes.
+   *
+   * `checksum` alongside this carries the composite these add up to, which is what Core records. The
+   * adapter does not need it and must not recompute it.
+   */
+  partChecksums?: readonly string[];
+  /**
    * Whether this Profile may answer with an object assembled from parts.
    *
-   * Core's decision and not the Provider's, for the same reason `checksum` above is: it follows from what
-   * the Profile's probe established, and a Provider does not get to grade its own endpoint. What the probe
-   * settles here is `verifiesWholeMultipartObject` -- whether a digest survives the assembly.
+   * Core's decision and not the Provider's, for the same reason `checksum` above is: a Provider does not
+   * get to grade its own endpoint. What Core weighs is the size -- a single request that fails at ninety
+   * per cent is sent again from the first byte, and above a few hundred megabytes that is the usual
+   * outcome -- against what the object will be able to attest afterwards.
    *
-   * Where it does not, an object built from parts carries a checksum that is a digest of part digests,
-   * which hashes no bytes anybody uploaded. Duplicate detection reads that digest, so granting multipart
-   * on such an endpoint would quietly cost every object above one part its identity. Hence a permission
-   * rather than a capability: the Provider may be perfectly able, and still not be asked.
+   * It is a permission and not a capability: the Provider may be perfectly able and still not be asked.
    *
    * Absent means no. A Provider that cannot assemble parts ignores it either way.
    */
@@ -207,10 +225,27 @@ export type PhiMediaUploadCompletionInput = {
  * therefore carries the algorithm that produced it.
  */
 export const PHIS_MEDIA_CHECKSUM_ALGORITHMS = [
-  "sha256", "sha512", "xxhash128", "crc64nvme", "crc32c", "crc32", "md5",
+  "sha256", "sha512", "sha256-composite", "xxhash128", "crc64nvme", "crc32c", "crc32", "md5",
 ] as const;
 
 export type PhisMediaChecksumAlgorithm = (typeof PHIS_MEDIA_CHECKSUM_ALGORITHMS)[number];
+
+/*
+ * The division and the composite's recorded form live in `./media.ts`, and are re-exported here.
+ *
+ * They are the one part of this contract a browser has to compute as well: the Client hashes the parts
+ * before a plan exists, because a part digest can only be signed into a part request if it is known when
+ * that request is signed. So the rule cannot sit behind the Add-on surface, and it must not be written
+ * twice -- two copies of a division are two divisions the day one of them is edited.
+ */
+export {
+  PHIS_MEDIA_UPLOAD_MAX_PART_COUNT,
+  PHIS_MEDIA_UPLOAD_PART_SIZE_BYTES,
+  formatPhiMediaCompositeChecksum,
+  parsePhiMediaCompositeChecksum,
+  resolvePhiMediaUploadPartCount,
+  resolvePhiMediaUploadPartSizeBytes,
+} from "./media.js";
 
 /**
  * The digests strong enough to answer "is this the same file", rather than only "did it arrive intact".
@@ -224,7 +259,21 @@ export type PhisMediaChecksumAlgorithm = (typeof PHIS_MEDIA_CHECKSUM_ALGORITHMS)
  * Space can stop one file from entering it. Small, but not nothing, and free to avoid.
  */
 export const PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS: readonly PhisMediaChecksumAlgorithm[] =
-  ["sha256", "sha512"];
+  ["sha256", "sha512", "sha256-composite"];
+
+/**
+ * Why `sha256-composite` is identity-grade although it hashes digests rather than bytes.
+ *
+ * It is `SHA256` over the concatenated part digests of a body divided by a fixed rule. For the question
+ * duplicate detection asks -- are these the same bytes -- it is as hard to forge as SHA-256 itself: a
+ * second file matching one requires a SHA-256 collision in some part. What it cannot do is compare across
+ * divisions, which is why the division is written into the value and why the rule above is frozen.
+ *
+ * It exists because a browser cannot produce the other kind for a large file. Web Crypto has no
+ * incremental digest, so a whole-object SHA-256 means holding the entire body in memory; a part digest is
+ * one part, and the composite over those is a few kilobytes. The choice is not between this and a
+ * whole-object digest, it is between this and no digest at all.
+ */
 
 export function isPhisMediaIdentityChecksum(algorithm: string | null | undefined) {
   return PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS.includes(algorithm as PhisMediaChecksumAlgorithm);
@@ -240,12 +289,17 @@ export function isPhisMediaIdentityChecksum(algorithm: string | null | undefined
  *
  * Only identity-grade digests are eligible. A CRC an endpoint also verifies still proves a transfer
  * intact, and Core records it when that is what arrived; it is simply not what a Profile asks for.
+ *
+ * `sha256-composite` is not eligible either, for a different reason: it is not something an endpoint
+ * verifies, it is the form a SHA-256 takes when a body arrived in parts. A Profile records a base
+ * algorithm, and an object assembled from parts under a `sha256` Profile carries the composite of it.
  */
 export function choosePhisMediaChecksumAlgorithm(
   probe: { verifiedAlgorithms: readonly PhisMediaChecksumAlgorithm[] } | null | undefined,
 ): PhisMediaChecksumAlgorithm | null {
   if (!probe) return null;
   for (const candidate of PHIS_MEDIA_IDENTITY_CHECKSUM_ALGORITHMS) {
+    if (candidate === "sha256-composite") continue;
     if (probe.verifiedAlgorithms.includes(candidate)) return candidate;
   }
   return null;
@@ -269,18 +323,19 @@ export type PhisMediaStorageProbe = {
    * never be told to be the same.
    */
   verifiedAlgorithms: PhisMediaChecksumAlgorithm[];
-  /**
-   * Whether a digest survives an object arriving in parts.
-   *
-   * A checksum signed into one PUT covers that PUT. Above the single-request limit an object is
-   * assembled from parts, and the usual answer is a digest of the part digests -- a number that hashes
-   * no bytes anyone uploaded. An endpoint that computes over the whole assembled object instead keeps
-   * the guarantee at any size; one that does not confines it to what fits in one request.
-   */
-  verifiesWholeMultipartObject: boolean;
   /** What did not answer, in an operator's terms. Empty when everything did. */
   findings: string[];
 };
+
+/*
+ * There is deliberately no "does a whole-object digest survive multipart" answer here, and adding one
+ * back would measure something the API forbids: `ChecksumType: FULL_OBJECT` is accepted only for the CRC
+ * algorithms, while `SHA1` and `SHA256` take `COMPOSITE` alone. A probe asking for a whole-object SHA-256
+ * over an assembled object therefore always fails, on every compliant endpoint, and a permission built on
+ * that answer can never open. What an object assembled from parts carries is `sha256-composite`, which is
+ * why that is an algorithm rather than a missing digest, and whether to assemble at all is a question
+ * about size -- `mayAssembleFromParts`.
+ */
 
 export interface PhisMediaStorageAdapter {
   /**
