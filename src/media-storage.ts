@@ -201,6 +201,53 @@ export type PhiMediaUploadPlanInput = {
 };
 
 /**
+ * What is needed to carry on delivering an assembly that was already opened.
+ *
+ * The case is a page that went away mid-upload -- a reload, a crash, a tab somebody closed. The parts that
+ * did arrive are at the Provider, paid for and perfectly good, and until now the only thing that could
+ * happen to them was to be aborted: the plan was gone with the page, and asking for a new one opens a
+ * second assembly the first one's parts do not belong to. Which is why this is not `createUploadPlan` with
+ * an extra field. `createUploadPlan` *opens* an upload; this one joins the one that is open.
+ *
+ * It is deliberately not "list the parts and let Core sign what is missing": which parts an assembly holds
+ * and which addresses those parts have are the same Provider's business, and splitting them would put Core
+ * in the position of deciding what is missing from a listing it cannot interpret.
+ *
+ * `partChecksums` carries **every** part's digest, in part order, exactly as `createUploadPlan` received it
+ * -- the implementation signs the ones it is about to ask for. Anything else would make Core work out the
+ * gap before it knows what the gap is.
+ */
+export type PhiMediaUploadResumeInput = {
+  storageKey: string;
+  /** The Provider's own name for the assembly, which the session kept because the Client could not. */
+  uploadId: string;
+  contentType: string;
+  sizeBytes: number;
+  expiresAt: string;
+  /** One digest per part, in part order, as lowercase hex. The same bargain as on a fresh plan. */
+  partChecksums?: readonly string[];
+};
+
+/**
+ * An assembly as it stands: what is still to be sent, and what is already there.
+ *
+ * The two halves travel together because a completion has to name every part. The Client brings back the
+ * tags of the parts it sent, and these are the tags of the parts an earlier page sent -- nobody else has
+ * them, and the Client that had them is the thing that went away.
+ */
+export type PhiMediaUploadResumption = {
+  /** Addresses for the parts the storage does not hold yet. Empty where the body is complete. */
+  plan: Extract<PhiMediaUploadPlan, { kind: "multipart-put" }>;
+  /** The parts it does hold, in part order. */
+  uploaded: readonly {
+    partNumber: number;
+    /** As the storage reports it, quoting and all: a completion has to name it exactly. */
+    eTag: string;
+    sizeBytes: number;
+  }[];
+};
+
+/**
  * What a storage is asked to clean up on its own, and how long it must wait first.
  *
  * Both figures follow from how long an upload session may live, which is Core's to know. They are days
@@ -448,6 +495,29 @@ export interface PhisMediaStorageAdapter {
   listPrefix(prefix: string): Promise<PhisMediaObjectHead[]>;
   /** States how the Client is to deliver this body. */
   createUploadPlan(input: PhiMediaUploadPlanInput): Promise<PhiMediaUploadPlan>;
+  /**
+   * Says how what is left of an already opened assembly is to be delivered.
+   *
+   * This is what makes a large upload survive the page it was started from. A part that fails repeats
+   * alone already, but a reload used to cost every part that had arrived -- the plan lived in the tab and
+   * the parts were aborted the moment the page said it was leaving. The parts are the expensive thing;
+   * they are at the Provider and nothing is wrong with them.
+   *
+   * The Provider answers, not Core, because only the Provider knows what it is holding. A Client's account
+   * of how far it got is a claim about a session that has stopped existing, and a Core-side tally would be
+   * a second record of the same fact that can disagree with the storage.
+   *
+   * `null` means there is nothing to carry on: the assembly was aborted, or a lifecycle rule has reached
+   * it, or it was never this storage's. It also means that for a Provider that never assembles anything --
+   * a no-op answer and not a shortcoming, the same way `applyCorsPolicy` is a no-op where no browser ever
+   * addresses the storage.
+   *
+   * An implementation must refuse -- `null` -- where what it holds was divided differently from what it is
+   * being asked to sign: a part of the wrong size means the object would assemble into something other
+   * than the body Core recorded a digest for, and finishing it would put a correct digest on the wrong
+   * bytes. Starting over is the honest outcome there.
+   */
+  resumeUploadPlan(input: PhiMediaUploadResumeInput): Promise<PhiMediaUploadResumption | null>;
   /**
    * Settles the staged object once the Client says it is done, and answers what actually landed.
    *
