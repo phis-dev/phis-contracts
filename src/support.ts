@@ -58,6 +58,67 @@ export const PhisSupportQueueFlag = {
 } as const;
 
 /**
+ * Where a ticket stands, as one value rather than as a set of flags.
+ *
+ * A ladder and not a bag: a ticket is at exactly one of these, and the order is the order work moves
+ * in. The two waiting states are apart because they wait on different people -- a Site chasing its own
+ * customer and a Site chasing itself are not the same queue to look at -- and `Resolved` stays distinct
+ * from `Closed` throughout, for the reason `PhisSupportClosePolicy` gives.
+ *
+ * These numbers were spelled out in phis-server alone, as `SUPPORT_TICKET_STATUS_*`, while the types in
+ * this file pointed at them in prose. That left every surface outside that process unable to name a
+ * status it was being sent: a ticket list could show the number or invent its own table of names. The
+ * server now derives its constants from these, so there is one spelling of the ladder.
+ */
+export const PhisSupportTicketStatus = {
+  New: 0,
+  Triaged: 1,
+  Assigned: 2,
+  InProgress: 3,
+  WaitingCustomer: 4,
+  WaitingInternal: 5,
+  Escalated: 6,
+  Resolved: 7,
+  Closed: 8,
+} as const;
+
+export type PhisSupportTicketStatusValue =
+  (typeof PhisSupportTicketStatus)[keyof typeof PhisSupportTicketStatus];
+
+/** How the ticket arrived. `Internal` is a Supporter opening one on somebody's behalf. */
+export const PhisSupportTicketChannel = {
+  Portal: 0,
+  Email: 1,
+  GitHub: 2,
+  Api: 3,
+  Internal: 4,
+} as const;
+
+export type PhisSupportTicketChannelValue =
+  (typeof PhisSupportTicketChannel)[keyof typeof PhisSupportTicketChannel];
+
+/** How soon it wants an answer. What the Site promises per level is the Site's, not this contract's. */
+export const PhisSupportTicketPriority = {
+  Low: 0,
+  Normal: 1,
+  High: 2,
+  Urgent: 3,
+} as const;
+
+export type PhisSupportTicketPriorityValue =
+  (typeof PhisSupportTicketPriority)[keyof typeof PhisSupportTicketPriority];
+
+/** How much is broken, which is not the same question as how soon somebody wants it answered. */
+export const PhisSupportTicketSeverity = {
+  Minor: 0,
+  Major: 1,
+  Critical: 2,
+} as const;
+
+export type PhisSupportTicketSeverityValue =
+  (typeof PhisSupportTicketSeverity)[keyof typeof PhisSupportTicketSeverity];
+
+/**
  * What ends a ticket of this type.
  *
  * `Resolved` and `Closed` stay distinct throughout: resolved is technically done, closed is confirmed.
@@ -218,7 +279,7 @@ export type PhisSupportTicket = {
   /** Its conversation, to be read and appended to through `threads:v1`. */
   threadId: number;
   subject: string;
-  /** `SUPPORT_TICKET_STATUS_*`: new, triaged, assigned, in progress, waiting, escalated, resolved, closed. */
+  /** `PhisSupportTicketStatus`: the ladder from `New` to `Closed`. */
   status: number;
   /** The queue it was taken into, or none while it is still in triage. */
   queueId: number | null;
