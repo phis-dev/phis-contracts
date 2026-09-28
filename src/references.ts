@@ -21,7 +21,9 @@
 
 import {
   createPhiPresetCmsInstanceId,
+  isPhiCmsAreaKey,
   readPhiCmsInstanceIdDescriptor,
+  type PhiCmsAreaKey,
   type PhiCmsInstanceId,
 } from "./cms.js";
 
@@ -181,7 +183,25 @@ export function readPhiInternalReference(value: unknown): PhiInternalReference |
  * drifts the first time only one of the two is read.
  */
 export type PhiLinkTarget =
-  | { kind: "page"; reference: PhiPageReference; fragment?: string | null; newTab?: boolean }
+  | {
+      kind: "page";
+      reference: PhiPageReference;
+      /**
+       * Which Area to resolve the reference in, where it is not the one asking.
+       *
+       * A reference names a Page and not where to look for it: the Area is resolution context, supplied
+       * by whoever asks. Every asker supplied its own, so a link out of one Area into another resolved
+       * to nothing -- the Navigation source tree let an author pick a Page from another Area, the drop
+       * kept it, and the table then showed it as unresolvable.
+       *
+       * Absent means the asking Area, which is nearly every link, so nothing is stored for the ordinary
+       * case. Present, it does not make the reference mean something else; it says where the question
+       * goes. Whether the reader may follow it is still the target Area's own answer.
+       */
+      area?: PhiCmsAreaKey;
+      fragment?: string | null;
+      newTab?: boolean;
+    }
   | { kind: "external"; href: string; newTab?: boolean };
 
 /**
@@ -244,7 +264,19 @@ export function readPhiLinkTarget(value: unknown): PhiLinkTarget | null {
       return null;
     }
     const fragment = typeof record.fragment === "string" ? record.fragment.replace(/^#/u, "").trim() : "";
-    return { kind: "page", reference: parsed.reference, ...(fragment ? { fragment } : {}), ...newTab };
+    /*
+     * An Area that is not one is dropped rather than kept: the alternative is a stored value that asks
+     * a question nowhere can answer, and a link drawing nothing with no way to see why. Falling back to
+     * the asking Area is the behaviour of every link that names none, which is the honest default.
+     */
+    const area = isPhiCmsAreaKey(record.area) ? { area: record.area } : {};
+    return {
+      kind: "page",
+      reference: parsed.reference,
+      ...area,
+      ...(fragment ? { fragment } : {}),
+      ...newTab,
+    };
   }
   if (record.kind === "external") {
     const href = typeof record.href === "string" ? record.href.trim() : "";

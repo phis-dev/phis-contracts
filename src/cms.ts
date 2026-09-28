@@ -57,6 +57,31 @@ export type PhiCmsRegionTypeValue =
  * Bits 2, 5 and 7 are unassigned. That is what makes the numbers worth stating once: 8 reads like the
  * fourth Area and is the third, and phi-server stores it as `area_id` where nothing spells it out.
  */
+/**
+ * The Areas a Site has, by name.
+ *
+ * The numbering below already lived here, because both sides store it and a renumbering neither of
+ * them noticed would put a Page in a different Area than it was written into. The names are the same
+ * agreement read the other way round and stood in two more copies -- one per repository -- so a Site
+ * that gained an Area would have had to gain it three times.
+ */
+export const PHI_CMS_AREA_KEYS = [
+  "public",
+  "app",
+  "admin",
+  "builder",
+  "editor",
+  "accounting",
+] as const;
+
+export type PhiCmsAreaKey = (typeof PHI_CMS_AREA_KEYS)[number];
+
+const PHI_CMS_AREA_KEY_SET = new Set<string>(PHI_CMS_AREA_KEYS);
+
+export function isPhiCmsAreaKey(value: unknown): value is PhiCmsAreaKey {
+  return typeof value === "string" && PHI_CMS_AREA_KEY_SET.has(value);
+}
+
 export const PhiCmsVisibilityContext = {
   PublicArea: 1 << 0,
   AppArea: 1 << 1,
