@@ -15,6 +15,11 @@
     "prepack": "npm run build"
   },
   "exports": {
+    "./references": {
+      "types": "./dist/references.d.ts",
+      "import": "./dist/references.js",
+      "default": "./dist/references.js"
+    },
     "./addon": {
       "types": "./dist/addon-index.d.ts",
       "import": "./dist/addon-index.js",
