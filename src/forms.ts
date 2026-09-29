@@ -174,6 +174,35 @@ export type PhiFormFieldDescriptor = {
  * Absent means the form says nothing of its own. That is the right answer wherever something else is
  * listening -- a Controller that closes an Overlay on `submitSuccess`, a page that navigates away.
  */
+/**
+ * What the form's own submit looks like, where one is drawn.
+ *
+ * Whether one is drawn is not said here. That is the placement's question: the same form stands on a
+ * page of its own with a button under its fields, and in a dialog whose footer carries the button --
+ * or with no button anywhere, submitted by a Button Widget through the `submit` capability, or by
+ * Enter where the placement allows it. The Form Widget answers it (`inline` or `external`); the form
+ * answers only what its button says and where on its grid it stands, because that is geometry of the
+ * same grid its fields are laid out on.
+ */
+export type PhiFormSubmitDescriptor = {
+  /** What it says. Absent is `PHI_FORM_DEFAULT_SUBMIT_LABEL`. */
+  label?: PhiFormTextDescriptor;
+  /** Where inside its range it sits. Absent is `start`: under the first input, where the eye is. */
+  align?: PhiFormLogicalAlignment;
+  /**
+   * The tracks it stands on. Absent is the layout's control range -- the tracks a field that says
+   * nothing about itself puts its control on, including the label column a Form Layout may move.
+   */
+  control?: PhiFormResponsiveGridRange;
+};
+
+/** What a submit says where the descriptor names nothing: the form's own word for it, else "Submit". */
+export const PHI_FORM_DEFAULT_SUBMIT_LABEL = {
+  kind: "label",
+  key: "actions.submitLabel",
+  fallback: "Submit",
+} as const satisfies PhiFormTextDescriptor;
+
 export type PhiFormSuccessDescriptor = {
   title: PhiFormTextDescriptor;
   text?: PhiFormTextDescriptor;
@@ -220,6 +249,7 @@ export type PhiFormDescriptor = {
    * every visitor and can be cached.
    */
   guard?: boolean;
+  submit?: PhiFormSubmitDescriptor;
 };
 
 /** The last grid line, one past the last track, because `end` is exclusive. */
@@ -310,7 +340,10 @@ function readFormConditionExpression(value: unknown, path: string) {
   return expression;
 }
 
-function readResponsiveGap(value: unknown, path: string): PhiResponsiveValue<PhiSpacingToken> | undefined {
+function readResponsiveGap(
+  value: unknown,
+  path: string,
+): PhiResponsiveValue<PhiSpacingToken> | undefined {
   if (value == null) return undefined;
   if (!isPhiRecord(value)) throw new Error(`${path} must be a responsive spacing object.`);
   const readToken = (entry: unknown, entryPath: string) => {
@@ -454,6 +487,22 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
   };
 }
 
+function readSubmit(value: unknown): PhiFormSubmitDescriptor | undefined {
+  if (value == null) return undefined;
+  if (!isPhiRecord(value)) throw new Error("submit must be an object.");
+  const align = value.align;
+  if (align != null && align !== "start" && align !== "center" && align !== "end") {
+    throw new Error("submit.align must be start, center or end.");
+  }
+  const label = value.label == null ? undefined : readTextDescriptor(value.label, "submit.label");
+  const control = readPlacementPart(value.control, "submit.control");
+  return {
+    ...(label ? { label } : {}),
+    ...(align ? { align } : {}),
+    ...(control ? { control } : {}),
+  };
+}
+
 export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
   if (!isPhiRecord(value)) {
     throw new Error("Form descriptor must be an object.");
@@ -466,14 +515,10 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
   }
   if ("actions" in value) {
     /*
-     * A descriptor describes a form's fields, never what is done with them. Where a form is submitted
-     * from is a question about the surface it stands on: a Button Widget beside it, an Overlay footer,
-     * a toolbar -- or the Form Widget's own `submit` option, which is config on the Widget and reaches
-     * the same `submit` capability those do.
+     * A form has one submit and it is described under `submit`; whether it is drawn is the Form
+     * Widget's placement. A list of actions would be a second vocabulary for the same thing.
      */
-    throw new Error(
-      "Form descriptor actions are forbidden; use the Form Widget's submit option or an external Button Widget.",
-    );
+    throw new Error("Form descriptor actions are forbidden; describe the submit under submit.");
   }
   if ("presentation" in value) {
     throw new Error("Form descriptor presentation is forbidden; use the owning Layout or Overlay.");
@@ -533,6 +578,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
     errors,
     persistDraft: value.persistDraft == null ? undefined : value.persistDraft === true,
     guard: value.guard == null ? undefined : value.guard === true,
+    submit: readSubmit(value.submit),
   };
 }
 
