@@ -7,7 +7,7 @@
     "access": "public"
   },
   "sideEffects": false,
-  "description": "The agreements phis keeps with the site UI, Sites and Add-ons: the Add-on ABI, access, signals, catalog, CMS identity, media, HTTP headers, locale, logging, capabilities and group levels.",
+  "description": "The agreements phis keeps with the site UI, Sites and Add-ons: the Add-on ABI, access, signals, conditions, forms, controls, layout, catalog, CMS identity, media, HTTP headers, locale, logging, capabilities and group levels.",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
@@ -94,6 +94,26 @@
       "types": "./dist/user-state.d.ts",
       "import": "./dist/user-state.js",
       "default": "./dist/user-state.js"
+    },
+    "./conditions": {
+      "types": "./dist/conditions.d.ts",
+      "import": "./dist/conditions.js",
+      "default": "./dist/conditions.js"
+    },
+    "./controls": {
+      "types": "./dist/controls.d.ts",
+      "import": "./dist/controls.js",
+      "default": "./dist/controls.js"
+    },
+    "./forms": {
+      "types": "./dist/forms.d.ts",
+      "import": "./dist/forms.js",
+      "default": "./dist/forms.js"
+    },
+    "./layout": {
+      "types": "./dist/layout.d.ts",
+      "import": "./dist/layout.js",
+      "default": "./dist/layout.js"
     }
   },
   "files": [

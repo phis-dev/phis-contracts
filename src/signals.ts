@@ -205,6 +205,12 @@ export function isPhiControllerSignalAddress(address: unknown): address is PhiCo
   );
 }
 
+export function readPhiControllerSignalAddress(
+  value: unknown,
+): PhiControllerSignalAddress | undefined {
+  return isPhiControllerSignalAddress(value) ? value.trim() as PhiControllerSignalAddress : undefined;
+}
+
 /** The instance a `cms:` address names, or null when the string is not one. */
 export function readPhiCmsSignalAddressInstanceId(address: string): PhiCmsInstanceId | null {
   if (!address.startsWith("cms:")) {
