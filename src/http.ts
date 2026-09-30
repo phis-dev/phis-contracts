@@ -1,7 +1,7 @@
 /**
  * The request headers phis and the site UI must spell the same way.
  *
- * These five names are a wire protocol between processes that deploy independently. phis reads them in
+ * These names are a wire protocol between processes that deploy independently. phis reads them in
  * its guards and route handlers; the site UI writes them in its proxies, gateways and browser widgets.
  * A disagreement is not a type error and not a failing test -- it is a 403 from `guardApiV1` or a 400
  * from `requireSiteFromExplicitKeyRequest`, at runtime, in whichever direction the mismatch happens to
@@ -35,3 +35,13 @@ export const PHIS_AREA_HEADER = "x-phis-area" as const;
  */
 export const PHIS_REQUEST_PATH_HEADER = "x-phis-request-path" as const;
 export const PHIS_REQUEST_SEARCH_HEADER = "x-phis-request-search" as const;
+
+/**
+ * Marks a request the site UI's form relay forwards for a visitor.
+ *
+ * The relay calls phis with the internal token, and the internal token is exempt from the per-address
+ * limit because it measures a Site runtime rather than a person. This header tells phis that behind this
+ * one request stands a single visitor, so `guardApiV1` counts their submissions -- by session, or by
+ * address where there is none. Anybody may send it; all it can do is put the sender under a limit.
+ */
+export const PHIS_FORM_RELAY_HEADER = "x-phis-form-relay" as const;
