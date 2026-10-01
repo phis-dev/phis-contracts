@@ -1,3 +1,5 @@
+import { isPhiCmsAreaKey, type PhiCmsAreaKey } from "./cms.js";
+
 /**
  * What a Module is for, as an operator reads it on the Modules page.
  *
@@ -88,6 +90,19 @@ export type PhisModulePackageEntry = {
    * asks at intake, where refusing costs the publisher a message rather than the operator a page.
    */
   category: string;
+  /**
+   * The Areas the Module may serve, and the only place a package states them.
+   *
+   * Here and not in the Module's definition, because the reader that needs them first cannot run the
+   * definition: `phis module` writes one Client projection per Area and must know, without loading a
+   * stranger's code, which packages' Client doors belong in which. A definition that stated them as
+   * well would be a second answer that can disagree with this one; the generated projection hands
+   * these to the definition instead.
+   *
+   * Membership, unlike the category: an Area is a place the Site renders, and one this build has no
+   * place for cannot be served at all.
+   */
+  eligibleAreas: PhiCmsAreaKey[];
 };
 
 /**
@@ -153,14 +168,25 @@ export function readPhisModulePackageDeclaration(
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
       throw new Error(`"${at}" must be an object.`);
     }
-    const { moduleId, category } = entry as Record<string, unknown>;
+    const { moduleId, category, eligibleAreas } = entry as Record<string, unknown>;
     if (typeof moduleId !== "string" || !moduleId.trim()) {
       throw new Error(`"${at}.moduleId" must be a non-empty string.`);
     }
     if (typeof category !== "string" || !category.trim()) {
       throw new Error(`"${at}.category" must be a non-empty string.`);
     }
-    return { moduleId, category };
+    if (!Array.isArray(eligibleAreas) || eligibleAreas.length === 0) {
+      throw new Error(`"${at}.eligibleAreas" must name at least one Area.`);
+    }
+    for (const area of eligibleAreas) {
+      if (!isPhiCmsAreaKey(area)) {
+        throw new Error(`"${at}.eligibleAreas" names "${String(area)}", which is not an Area.`);
+      }
+    }
+    if (new Set(eligibleAreas).size !== eligibleAreas.length) {
+      throw new Error(`"${at}.eligibleAreas" names an Area twice.`);
+    }
+    return { moduleId, category, eligibleAreas: [...eligibleAreas] as PhiCmsAreaKey[] };
   });
   return { sourceLocale: typeof sourceLocale === "string" ? sourceLocale : null, modules };
 }
