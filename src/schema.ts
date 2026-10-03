@@ -247,6 +247,15 @@ export type PhisAddonAssetSlotDescriptor = {
    * newest of several would be a fact nobody asked for.
    */
   mirrorColumn?: string;
+  /**
+   * A role this Add-on declares, which the actor must hold to put a file in this slot, take one out,
+   * or list what it holds -- the same guard `requiresRole` is on a declared query, refused loudly.
+   *
+   * On an owner- or group-scoped table it narrows: the row's own authority still has to agree. On a
+   * table with neither, Core has no row to judge, so a slot there must state one, and the role is then
+   * the whole authority -- which is what lets a category icon or a shop logo carry a file at all.
+   */
+  requiresRole?: string;
 };
 
 export type PhisAddonTableDescriptor = {
