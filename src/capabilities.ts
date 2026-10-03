@@ -212,9 +212,20 @@ export type PhisStorageCapabilityV1 = {
  * own would be a package that could plant one.
  */
 export type PhisSecretsCapabilityV1 = {
-  /** The value, or null when the operator has not configured it. */
-  read(name: string): Promise<string | null>;
+  /**
+   * The value, or null when the operator has not configured it.
+   *
+   * `scope` says which of the two an operator can set: `"site"` (the default) is the one set with
+   * `--site` for the Site this call runs on; `"addon"` is the one set without `--site`, shared by every
+   * Site the Add-on runs on -- one credential for one external account, such as a single app
+   * registration. The two are never substituted for each other: a Site secret that is missing is
+   * `null`, not the shared one.
+   */
+  read(name: string, scope?: PhisSecretScope): Promise<string | null>;
 };
+
+/** Which secret `PhisSecretsCapabilityV1.read` names: the Site's own, or the one shared by all Sites. */
+export type PhisSecretScope = "site" | "addon";
 
 /**
  * What an Add-on may learn about a person.
