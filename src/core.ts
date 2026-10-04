@@ -1,3 +1,5 @@
+import type { PhisPaymentChangedEventFacts } from "./payments.js";
+
 /**
  * What Core offers, named once so both sides can spell it the same way.
  *
@@ -46,6 +48,8 @@ export const PHIS_CORE_CAPABILITIES = {
   settings: "@phis/server/settings:v1",
   /** Whether the acting user holds one of this Add-on's own declared roles. */
   roles: "@phis/server/roles:v1",
+  payments: "@phis/server/payments:v1",
+  paymentNotifications: "@phis/server/payment-notifications:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -71,10 +75,16 @@ export const PHIS_ADDON_EVENTS = {
   threadStatusChanged: "thread.status.changed",
   /** The link itself is gone; what follows from that is the Add-on's own business. */
   threadLinkRemoved: "thread.link.removed",
+  paymentChanged: "payment.changed",
 } as const;
 
+export type PhisAddonThreadEventId =
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed">;
+
+/** Delivered v1 event vocabulary, discriminated by its owned subject. */
 export type PhisAddonEventId =
-  (typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS];
+  | PhisAddonThreadEventId
+  | PhisPaymentChangedEventFacts["event"];
 
 /**
  * The Core-owned service kinds an Add-on may implement.
@@ -85,6 +95,7 @@ export type PhisAddonEventId =
  */
 export const PHIS_SERVICE_KINDS = {
   mediaStorage: "@phis/server/service/media-storage",
+  payments: "@phis/server/service/payments",
   directory: "@phis/server/service/directory",
   /**
    * Turning text in one language into text in another.
@@ -120,11 +131,14 @@ export type PhisServiceKind =
  */
 export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, number>> = {
   [PHIS_SERVICE_KINDS.mediaStorage]: 1,
+  [PHIS_SERVICE_KINDS.payments]: 1,
   [PHIS_SERVICE_KINDS.directory]: 1,
   [PHIS_SERVICE_KINDS.translation]: 1,
 };
 
 export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
+  [PHIS_SERVICE_KINDS.payments]:
+    "6b106818d5edbfeddd484e9f571509695a1a8dbb5b82435338a094216410fcf7",
   [PHIS_SERVICE_KINDS.mediaStorage]:
     "45a871522511f7d77841ca8dd0113b423b3cfd4cb921f143cd1d3d116cab6952",
   [PHIS_SERVICE_KINDS.directory]:

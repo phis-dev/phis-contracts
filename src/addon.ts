@@ -90,7 +90,9 @@ export type PhisAddonHookDescriptor = {
    *
    * Absent is not a lesser variant of present: an unverified hook writes nothing at all -- not through
    * `data:v1`, not by opening a thread -- because nothing distinguishes its caller from anybody who
-   * found the address. A hook that needs to write declares how it can be believed.
+   * found the address. A hook that needs ambient write authority declares how it can be believed.
+   * Target v1 Payment notification ingress instead verifies through its bound Core capability and
+   * reconciles Core-owned payment state without granting ambient hook write authority.
    */
   verification?: PhisAddonHookVerificationDescriptor;
   /**

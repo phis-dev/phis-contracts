@@ -6,6 +6,7 @@ and change at different moments.
 
 ```
 @phis/contracts/addon                what phis and a separately shipped Add-on promise each other
+@phis/contracts/payments             the approved Payment consumer, Provider and merchant-profile types
 @phis/contracts/access               the authorization vocabulary phis and @phis/ui both evaluate
 @phis/contracts/signals              the signal vocabulary and address grammar the UI declares in and phis validates
 @phis/contracts/catalog              the Module categories an Add-on declares, the UI groups by and a market filters on
@@ -45,7 +46,7 @@ The types and constants an Add-on declares or implements. Types and constants on
 `server-only`, no React, no Next.
 
 An Add-on is compiled to a single ESM artifact and installed into a running phis through the `phis` CLI;
-it is never built into the server. This subpath is the only thing an Add-on compiles against, and it must
+it is never built into the server. This subpath is the shared Add-on entrypoint it compiles against, and it must
 not depend on phis itself. For an Add-on author it is a build-time dependency: everything it exports is
 erased at compile time apart from a handful of constants.
 
@@ -61,16 +62,33 @@ What it covers:
   (`PhisMediaStorageAdapter`, upload plans, object I/O) and Directory. `PHIS_SERVICE_KINDS` names them
   and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
   Add-on built against a different digest at install.
-- **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the capability ids an Add-on may require. Declare
-  against these constants rather than spelling the ids out. The list is the vocabulary and may reserve a
-  name before Core delivers it (`resource-links`, `support`); an Add-on that requires a capability this
-  release does not deliver is refused rather than handed a missing object.
+- **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
+  against these constants rather than spelling the ids out. Core separately validates delivery to
+  Add-ons; a catalogue id such as `authentication` may serve Site Modules without a corresponding
+  Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
 
 `PHIS_ADDON_ABI_VERSION` is the single number phis checks an Add-on against.
 
 How an Add-on is laid out, compiled, installed, activated and upgraded is described in phis's
 [`ADDON_HOWTO.md`](https://github.com/phis-dev/phis-server/blob/main/ADDON_HOWTO.md); the rules behind it
 are in [`SERVER_ADDONS.md`](https://github.com/phis-dev/phis-server/blob/main/SERVER_ADDONS.md).
+
+## `/payments`
+
+The approved v1 consumer capability, Provider adapter, checkout plans, normalized money,
+payment/operation/refund records, merchant profile/grant types and owning-consumer event facts.
+All exports are types; there is no secret accessor implementation, checkout SDK, exchange-rate
+conversion or Payment engine here. The same types are re-exported by `/addon`.
+
+Consumers own their prices in CHF, EUR, USD or another supported currency. Every payment uses one
+currency; capture and refunds inherit it. Core never infers conversion or settlement currency.
+
+Core implements Payment execution separately. Its catalogue exports `payments`, `paymentNotifications`,
+the Payment service kind/interface digest and `payment.changed`. Notification ingress is available
+only in a bound hook context. The Add-on event context discriminates thread and Payment subjects;
+thread producers remain explicitly typed as thread events.
+See the normative [Payment contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS.md)
+and [Stripe/profile contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS_STRIPE.md).
 
 ## `/access`
 

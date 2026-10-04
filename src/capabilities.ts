@@ -13,7 +13,12 @@
  */
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
-import type { PhisAddonEventId } from "./core.js";
+import type { PhisAddonThreadEventId } from "./core.js";
+import type {
+  PhisPaymentChangedEventFacts,
+  PhisPaymentNotificationsCapabilityV1,
+  PhisPaymentsCapabilityV1,
+} from "./payments.js";
 import type { PhisDataCapabilityV1 } from "./queries.js";
 import type { PhisResourceLinksCapabilityV1 } from "./resource-links.js";
 import type { PhisSupportCapabilityV1 } from "./support.js";
@@ -112,6 +117,10 @@ export type PhisAddonCapabilities = {
   support?: PhisSupportCapabilityV1;
   settings?: PhisSettingsCapabilityV1;
   roles?: PhisRolesCapabilityV1;
+  /** Bound to the declaring consumer and Site when required. */
+  payments?: PhisPaymentsCapabilityV1;
+  /** Supplied only to an original, bound Payment Provider hook request. */
+  paymentNotifications?: PhisPaymentNotificationsCapabilityV1;
 };
 
 /**
@@ -351,18 +360,22 @@ export type PhisAddonJobContext = {
  * this Site something, an event is this Site telling an Add-on something, and both run as the Add-on
  * rather than as a person.
  *
- * Delivery is bounded by the same link. An Add-on is told about a thread it is synced with and about no
- * other, because a Site-wide feed of everything anybody writes is the listing `threads:v1` refuses,
- * arriving by push instead of by pull.
+ * Thread delivery is bounded by a synced link. The Payment event reaches only its stored
+ * consuming Add-on. The subject kind and event discriminate those two ownership models; approved
+ * Payment facts are delivered through Core's durable owner-directed outbox.
  */
-export type PhisAddonEventContext = {
+export type PhisAddonEventFacts =
+  | {
+      event: PhisAddonThreadEventId;
+      subject: { kind: "thread"; threadId: number; messageId: number | null };
+    }
+  | PhisPaymentChangedEventFacts;
+
+export type PhisAddonEventContext = PhisAddonEventFacts & {
   addonId: string;
-  event: PhisAddonEventId;
   /** This delivery, stable across retries, so a handler can recognise one it already settled. */
   deliveryId: string;
   site: { id: number; key: string };
-  /** The thread the event happened in, and the message where the event is about one. */
-  subject: { threadId: number; messageId: number | null };
   capabilities: PhisAddonCapabilities;
   signal: AbortSignal;
 };
