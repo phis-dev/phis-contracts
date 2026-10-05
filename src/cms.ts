@@ -95,7 +95,9 @@ export const PhiCmsVisibilityContext = {
  * The flags a CMS row carries, in the one numbering both sides read them from.
  *
  * Not every flag reaches every kind of row -- `Collapsed` is a Region's answer and `MobileOnly` a
- * renderable's -- but they share one space, because a row is stored as a row whatever it holds.
+ * renderable's -- but they share one space, because a row is stored as a row whatever it holds. The
+ * same numbering serves a config's own `flags`, where a Region's and an Overlay's behaviour live
+ * (`Sticky`, `NoCloseButton`, ...): a yes-or-no answer in a stored record is a bit, never a boolean.
  *
  * `NoIndex` is a Page's, and it is the Site's answer rather than the preset's: a Module states what a
  * Page it ships starts out as, and the Builder's switch is what decides from then on. That is why it
@@ -110,6 +112,35 @@ export const PhiCmsFlags = {
   Collapsed: 1 << 4,
   NoTranslate: 1 << 5,
   NoIndex: 1 << 6,
+  /*
+   * A Region's behaviour, carried in its config's `flags`: a Region stored on a Page is a config under
+   * the Page's `layoutConfig` and has no row of its own, so the config is the one place both kinds have.
+   */
+  /** Stays in view while the page scrolls (Header and Sider families). */
+  Sticky: 1 << 7,
+  /** A Sider that takes the viewport height below its offset. */
+  FullHeight: 1 << 8,
+  /** A Sider the viewer can fold to its collapsed width. */
+  Collapsible: 1 << 9,
+  /*
+   * An Overlay's behaviour, carried in its config's `flags` the same way. The bits name the departure
+   * from the Overlay's defaults, so an unset flag set is the plain Overlay: a close button, Escape
+   * closes, the mask stops the pointer and closes on a click.
+   */
+  /** The Header chrome renders no close button. */
+  NoCloseButton: 1 << 10,
+  /** Escape does not request dismissal. */
+  NoEscapeClose: 1 << 11,
+  /** A Modal centred in the viewport. */
+  Centered: 1 << 12,
+  /** A Drawer the viewer can resize. */
+  Resizable: 1 << 13,
+  /** A Drawer that pushes a nested Drawer aside (`pushDistance` states how far). */
+  Push: 1 << 14,
+  /** Pointer input reaches the page behind the Overlay. */
+  MaskPassesPointer: 1 << 15,
+  /** An outside pointer action does not request dismissal. */
+  MaskKeepsOpen: 1 << 16,
 } as const;
 
 export const PhiCmsRevisionFlags = {
