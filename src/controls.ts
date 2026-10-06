@@ -45,7 +45,16 @@ export type PhiControlOption<TValue extends string | number = string> = {
    * come, so the order has to make sense without the headings.
    */
   group?: string;
+  /**
+   * A line drawn between this option and the one before or after it, where the Control can draw one --
+   * a Select does, in its menu. It sets an option apart from the rest without a heading to name it: the
+   * Button's "Custom" above the actions it is not one of. A Control that cannot draw it lists the
+   * options as they come.
+   */
+  separator?: PhiControlOptionSeparator;
 };
+
+export type PhiControlOptionSeparator = "before" | "after";
 
 export type PhiControlOptionPreview = PhiControlOptionBackgroundPreview | PhiControlOptionFontPreview;
 
@@ -216,6 +225,7 @@ export function readPhiControlOptions(value: unknown): PhiControlOption[] {
           icon: readString(record.icon),
           preview: readOptionPreview(record.preview),
           group: readString(record.group),
+          separator: record.separator === "before" || record.separator === "after" ? record.separator : undefined,
         };
       })
       .filter((item): item is PhiControlOption => item != null);
