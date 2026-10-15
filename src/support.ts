@@ -49,6 +49,18 @@ export const PhisSupportTicketTypeFlag = {
 } as const;
 
 /**
+ * What is true of one ticket, as bit flags (`support_tickets.flags`).
+ *
+ * `AwaitingDelivery`: the work is resolved and the fix is not in the requester's hands yet. An integration
+ * that tracks releases sets it when the merge resolves the ticket, and the requester window does not start
+ * until the release says the fix is out (`delivered_at`): a window that ran out before anybody could have
+ * the fix would close a ticket nobody had a chance to object to.
+ */
+export const PhisSupportTicketFlag = {
+  AwaitingDelivery: 1 << 0,
+} as const;
+
+/**
  * What is true of a Support queue, as bit flags.
  *
  * `Entry` is where work arrives when nobody named a queue. It is a mark a Site sets rather than a
@@ -373,6 +385,19 @@ export type PhisSupportCapabilityV1 = {
   }): Promise<PhisSupportTicketTask>;
   /** Moves one task, and only the task. */
   setTaskStatus(input: { taskId: number; status: number }): Promise<PhisSupportTicketTask>;
+  /**
+   * Holds a resolved ticket's requester window until the fix is delivered.
+   *
+   * For an integration that tracks releases: the merge resolved the ticket, and the requester cannot have
+   * the fix until a release carries it. False where the ticket is not resolved -- there is no window to
+   * hold. Reopening or resolving again lets go of it.
+   */
+  awaitDelivery(ticketId: number): Promise<boolean>;
+  /**
+   * Says the fix is out: the requester window of a resolved ticket starts now. False where the ticket is
+   * not resolved or was already delivered.
+   */
+  markDelivered(ticketId: number): Promise<boolean>;
 
   /**
    * What one person may still ask for, of one type.
