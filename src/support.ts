@@ -1,3 +1,5 @@
+import type { PhisSecretsCapabilityV1, PhisSettingsCapabilityV1 } from "./capabilities.js";
+
 /**
  * The Support vocabulary Core and the Support Module must spell the same way.
  *
@@ -355,6 +357,13 @@ export type PhisSupportCapabilityV1 = {
   }): Promise<PhisSupportTicket>;
   /** The work on one ticket, in the order the Site keeps it. */
   listTasks(ticketId: number): Promise<PhisSupportTicketTask[]>;
+  /**
+   * One task, or null where its ticket is out of reach or it is absent.
+   *
+   * The way back from a link: an integration that hears about its external record finds the link, the
+   * link names a task, and the task names its ticket -- whose conversation a comment belongs in.
+   */
+  getTask(taskId: number): Promise<PhisSupportTicketTask | null>;
   /** Records a piece of work, which is what a linked issue hangs on. */
   addTask(input: {
     ticketId: number;
@@ -416,14 +425,19 @@ export type PhisSupportCapabilityV1 = {
  * What Core hands an implementation of `@phis/server/service/support-forwarding` when it builds one.
  *
  * Built per Site and per forward, so the context names the Site; what the implementation talks to and how
- * it signs in is its own, which is why the only thing it reads from Core is its own secrets.
+ * it signs in is its own, which is why what it reads from Core is its own configuration and nothing else.
  */
 export type PhisSupportForwardingServiceContext = {
   /** The Add-on implementing the kind. */
   providerId: string;
   siteKey: string;
-  /** One of the Provider's own secrets, by the reference its configuration names, or null. */
-  readSecret: (reference: string) => Promise<string | null>;
+  /**
+   * The implementation's own Site secrets and settings, the same two capabilities its hooks and jobs
+   * have: where the work goes (a repository, an installation) is per-Site configuration, and so are the
+   * credentials it goes with.
+   */
+  secrets: PhisSecretsCapabilityV1;
+  settings: PhisSettingsCapabilityV1;
 };
 
 /**
