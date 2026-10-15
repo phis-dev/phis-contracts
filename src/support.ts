@@ -441,15 +441,26 @@ export type PhisSupportForwardingServiceContext = {
 };
 
 /**
- * Whether this implementation can take work on this Site right now, and what to call it.
+ * One place an implementation can send work to: a repository, a project, a desk.
  *
- * Asked before a Supporter is offered it as a target. `label` is the implementation's own name for where
- * the work goes ("GitHub acme/app"), shown as it is; `findings` say in an operator's terms what does not
- * answer when `usable` is false.
+ * `key` is the implementation's own name for it and comes back unchanged in `PhisSupportForwardRequest`;
+ * `label` is shown to a Supporter as it is ("GitHub acme/app").
+ */
+export type PhisSupportForwardingTarget = {
+  key: string;
+  label: string;
+};
+
+/**
+ * Whether this implementation can take work on this Site right now, and where.
+ *
+ * Asked before a Supporter is offered anything. One implementation may offer several targets -- every
+ * repository its installation reaches, say -- and a Supporter chooses one per forward. `findings` say in an
+ * operator's terms what does not answer when `usable` is false or a target is left out.
  */
 export type PhisSupportForwardingProbe = {
   usable: boolean;
-  label: string;
+  targets: PhisSupportForwardingTarget[];
   findings: string[];
 };
 
@@ -463,6 +474,8 @@ export type PhisSupportForwardingProbe = {
  * events, through the synced link Core writes for it, and Core withholds there what may not leave.
  */
 export type PhisSupportForwardRequest = {
+  /** The target the Supporter chose, by the key the probe gave it. */
+  target: string;
   ticket: { id: number; threadId: number; subject: string; typeKey: string };
   task: { title: string };
   mirror: boolean;
