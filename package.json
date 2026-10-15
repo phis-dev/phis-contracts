@@ -119,6 +119,11 @@
       "types": "./dist/layout.d.ts",
       "import": "./dist/layout.js",
       "default": "./dist/layout.js"
+    },
+    "./timeline": {
+      "types": "./dist/timeline.d.ts",
+      "import": "./dist/timeline.js",
+      "default": "./dist/timeline.js"
     }
   },
   "files": [
