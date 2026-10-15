@@ -106,6 +106,15 @@ export const PHIS_SERVICE_KINDS = {
    * operator selects which one an installation uses.
    */
   translation: "@phis/server/service/translation",
+  /**
+   * Handing a Support ticket's work to a system outside the Site -- an issue tracker, a ticket desk.
+   *
+   * A kind because Core owns the question: which ticket, which task, what may leave and what comes back.
+   * What the implementation talks to is its own business, and several may be installed at once; a
+   * Supporter chooses one per forward. The interface is `PhisSupportForwardingAdapterV1` in
+   * `@phis/contracts/support`.
+   */
+  supportForwarding: "@phis/server/service/support-forwarding",
 } as const;
 
 export type PhisServiceKind =
@@ -134,6 +143,7 @@ export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, n
   [PHIS_SERVICE_KINDS.payments]: 1,
   [PHIS_SERVICE_KINDS.directory]: 1,
   [PHIS_SERVICE_KINDS.translation]: 1,
+  [PHIS_SERVICE_KINDS.supportForwarding]: 1,
 };
 
 export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
@@ -145,4 +155,6 @@ export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, st
     "2cac7397c7beb1b8e71fc67f5cae3be89182dddf096895570a15deafa1adbfc9",
   [PHIS_SERVICE_KINDS.translation]:
     "9bae2e7b92ded5cdde9321939a3bb8cd589f6e1ef8bca7bc5f65608313b3207d",
+  [PHIS_SERVICE_KINDS.supportForwarding]:
+    "e9d01711a5ebdfa37ea4c6828952c87935b6e755b98ab8e69cc397933dfbed6f",
 };

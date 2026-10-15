@@ -411,3 +411,76 @@ export type PhisSupportCapabilityV1 = {
    */
   revokeGrant(input: { reference: string }): Promise<PhisSupportAllowanceGrant | null>;
 };
+
+/**
+ * What Core hands an implementation of `@phis/server/service/support-forwarding` when it builds one.
+ *
+ * Built per Site and per forward, so the context names the Site; what the implementation talks to and how
+ * it signs in is its own, which is why the only thing it reads from Core is its own secrets.
+ */
+export type PhisSupportForwardingServiceContext = {
+  /** The Add-on implementing the kind. */
+  providerId: string;
+  siteKey: string;
+  /** One of the Provider's own secrets, by the reference its configuration names, or null. */
+  readSecret: (reference: string) => Promise<string | null>;
+};
+
+/**
+ * Whether this implementation can take work on this Site right now, and what to call it.
+ *
+ * Asked before a Supporter is offered it as a target. `label` is the implementation's own name for where
+ * the work goes ("GitHub acme/app"), shown as it is; `findings` say in an operator's terms what does not
+ * answer when `usable` is false.
+ */
+export type PhisSupportForwardingProbe = {
+  usable: boolean;
+  label: string;
+  findings: string[];
+};
+
+/**
+ * One ticket's work, handed over.
+ *
+ * `mirror` is the ticket type's `External`, decided by Core and not by the implementation: where it is
+ * false the external record is opened from the title alone and nothing of the conversation follows it.
+ * Where it is true, `body` is what opens it -- the ticket's first message, and only if the person who
+ * wrote it agreed to it leaving the Site. What follows afterwards reaches the implementation as thread
+ * events, through the synced link Core writes for it, and Core withholds there what may not leave.
+ */
+export type PhisSupportForwardRequest = {
+  ticket: { id: number; threadId: number; subject: string; typeKey: string };
+  task: { title: string };
+  mirror: boolean;
+  body: string | null;
+  /** Who forwarded it, for the external record's attribution. */
+  actor: { userId: number; displayName: string | null };
+  signal: AbortSignal;
+};
+
+/**
+ * The external record the work now lives in.
+ *
+ * `type` and `state` are the implementation's own vocabulary -- an issue, a pull request, open -- and Core
+ * stores them on the resource link it writes for the forward without interpreting either, as it does for
+ * every link.
+ */
+export type PhisSupportForwardResult = {
+  type: number;
+  externalId: string;
+  url: string | null;
+  state: number | null;
+};
+
+/**
+ * The interface of `@phis/server/service/support-forwarding`, version 1.
+ *
+ * Two calls and no more: whether it can take work, and taking it. Everything after the hand-over is the
+ * capabilities every Add-on has -- `support:v1` to finish the engineering task the forward created,
+ * `threads:v1` to answer in the conversation, `resource-links:v1` to move the link's state -- so that what
+ * happens to a ticket stays Core's to decide.
+ */
+export interface PhisSupportForwardingAdapterV1 {
+  probe(input: { signal: AbortSignal }): Promise<PhisSupportForwardingProbe>;
+  forward(input: PhisSupportForwardRequest): Promise<PhisSupportForwardResult>;
+}
