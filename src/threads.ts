@@ -383,4 +383,21 @@ export type PhisThreadsCapabilityV1 = {
    * or `reply`, so it finds its way back to a conversation it already knows about and to no other.
    */
   findByExternalRef(externalRef: string): Promise<PhisThreadDetail | null>;
+  /**
+   * Records that a message of a reachable thread was written out to the other system, under that
+   * system's id for it. True when recorded now, false when it already was -- an event delivered twice
+   * finds its first export and posts nothing.
+   *
+   * An exported message is never imported back: what this Add-on wrote out and then hears about again is
+   * recognised by the reference and left alone.
+   */
+  recordExport(input: { messageId: number; externalRef: string }): Promise<boolean>;
+  /** The other system's id for a message this Add-on exported, or null. */
+  findExport(messageId: number): Promise<string | null>;
+  /**
+   * Changes a message this Add-on imported, as its source changed it: new text marks it `Edited`, `null`
+   * withdraws it -- the text is gone and the message stays, `Redacted`, so the conversation still reads.
+   * False where this Add-on imported nothing under that reference.
+   */
+  amendImported(input: { externalRef: string; message: string | null }): Promise<boolean>;
 };

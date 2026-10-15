@@ -57,8 +57,9 @@ export type PhisResourceLink = {
  *
  * Bounded twice: to this Add-on's own links, and to subjects the acting user may reach. Writing needs
  * an actor -- a link is a person saying these two things belong together, and it is what later lets the
- * Add-on act with no person there. A hook or a job may read the links it wrote and may not make new
- * ones.
+ * Add-on act with no person there. A hook or a job may read the links it wrote and may make new ones only
+ * on what it opened itself: a thread it owns -- or a ticket or task whose thread it owns -- it reaches
+ * already, so a link there grants nothing that needed anybody's consent.
  */
 export type PhisResourceLinksCapabilityV1 = {
   /** This Add-on's links on one subject, or none where the subject is out of reach. */
