@@ -310,6 +310,11 @@ export type PhisThreadsCapabilityV1 = {
    *
    * `messageFlags` is normalized rather than trusted: `Internal` requires an actor who is Staff, and
    * `Imported` is Core's to set on what arrives through an integration.
+   *
+   * One exception, and only in the narrowing direction: without an actor, an Add-on may mark a message it
+   * imports -- one carrying `externalRef` -- as `Internal`. What it brings in from outside is its own to
+   * keep from the requester, as a maintainer's comment on an issue is; nothing it writes can be made
+   * readable to more people this way, only to fewer.
    */
   create(input: {
     kind: PhisThreadKindValue;
@@ -350,6 +355,7 @@ export type PhisThreadsCapabilityV1 = {
    *
    * Idempotent on `externalRef` where one is given: the same reference answers with the thread as it
    * stands instead of writing a second message, which is what a webhook delivered twice needs.
+   * `messageFlags` follow the terms `create` states, its exception for an imported `Internal` included.
    */
   reply(input: {
     threadId: number;
