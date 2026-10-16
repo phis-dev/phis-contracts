@@ -525,14 +525,58 @@ export type PhisSupportForwardResult = {
 };
 
 /**
+ * A record that already exists in the other system, named by a Supporter: what they pasted, as it is.
+ *
+ * `reference` is whatever the implementation's own people call one -- a URL, `owner/name#12` -- and each
+ * implementation reads only its own. Looking one up changes nothing anywhere: whether the link is made is
+ * Core's to decide afterwards, and the record hears of it only once it stands (`linked`).
+ */
+export type PhisSupportLinkLookup = {
+  reference: string;
+  signal: AbortSignal;
+};
+
+/**
+ * What an implementation answers about a reference.
+ *
+ * - `unknown`: not one of its own; Core asks the next implementation.
+ * - `refused`: its own, but no work can go there -- closed, out of the Site's reach, gone. `reason` is
+ *   shown to the Supporter as it is.
+ * - `linkable`: the record, as `forward` would have answered it, and what it is called there, which
+ *   becomes the engineering task's title.
+ */
+export type PhisSupportLinkResult =
+  | { status: "unknown" }
+  | { status: "refused"; reason: string }
+  | { status: "linkable"; record: PhisSupportForwardResult; title: string };
+
+/**
+ * A link that now stands, so the record can say where it is linked from, as a forwarded one does in its
+ * body. Nothing of the conversation travels with it: a link hands nothing over by itself.
+ */
+export type PhisSupportLinkedNotice = {
+  record: PhisSupportForwardResult;
+  ticket: { id: number; threadId: number; subject: string; typeKey: string };
+  /** Who linked it, for the record's attribution. */
+  actor: { userId: number; displayName: string | null };
+  signal: AbortSignal;
+};
+
+/**
  * The interface of `@phis/server/service/support-forwarding`, version 1.
  *
- * Two calls and no more: whether it can take work, and taking it. Everything after the hand-over is the
- * capabilities every Add-on has -- `support:v1` to finish the engineering task the forward created,
+ * Whether it can take work, taking it, and linking work that is already there -- an issue somebody opened
+ * in the other system before or beside the ticket: `lookup` says what a reference is, Core records the link,
+ * and `linked` tells the record. A linked record is followed exactly as a forwarded one is; only how it
+ * came to exist differs, and a `linked` that fails leaves the link standing.
+ *
+ * Everything after the hand-over is the capabilities every Add-on has -- `support:v1` to finish the engineering task the forward created,
  * `threads:v1` to answer in the conversation, `resource-links:v1` to move the link's state -- so that what
  * happens to a ticket stays Core's to decide.
  */
 export interface PhisSupportForwardingAdapterV1 {
   probe(input: { signal: AbortSignal }): Promise<PhisSupportForwardingProbe>;
   forward(input: PhisSupportForwardRequest): Promise<PhisSupportForwardResult>;
+  lookup(input: PhisSupportLinkLookup): Promise<PhisSupportLinkResult>;
+  linked(input: PhisSupportLinkedNotice): Promise<void>;
 }
