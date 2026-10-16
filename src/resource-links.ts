@@ -67,8 +67,10 @@ export type PhisResourceLinksCapabilityV1 = {
   /**
    * Records a reference, or hands back the one that is already there.
    *
-   * Asking twice is how an id is learned, the way a declared group is: `(type, externalId)` is unique
-   * within this Add-on and this Site, so a second call answers with the first link instead of failing.
+   * Asking twice is how an id is learned, the way a declared group is: `(subject, type, externalId)` is
+   * unique within this Add-on and this Site, so a second call for the same subject answers with the first
+   * link instead of failing. One external record may be linked from several subjects -- one issue that
+   * several tickets wait on -- and each of those links is its own.
    */
   link(input: {
     subject: PhisResourceLinkSubject;
@@ -82,9 +84,12 @@ export type PhisResourceLinksCapabilityV1 = {
   setState(input: { linkId: number; state: number | null }): Promise<boolean>;
   /** Removes a link, and with it whatever actorless reach it granted. */
   unlink(linkId: number): Promise<boolean>;
-  /** One link of this Add-on by the external id it recorded, or null. */
-  findByExternalId(input: {
+  /**
+   * Every link of this Add-on to one external record, oldest first: what an event about that record has
+   * to reach. Empty where none is recorded.
+   */
+  listByExternalId(input: {
     type: number;
     externalId: string;
-  }): Promise<PhisResourceLink | null>;
+  }): Promise<PhisResourceLink[]>;
 };
