@@ -199,6 +199,15 @@ export type PhiLinkTarget =
        * goes. Whether the reader may follow it is still the target Area's own answer.
        */
       area?: PhiCmsAreaKey;
+      /**
+       * The values of the Page's route parameters, where its route has any (`/news/:slug`).
+       *
+       * A reference names the route and not one address of it, so a link to one entry of a family of
+       * Pages states which: `{ slug: "launch" }`. The resolver answers the route's pattern, and the link
+       * fills it from here and from what its caller adds -- a list that links each of its entries states
+       * the route once and the value per entry. A parameter nobody fills leaves no link at all.
+       */
+      params?: Readonly<Record<string, string>>;
       fragment?: string | null;
       newTab?: boolean;
     }
@@ -252,6 +261,43 @@ export function isPhiStorableExternalHref(value: string) {
  * link at all. That is the same answer the contract gives for a Page reference that no longer resolves:
  * non-interactive text beats a link that goes somewhere nobody chose.
  */
+const PHI_ROUTE_PARAM_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]*$/u;
+
+/** Route parameter values as a target stores them: names a route can declare, non-empty string values. */
+function readPhiRouteParams(value: unknown): Readonly<Record<string, string>> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+  const entries = Object.entries(value as Record<string, unknown>).flatMap(([name, entry]) =>
+    PHI_ROUTE_PARAM_NAME_PATTERN.test(name) && typeof entry === "string" && entry.trim()
+      ? [[name, entry.trim()] as const]
+      : []);
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+/**
+ * A route pattern with its parameters filled, or `null` while one is still open.
+ *
+ * Each value is one path segment, encoded as one: a slug with a slash in it cannot step into another
+ * route. A pattern without parameters comes back as it is.
+ */
+export function fillPhiRouteParams(
+  pattern: string,
+  params: Readonly<Record<string, string>> | null | undefined,
+): string | null {
+  let open = false;
+  const filled = pattern.split("/").map((segment) => {
+    if (!segment.startsWith(":")) return segment;
+    const value = params?.[segment.slice(1)];
+    if (!value) {
+      open = true;
+      return segment;
+    }
+    return encodeURIComponent(value);
+  }).join("/");
+  return open ? null : filled;
+}
+
 export function readPhiLinkTarget(value: unknown): PhiLinkTarget | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -270,10 +316,12 @@ export function readPhiLinkTarget(value: unknown): PhiLinkTarget | null {
      * the asking Area is the behaviour of every link that names none, which is the honest default.
      */
     const area = isPhiCmsAreaKey(record.area) ? { area: record.area } : {};
+    const params = readPhiRouteParams(record.params);
     return {
       kind: "page",
       reference: parsed.reference,
       ...area,
+      ...(params ? { params } : {}),
       ...(fragment ? { fragment } : {}),
       ...newTab,
     };
