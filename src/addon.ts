@@ -232,6 +232,45 @@ export type PhisAddonEventHandlerDescriptor = {
   handler: string;
 };
 
+/**
+ * One sentence of an occasion, with the parameters it takes in order.
+ *
+ * `%1`, `%2`, ... in `text` stand for the named parameters, the way Core's own templates are written,
+ * so the sentence translates as one unit and the values are put in afterwards. A text parameter is
+ * escaped where it lands; a path parameter arrives as a link on the Site's own public address.
+ */
+export type PhisAddonOccasionLine = {
+  text: string;
+  parameters?: string[];
+};
+
+/**
+ * One kind of message this Add-on may ask Core to write to a person.
+ *
+ * Declared rather than composed at the call: the words are part of the manifest and therefore of the
+ * digest, so what a Site can say in an Add-on's name is readable at install and cannot change under a
+ * running Site. Core renders the lines through its own layout, salutation and translation, and adds
+ * what the class owes -- which is why an Add-on cannot produce a mail without Core's frame.
+ *
+ * `class` is `asked-for` and nothing else this release: the person's own action is the reason for the
+ * message (an order they placed, a request they made), no consent bit applies and no unsubscribe link
+ * is offered. The sent class -- a message somebody decided to send to people who did not ask today --
+ * is Core's own bulk case and is not declarable here until it is.
+ */
+export type PhisAddonOccasionDescriptor = {
+  /** `^[a-z][a-z0-9-]{0,63}$`; the name a `notify` call and the outbox row carry. */
+  name: string;
+  class: "asked-for";
+  description?: string;
+  subject: PhisAddonOccasionLine;
+  lines: PhisAddonOccasionLine[];
+  /**
+   * What a call must bring, by name. `text` is inserted as written; `path` is a Site-relative path
+   * (`/shop/order/1234`) that Core turns into an absolute link on the Site's public address.
+   */
+  parameters: { name: string; type: "text" | "path" }[];
+};
+
 export type PhisAddonManifestV1 = {
   manifestVersion: typeof PHIS_ADDON_MANIFEST_VERSION;
   addonId: string;
@@ -293,6 +332,13 @@ export type PhisAddonManifestV1 = {
    * provider, and every write here refuses a group carrying anybody else's.
    */
   groupWriter?: PhisAddonGroupWriterDescriptor;
+  /**
+   * The occasions this Add-on may write to a person about. Absent means none, and `notify` then has
+   * nothing it could be asked for.
+   *
+   * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
+   */
+  occasions?: PhisAddonOccasionDescriptor[];
   /**
    * The Modules this package's other half contributes. Absent means it has no Module half.
    *

@@ -50,6 +50,8 @@ export const PHIS_CORE_CAPABILITIES = {
   roles: "@phis/server/roles:v1",
   payments: "@phis/server/payments:v1",
   paymentNotifications: "@phis/server/payment-notifications:v1",
+  /** Writing to a person about an occasion the Add-on declared, with Core owning frame and transport. */
+  notifications: "@phis/server/notifications:v1",
 } as const;
 
 export type PhisCoreCapabilityId =

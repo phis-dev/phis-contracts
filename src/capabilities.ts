@@ -121,6 +121,8 @@ export type PhisAddonCapabilities = {
   payments?: PhisPaymentsCapabilityV1;
   /** Supplied only to an original, bound Payment Provider hook request. */
   paymentNotifications?: PhisPaymentNotificationsCapabilityV1;
+  /** Writing to a person about an occasion this Add-on declared; Core owns the frame and the sending. */
+  notifications?: PhisNotificationsCapabilityV1;
 };
 
 /**
@@ -235,6 +237,49 @@ export type PhisSecretsCapabilityV1 = {
 
 /** Which secret `PhisSecretsCapabilityV1.read` names: the Site's own, or the one shared by all Sites. */
 export type PhisSecretScope = "site" | "addon";
+
+/**
+ * The notifications capability: `@phis/server/notifications:v1`.
+ *
+ * `notify` names **who** and **what happened**, and nothing about how. The occasion is one this Add-on
+ * declared in its manifest (`occasions`), so its words are sealed by the digest; Core resolves the
+ * address, picks the language, writes the salutation, renders the lines through its own layout and
+ * translation, chooses the sender, and sends -- through the outbox, with retry and a record. There is no
+ * subject, body, `from`, header or attachment on the call, because every one of those is a decision
+ * about how a Site speaks, and a Site speaks with one voice.
+ *
+ * Two recipients. A `user` is a member of this Site, named by id: the address is resolved when the
+ * message is sent, so a corrected address is used and a membership that is gone is not written to.
+ * A `contact` is a person who has no account here and gave this Add-on their address for exactly this
+ * purpose -- a guest who placed an order, somebody who filled in a form. It is the one place an Add-on
+ * hands Core an address, and it is admitted on two conditions Core enforces: the occasion is one the
+ * person's own action asked for (every declared occasion is, this release), and the locale is stated,
+ * because there is no profile to ask.
+ *
+ * `params` are values about the event, never about the person: a `text` parameter is inserted as
+ * written, a `path` parameter is a Site-relative path Core turns into an absolute link on the Site's own
+ * public address. An occasion cannot put an arbitrary URL into a Site's outgoing mail.
+ *
+ * Answers the outbox row's id, or `null` when `dedupeKey` named a message already written -- which is
+ * what makes a repeated run safe. Refused outright: an undeclared occasion, a parameter the occasion
+ * did not declare or lacks, a `user` who is not a member of this Site, and any call from an
+ * unverified hook, which may change nothing.
+ */
+export type PhisNotificationsCapabilityV1 = {
+  notify(input: PhisNotificationInput): Promise<{ notificationId: string | null }>;
+};
+
+export type PhisNotificationRecipient =
+  | { kind: "user"; userId: number; locale?: string | null }
+  | { kind: "contact"; address: string; locale: string; name?: string | null };
+
+export type PhisNotificationInput = {
+  occasion: string;
+  recipient: PhisNotificationRecipient;
+  params: Readonly<Record<string, string>>;
+  /** Unique within the Site; a second call with the same key writes nothing and answers `null`. */
+  dedupeKey?: string | null;
+};
 
 /**
  * What an Add-on may learn about a person.
