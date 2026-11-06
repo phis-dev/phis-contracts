@@ -88,6 +88,15 @@ export type PhisAddonQueryCondition =
     }
   | { kind: "isNull"; column: string; negated?: boolean }
   /**
+   * Whether bits of a flags column are set: every bit of `mask` (`all`), or none of them (`none`).
+   *
+   * Yes/no state is kept as bit flags rather than boolean columns, so "the rows that are not a draft"
+   * is a question about one bit of an integer. `compare` cannot ask it -- `=` sees the whole number --
+   * and without this an Add-on reads every row and filters in code, which also breaks paging: a page of
+   * 25 comes back with fewer. The mask is a positive integer; the column is an integer column.
+   */
+  | { kind: "flags"; column: string; mask: PhisAddonQueryValue; match: "all" | "none" }
+  /**
    * Whether a text column contains this fragment, case-insensitively.
    *
    * The one search the vocabulary offers, and it is an operator rather than a pattern: the Add-on says
