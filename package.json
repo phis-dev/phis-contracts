@@ -1,6 +1,6 @@
 {
   "name": "@phis/contracts",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "license": "Apache-2.0",
   "type": "module",
   "publishConfig": {
@@ -140,7 +140,7 @@
     "type": "git",
     "url": "git+https://github.com/phis-dev/phis-contracts.git"
   },
-  "homepage": "https://github.com/phis-dev/phis-contracts#readme",
+  "homepage": "https://phis.dev",
   "bugs": {
     "url": "https://github.com/phis-dev/phis-contracts/issues"
   }

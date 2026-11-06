@@ -4,6 +4,13 @@ The agreements phis (`@phis/server`) keeps with what surrounds it: the site UI (
 separately shipped Add-ons. Each lives under its own subpath, because they hold between different parties
 and change at different moments.
 
+> **Part of phis.** This package is one piece of a larger whole and does nothing on its own. A Phi
+> installation is the server [`@phis/server`](https://github.com/phis-dev/phis-server), installed as the
+> Debian package `phis` from `apt.phisys.com` (not from npm), plus Sites built on
+> [`@phis/ui`](https://github.com/phis-dev/phis-ui), which brings this package along. Installation and
+> documentation: [phis.dev](https://phis.dev). Install it directly only to build an Add-on or a Module
+> against these contracts.
+
 ```
 @phis/contracts/addon                what phis and a separately shipped Add-on promise each other
 @phis/contracts/payments             the approved Payment consumer, Provider and merchant-profile types
