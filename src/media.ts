@@ -548,14 +548,3 @@ export function formatPhiMediaCompositeChecksum(
 ): string {
   return `${digestHex.toLowerCase()}-${partCount}-${partSizeBytes}`;
 }
-
-export function parsePhiMediaCompositeChecksum(
-  value: string,
-): { digest: string; partCount: number; partSizeBytes: number } | null {
-  const match = /^([0-9a-f]{64})-(\d{1,5})-(\d{1,12})$/u.exec(value.trim().toLowerCase());
-  if (!match) return null;
-  const partCount = Number(match[2]);
-  const partSizeBytes = Number(match[3]);
-  if (partCount < 1 || partSizeBytes < 1) return null;
-  return { digest: match[1]!, partCount, partSizeBytes };
-}

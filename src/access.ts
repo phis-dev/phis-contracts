@@ -92,11 +92,6 @@ export const PhiUserEmailSource = {
 export type PhiUserEmailSourceValue =
   (typeof PhiUserEmailSource)[keyof typeof PhiUserEmailSource];
 
-export function isPhiUserEmailSource(value: unknown): value is PhiUserEmailSourceValue {
-  return typeof value === "number"
-    && (Object.values(PhiUserEmailSource) as number[]).includes(value);
-}
-
 /**
  * Which source a login provider's key stands for.
  *
@@ -295,6 +290,16 @@ export function isPhiAccessPolicyProviderOwned(
 
 const PROVIDER_ID_PATTERN = /^@[^/]+\/[^/]+(?:\/[^/]+)*$/;
 const GROUP_KEY_PATTERN = /^[a-z0-9][a-z0-9._-]{0,159}$/u;
+
+/** Whether a value is a provider id: `@scope/name`, with further segments allowed. */
+export function isPhiProviderId(value: unknown): value is `@${string}/${string}` {
+  return typeof value === "string" && PROVIDER_ID_PATTERN.test(value);
+}
+
+/** Whether a value is a Site group key, as `phis.site_groups.key` accepts it. */
+export function isPhiSiteGroupKey(value: unknown): value is string {
+  return typeof value === "string" && GROUP_KEY_PATTERN.test(value);
+}
 /** The same shape an Add-on manifest may declare a role under. */
 const ADDON_ROLE_NAME_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 

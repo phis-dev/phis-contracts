@@ -320,7 +320,6 @@ export {
   PHIS_MEDIA_UPLOAD_MAX_PART_COUNT,
   PHIS_MEDIA_UPLOAD_PART_SIZE_BYTES,
   formatPhiMediaCompositeChecksum,
-  parsePhiMediaCompositeChecksum,
   resolvePhiMediaUploadPartCount,
   resolvePhiMediaUploadPartSizeBytes,
 } from "./media.js";

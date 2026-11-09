@@ -26,6 +26,15 @@ and change at different moments.
 @phis/contracts/server-capabilities  the capability snapshot phis reports and the UI acts on
 @phis/contracts/site-groups          the membership levels of a Site group, as both ends count them
 @phis/contracts/user-state           the shapes a Module may keep a person's decisions in, and the key grammar
+@phis/contracts/references           the Page reference grammar both sides derive and compare
+@phis/contracts/resource-links       the links from a Phi record into an Add-on's own system
+@phis/contracts/support              the Support ticket vocabulary
+@phis/contracts/threads              the thread vocabulary
+@phis/contracts/conditions           the runtime condition descriptors
+@phis/contracts/controls             the Control descriptors
+@phis/contracts/forms                the Form descriptors and their parsers
+@phis/contracts/layout               the layout vocabulary
+@phis/contracts/timeline             the timeline entries
 ```
 
 ## Before the v1 release, interface versions stay at 1
@@ -74,7 +83,8 @@ What it covers:
 - **Schema** -- `PhisAddonSchemaDescriptor` and its column, index and constraint descriptors. Tables are
   declared, not migrated by hand; phis applies them.
 - **Service kinds** -- the Core-owned kinds an Add-on may supply an implementation of: Media Storage
-  (`PhisMediaStorageAdapter`, upload plans, object I/O) and Directory. `PHIS_SERVICE_KINDS` names them
+  (`PhisMediaStorageAdapter`, upload plans, object I/O), Directory, Payments, Translation and Support
+  Forwarding. `PHIS_SERVICE_KINDS` names them
   and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
   Add-on built against a different digest at install.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
@@ -182,7 +192,8 @@ URL is built stays with each side, and phis's numeric Space kind never reaches a
 ## `/http`
 
 The request header names phis reads and the site UI writes: `PHIS_TOKEN_HEADER` (`x-phis-token`),
-`PHIS_SITE_KEY_HEADER`, `PHIS_AREA_HEADER`, `PHIS_REQUEST_PATH_HEADER` and `PHIS_REQUEST_SEARCH_HEADER`.
+`PHIS_SITE_KEY_HEADER`, `PHIS_AREA_HEADER`, `PHIS_REQUEST_PATH_HEADER`, `PHIS_REQUEST_SEARCH_HEADER` and
+`PHIS_FORM_RELAY_HEADER`.
 A disagreement here is not a type error but a 403 or 400 at runtime.
 
 ## `/locale`
