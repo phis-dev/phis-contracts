@@ -61,7 +61,14 @@ erased at compile time apart from a handful of constants.
 What it covers:
 
 - **Manifest** -- `PhisAddonManifestV1`: identity, version, required Core capabilities, the routes an
-  Add-on claims, the services it provides.
+  Add-on claims, the services it provides, the jobs it runs and the events it listens to or emits.
+- **Jobs and events** -- a job carries a `PhisAddonJobSchedule` (`every` one of
+  `PHIS_ADDON_JOB_INTERVALS`, five minutes at the shortest, with `at` and `weekday` for the daily and
+  weekly steps) that Core keeps: each moment of a schedule is run by exactly one instance. An event an
+  Add-on emits is a `PhisAddonEmittedEventId`, its own id in front (`@scope/name:what.happened`),
+  declared under `emits` and sent through the `events` capability (`PhisEventsCapabilityV1`); a listener
+  receives a `PhisAddonEmittedEventSubject` with emitter, time, hop count, dedupe key and facts. Core's
+  own events keep their bare names. `PHIS_ADDON_EVENT_MAX_HOPS` bounds a chain of handlers emitting.
 - **Runtime** -- `PhisAddonRuntimeV1`, `PhisAddonHandler`, `PhisAddonRequestContext`. The artifact
   exports it under the name `phisAddon` (`PhisAddonRuntimeModuleV1`).
 - **Schema** -- `PhisAddonSchemaDescriptor` and its column, index and constraint descriptors. Tables are

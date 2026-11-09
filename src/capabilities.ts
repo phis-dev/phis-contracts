@@ -13,7 +13,7 @@
  */
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
-import type { PhisAddonThreadEventId } from "./core.js";
+import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
 import type {
   PhisPaymentChangedEventFacts,
   PhisPaymentNotificationsCapabilityV1,
@@ -123,6 +123,53 @@ export type PhisAddonCapabilities = {
   paymentNotifications?: PhisPaymentNotificationsCapabilityV1;
   /** Writing to a person about an occasion this Add-on declared; Core owns the frame and the sending. */
   notifications?: PhisNotificationsCapabilityV1;
+  /** Announcing an event this Add-on declared under its own name; Core owns the outbox and the delivery. */
+  events?: PhisEventsCapabilityV1;
+};
+
+/**
+ * The events capability: `@phis/server/events:v1`.
+ *
+ * An Add-on says that something happened; Core writes one outbox row per Add-on of this Site that
+ * declares a handler for the event, and delivers them the way it delivers its own events -- after the
+ * fact, in order, retried until they arrive. Emitting is only a write to the outbox, so it is cheap and
+ * never waits for a listener.
+ *
+ * `facts` are values about what happened, as JSON, bounded in size, and never references into another
+ * Add-on's tables: a listener runs with authority over its own tables only, and a fact it cannot read
+ * is a fact it should have been handed. `dedupeKey` makes a repeated emit safe -- a second call with
+ * the same key writes nothing for a listener already owed the first.
+ *
+ * Refused: an event the manifest does not declare under `emits`, a call from an unverified hook, and
+ * an emit from a handler already at `PHIS_ADDON_EVENT_MAX_HOPS`. Answers how many listeners were
+ * written for; zero means nobody on this Site listens, which is not a failure.
+ */
+export type PhisEventsCapabilityV1 = {
+  emit(input: PhisAddonEmitEventInput): Promise<{ recipients: number }>;
+};
+
+export type PhisAddonEmitEventInput = {
+  event: PhisAddonEmittedEventId;
+  facts?: Readonly<Record<string, unknown>>;
+  /** Unique within the Site and the event; a second emit with the same key writes nothing new. */
+  dedupeKey?: string;
+};
+
+/**
+ * What a listener is handed about an event another Add-on -- or the same one -- emitted.
+ *
+ * The emitter's id says who, `occurredAt` when (the moment the outbox row was written), `hop` how many
+ * handlers the chain has passed through so far, and `facts` what the emitter said. `dedupeKey` is the
+ * emitter's, where it gave one; the delivery's own key, stable across retries, is `deliveryId` on the
+ * context, as for every event.
+ */
+export type PhisAddonEmittedEventSubject = {
+  kind: "emitted";
+  emitter: string;
+  occurredAt: string;
+  hop: number;
+  dedupeKey: string | null;
+  facts: Readonly<Record<string, unknown>>;
 };
 
 /**
@@ -383,8 +430,9 @@ export type PhisSettingsCapabilityV1 = {
  *
  * No request, no headers, and above all no actor: a job is the Add-on acting on its own data, not a
  * person acting through it. That is why the row-level ladder does not apply inside one, and why a job
- * is reachable only from `phis addon job run` and never from a route -- an Add-on that could start its
- * own job from a request would have built itself a way around the ladder.
+ * is started only by Core's scheduler at the moments its `schedule` names, or by an operator with
+ * `phis addon job`, and never from a route -- an Add-on that could start its own job from a request
+ * would have built itself a way around the ladder.
  */
 export type PhisAddonJobContext = {
   addonId: string;
@@ -414,7 +462,11 @@ export type PhisAddonEventFacts =
       event: PhisAddonThreadEventId;
       subject: { kind: "thread"; threadId: number; messageId: number | null };
     }
-  | PhisPaymentChangedEventFacts;
+  | PhisPaymentChangedEventFacts
+  | {
+      event: PhisAddonEmittedEventId;
+      subject: PhisAddonEmittedEventSubject;
+    };
 
 export type PhisAddonEventContext = PhisAddonEventFacts & {
   addonId: string;

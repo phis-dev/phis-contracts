@@ -52,6 +52,8 @@ export const PHIS_CORE_CAPABILITIES = {
   paymentNotifications: "@phis/server/payment-notifications:v1",
   /** Writing to a person about an occasion the Add-on declared, with Core owning frame and transport. */
   notifications: "@phis/server/notifications:v1",
+  /** Announcing an event this Add-on declared under its own name, for the Add-ons of this Site that listen. */
+  events: "@phis/server/events:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -83,10 +85,32 @@ export const PHIS_ADDON_EVENTS = {
 export type PhisAddonThreadEventId =
   Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed">;
 
-/** Delivered v1 event vocabulary, discriminated by its owned subject. */
-export type PhisAddonEventId =
+/** The events Core itself emits: the thread events and the Payment event. */
+export type PhisCoreEventId =
   | PhisAddonThreadEventId
   | PhisPaymentChangedEventFacts["event"];
+
+/**
+ * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.
+ *
+ * The emitter's own id is the first half, so two Add-ons cannot name the same event and a reader of
+ * a manifest sees who announces it without looking anything up. The second half is the Add-on's own
+ * word for it, `^[a-z][a-z0-9.-]*$`, the shape Core's own event names have. Core's names stay bare:
+ * a bare name is Core's, a prefixed one is an Add-on's, and the two can never be confused.
+ */
+export type PhisAddonEmittedEventId = `@${string}/${string}:${string}`;
+
+/** Delivered v1 event vocabulary: Core's own events, and what an installed Add-on emits. */
+export type PhisAddonEventId = PhisCoreEventId | PhisAddonEmittedEventId;
+
+/**
+ * How many Add-ons an event may pass through.
+ *
+ * An Add-on that emits inside an event handler writes an event with the incoming hop plus one. A
+ * handler that answers every event with an event, met by another doing the same, would otherwise
+ * write forever; at this depth the emit is refused and logged instead of delivered.
+ */
+export const PHIS_ADDON_EVENT_MAX_HOPS = 4;
 
 /**
  * The Core-owned service kinds an Add-on may implement.

@@ -19,6 +19,7 @@ import type {
   PhisSiteAccess,
 } from "./capabilities.js";
 import type {
+  PhisAddonEmittedEventId,
   PhisAddonEventId,
   PhisCoreCapabilityId,
   PhisServiceKind,
@@ -129,17 +130,65 @@ export type PhisAddonServiceProviderDescriptor = {
   requiredCoreCapabilities: PhisCoreCapabilityId[];
 };
 
+/**
+ * The steps a job may run at. Every step divides the hour or the day, so the moments a schedule names
+ * fall on the clock -- `5m` is :00, :05, :10 -- and every instance of Core computes the same moment
+ * from the same clock without asking another.
+ *
+ * Nothing shorter than five minutes: a job that has to look more often than that is polling for an
+ * event, and an event is what it should be given. Jobs run per Site, so a short step multiplies by
+ * the Sites of a stage, and the services a job reads from have quotas of their own.
+ */
+export const PHIS_ADDON_JOB_INTERVALS = ["5m", "15m", "30m", "hourly", "daily", "weekly"] as const;
+
+export type PhisAddonJobInterval = (typeof PHIS_ADDON_JOB_INTERVALS)[number];
+
+/**
+ * When a job wants to run. Core keeps it: the schedule is a promise, not a note for the operator.
+ *
+ * A schedule is a series of moments, and each moment is claimed by exactly one instance of Core --
+ * the claim is a row whose key is the moment, so the database, not a leader, decides who runs. A
+ * moment nobody claimed while every instance was down is run once at the next start, the latest one
+ * only; a job does not receive a week of missed runs after a week of downtime. A job still running
+ * when its next moment comes has that moment recorded as skipped rather than run beside itself, which
+ * is why a handler must finish well inside its own step.
+ */
+export type PhisAddonJobSchedule = {
+  every: PhisAddonJobInterval;
+  /**
+   * The time of day, `HH:MM` in UTC, for `daily` and `weekly`; absent means `00:00`. Not for the shorter
+   * steps, which fall on the clock by themselves.
+   */
+  at?: string;
+  /** The ISO weekday for `weekly`, 1 (Monday) to 7 (Sunday); absent means Monday. */
+  weekday?: number;
+};
+
 export type PhisAddonJobDescriptor = {
   id: string;
   handler: string;
   /**
-   * How often this job expects to run, for the operator to read -- never a schedule Core keeps.
+   * When Core runs this job. Absent means it runs only when an operator starts it with `phis addon
+   * job`, which also runs a scheduled job out of turn.
    *
-   * phi-server serves from several instances, so an in-process timer would fire once per instance for
-   * one intended run. The operator schedules `phis addon job run`, which is one runner by construction,
-   * and this field tells them what the Add-on had in mind.
+   * Optional like every field added after this manifest version was in the wild.
    */
-  suggestedInterval?: "hourly" | "daily" | "weekly";
+  schedule?: PhisAddonJobSchedule;
+};
+
+/**
+ * One event this Add-on announces under its own name.
+ *
+ * Declared like a job or a route: the id, its emitter's own id in front, is part of the manifest and
+ * therefore of the digest, so what an installed Add-on can say to the others is readable at install.
+ * Emitting an undeclared event is refused. `audience` says who may listen: every Add-on of the Site
+ * that declares a handler for it, which is the default, because the operator installed each of them;
+ * or `self`, for an Add-on that uses the outbox to hand work to its own handler after the fact.
+ */
+export type PhisAddonEmittedEventDescriptor = {
+  id: PhisAddonEmittedEventId;
+  description?: string;
+  audience?: "stage" | "self";
 };
 
 /**
@@ -291,6 +340,13 @@ export type PhisAddonManifestV1 = {
    * Add-on that declares them and links nothing is told nothing.
    */
   eventHandlers?: PhisAddonEventHandlerDescriptor[];
+  /**
+   * The events this Add-on emits. Absent means none, and an emit of anything is refused.
+   *
+   * Optional like `eventHandlers`. Declaring an event is not delivering it: a row is written only for
+   * an Add-on of the Site that declares a handler for the id, and none at all where nobody listens.
+   */
+  emits?: PhisAddonEmittedEventDescriptor[];
   /**
    * What an operator may configure. Absent means nothing is.
    *
