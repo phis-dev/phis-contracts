@@ -22,6 +22,7 @@ and change at different moments.
 @phis/contracts/http                 the request headers phis and the site UI must spell the same way
 @phis/contracts/locale               the locale this software is authored in
 @phis/contracts/logging              the structured log vocabulary a Site writes and phis reads back
+@phis/contracts/search               the documents a Site writes of its Pages and the hits phis answers a query with
 @phis/contracts/server-capabilities  the capability snapshot phis reports and the UI acts on
 @phis/contracts/site-groups          the membership levels of a Site group, as both ends count them
 @phis/contracts/user-state           the shapes a Module may keep a person's decisions in, and the key grammar
@@ -189,6 +190,18 @@ The structured log vocabulary: `PhiLogService` (`phis`, `ui`, `site`, `cli`), `P
 `PhiLoggerContext`, `PhiLogEvent` and the `PhiLogger` interface. A Site and phis both write these records
 to journald, and the log surface in phis parses them back, filtering by exactly these services and
 fields. How a line is serialised is each writer's own concern.
+
+## `/search`
+
+Searching a Site's own Pages, split the only way it can be: the Site writes the documents, phis keeps and
+searches them. A Page's words stand in Widget configs, in content phis stores without knowing which Page
+shows it, and in documents fetched while the Page is drawn, so only the Site -- resolving a Page as a
+visitor's request does -- sees the whole text. It sends one `PhiSearchIndexSet` per Area and language,
+named by a `fingerprint` of what it was built from, so a set phis already holds is not written twice;
+phis answers a query with `PhiSearchResponse`, each `PhiSearchHit` carrying its Page's path and a
+snippet in pieces. `readPhiSearchQuery` and `tokenizePhiSearchQuery` are called on both ends, so a
+query the Site calls too short is one phis would not have answered. Only the Public and App Areas are
+indexed (`PHI_SEARCH_INDEXED_AREA_MASK`).
 
 ## `/server-capabilities`
 
