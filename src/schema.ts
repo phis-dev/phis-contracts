@@ -251,6 +251,10 @@ export type PhisAddonAssetSlotDescriptor = {
    * A role this Add-on declares, which the actor must hold to put a file in this slot, take one out,
    * or list what it holds -- the same guard `requiresRole` is on a declared query, refused loudly.
    *
+   * Listing a `public` slot is the exception: its files are fetched by anyone with the address, so
+   * which files a row carries is no secret, and a visitor's catalogue may ask without the role. Putting
+   * a file there or taking one out still needs it, and so does listing any other slot.
+   *
    * On an owner- or group-scoped table it narrows: the row's own authority still has to agree. On a
    * table with neither, Core has no row to judge, so a slot there must state one, and the role is then
    * the whole authority -- which is what lets a category icon or a shop logo carry a file at all.

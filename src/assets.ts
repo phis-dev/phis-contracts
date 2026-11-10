@@ -117,7 +117,8 @@ export type PhisAssetsCapabilityV1 = {
    *
    * Refused where the acting user may not read the row. Asking what a row carries is reading the row,
    * and a slot's `delivery` does not answer it: a file whose id, name and size come back to anyone has
-   * already given up most of what `internal` was keeping.
+   * already given up most of what `internal` was keeping. What `delivery` does decide is the slot's
+   * role: listing a `public` slot asks none, because its files are fetched by anyone with the address.
    */
   list(input: {
     table: string;

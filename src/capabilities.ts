@@ -184,9 +184,12 @@ export type PhisAddonEmittedEventSubject = {
  * does not know, whatever has accumulated across versions.
  */
 export type PhisRolesCapabilityV1 = {
-  /** Whether the acting user holds this role here. False when nobody is acting. */
+  /**
+   * Whether the acting user holds this role here, granted or implied by a role that `includes` it.
+   * False when nobody is acting.
+   */
   has(role: string): Promise<boolean>;
-  /** Every declared role the acting user holds, in declaration order. */
+  /** Every declared role the acting user holds, granted or implied, in declaration order. */
   all(): Promise<readonly string[]>;
 };
 

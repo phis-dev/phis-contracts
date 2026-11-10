@@ -229,8 +229,8 @@ export type PhisAddonRoleGrantPolicy =
  * an offering, open the agent workspace, approve somebody else's work. What may be done to a particular
  * row stays the row's question: ownership for their own, the group ladder for shared ones.
  *
- * Core never interprets the name. It stores assignments, answers `has()`, and enforces `grantableBy`;
- * what `reviewer` means is the Add-on's business and stays there.
+ * Core never interprets the name. It stores assignments, answers `has()`, enforces `grantableBy` and
+ * follows `includes`; what `reviewer` means is the Add-on's business and stays there.
  */
 export type PhisAddonGroupWriterDescriptor = {
   /**
@@ -246,6 +246,21 @@ export type PhisAddonRoleDescriptor = {
   name: string;
   description?: string;
   grantableBy: PhisAddonRoleGrantPolicy;
+  /**
+   * Other roles of this same Add-on that holding this one implies.
+   *
+   * A role is usually a rung of a ladder: whoever runs the shop may also do what the clerk does. Without
+   * this, every grant of the upper role would have to be followed by a grant of each lower one, and a
+   * query guarded by the lower role would refuse the person running the place. With it, Core answers
+   * `has("clerk")` with yes for a holder of `manager`, in every place it asks -- a guarded query, a
+   * slot, the `roles:v1` capability, a grant policy, and the roles a Site viewer carries.
+   *
+   * Followed transitively, and only within this Add-on. What is stored is still what was granted: taking
+   * `manager` away takes what it implied with it, and an implied role is never a grant of its own. A role
+   * may not include itself, and the inclusions may not form a cycle -- two roles that imply each other
+   * are one role under two names.
+   */
+  includes?: string[];
 };
 
 /**
