@@ -123,10 +123,13 @@ export const PhiCmsFlags = {
   /** A Sider the viewer can fold to its collapsed width. */
   Collapsible: 1 << 9,
   /**
-   * A Sider that leaves its column on a phone and opens from the side, over the page, from the Shell's
-   * menu button. Placed above the Overlay bits, which were assigned first.
+   * A `sider_left` that keeps its column on a phone. Without it the Sider leaves its column below 768px
+   * and opens from the side, over the page, from the Shell's menu button -- the default, so a new Area
+   * or Page does not have to ask for it; a narrow icon rail that should stay beside the content says
+   * this. Placed above the Overlay bits, which were assigned first; 1 << 17 was `MobileDrawer`, the
+   * opposite answer, and stays unassigned so a record that was not swept reads as nothing.
    */
-  MobileDrawer: 1 << 17,
+  MobileColumn: 1 << 18,
   /*
    * An Overlay's behaviour, carried in its config's `flags` the same way. The bits name the departure
    * from the Overlay's defaults, so an unset flag set is the plain Overlay: a close button, Escape
