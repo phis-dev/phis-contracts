@@ -103,8 +103,15 @@ are in [`SERVER_ADDONS.md`](https://github.com/phis-dev/phis-server/blob/main/SE
 
 The approved v1 consumer capability, Provider adapter, checkout plans, normalized money,
 payment/operation/refund records, merchant profile/grant types and owning-consumer event facts.
-All exports are types; there is no secret accessor implementation, checkout SDK, exchange-rate
-conversion or Payment engine here. The same types are re-exported by `/addon`.
+Apart from the money helpers below, all exports are types; there is no secret accessor
+implementation, checkout SDK, exchange-rate conversion or Payment engine here. The same types are
+re-exported by `/addon`.
+
+`PhisPaymentMoney` keeps minor units as an integer string. `PHIS_PAYMENT_CURRENCY_EXPONENTS` says how
+many of them make one major unit per currency; `phisMinorToMajorAmount` turns a `minor` into the
+decimal it states, on the digits; and `formatPhisMoney(money, locale)` writes an amount as the reader's
+language writes money, with the currency's own number of places. Everybody who shows a payment's money
+uses that one function, so nobody divides by a hundred.
 
 Consumers own their prices in CHF, EUR, USD or another supported currency. Every payment uses one
 currency; capture and refunds inherit it. Core never infers conversion or settlement currency.

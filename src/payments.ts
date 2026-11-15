@@ -21,6 +21,230 @@ export type PhisPaymentMoney = {
   minor: string;
 };
 
+/**
+ * How many minor units make one major unit, as a power of ten, for every currency a payment may name:
+ * ISO 4217 minor-unit exponents, SIX List One, retrieved 2026-10-04. `CHF: 2` means 1 franc is 100
+ * Rappen, `JPY: 0` that the yen has none. A currency absent here is not one a payment accepts.
+ *
+ * Shared rather than Core's own because everybody who shows or reads a `minor` needs it: phis-server
+ * validates a payment against it, and a Site's money field converts what a person types with it.
+ */
+export const PHIS_PAYMENT_CURRENCY_EXPONENTS: Readonly<Record<string, number>> = {
+  AED: 2,
+  AFN: 2,
+  ALL: 2,
+  AMD: 2,
+  AOA: 2,
+  ARS: 2,
+  AUD: 2,
+  AWG: 2,
+  AZN: 2,
+  BAM: 2,
+  BBD: 2,
+  BDT: 2,
+  BHD: 3,
+  BIF: 0,
+  BMD: 2,
+  BND: 2,
+  BOB: 2,
+  BOV: 2,
+  BRL: 2,
+  BSD: 2,
+  BTN: 2,
+  BWP: 2,
+  BYN: 2,
+  BZD: 2,
+  CAD: 2,
+  CDF: 2,
+  CHE: 2,
+  CHF: 2,
+  CHW: 2,
+  CLF: 4,
+  CLP: 0,
+  CNY: 2,
+  COP: 2,
+  COU: 2,
+  CRC: 2,
+  CUP: 2,
+  CVE: 2,
+  CZK: 2,
+  DJF: 0,
+  DKK: 2,
+  DOP: 2,
+  DZD: 2,
+  EGP: 2,
+  ERN: 2,
+  ETB: 2,
+  EUR: 2,
+  FJD: 2,
+  FKP: 2,
+  GBP: 2,
+  GEL: 2,
+  GHS: 2,
+  GIP: 2,
+  GMD: 2,
+  GNF: 0,
+  GTQ: 2,
+  GYD: 2,
+  HKD: 2,
+  HNL: 2,
+  HTG: 2,
+  HUF: 2,
+  IDR: 2,
+  ILS: 2,
+  INR: 2,
+  IQD: 3,
+  IRR: 2,
+  ISK: 0,
+  JMD: 2,
+  JOD: 3,
+  JPY: 0,
+  KES: 2,
+  KGS: 2,
+  KHR: 2,
+  KMF: 0,
+  KPW: 2,
+  KRW: 0,
+  KWD: 3,
+  KYD: 2,
+  KZT: 2,
+  LAK: 2,
+  LBP: 2,
+  LKR: 2,
+  LRD: 2,
+  LSL: 2,
+  LYD: 3,
+  MAD: 2,
+  MDL: 2,
+  MGA: 2,
+  MKD: 2,
+  MMK: 2,
+  MNT: 2,
+  MOP: 2,
+  MRU: 2,
+  MUR: 2,
+  MVR: 2,
+  MWK: 2,
+  MXN: 2,
+  MXV: 2,
+  MYR: 2,
+  MZN: 2,
+  NAD: 2,
+  NGN: 2,
+  NIO: 2,
+  NOK: 2,
+  NPR: 2,
+  NZD: 2,
+  OMR: 3,
+  PAB: 2,
+  PEN: 2,
+  PGK: 2,
+  PHP: 2,
+  PKR: 2,
+  PLN: 2,
+  PYG: 0,
+  QAR: 2,
+  RON: 2,
+  RSD: 2,
+  RUB: 2,
+  RWF: 0,
+  SAR: 2,
+  SBD: 2,
+  SCR: 2,
+  SDG: 2,
+  SEK: 2,
+  SGD: 2,
+  SHP: 2,
+  SLE: 2,
+  SOS: 2,
+  SRD: 2,
+  SSP: 2,
+  STN: 2,
+  SVC: 2,
+  SYP: 2,
+  SZL: 2,
+  THB: 2,
+  TJS: 2,
+  TMT: 2,
+  TND: 3,
+  TOP: 2,
+  TRY: 2,
+  TTD: 2,
+  TWD: 2,
+  TZS: 2,
+  UAH: 2,
+  UGX: 0,
+  USD: 2,
+  USN: 2,
+  UYI: 0,
+  UYU: 2,
+  UYW: 4,
+  UZS: 2,
+  VED: 2,
+  VES: 2,
+  VND: 0,
+  VUV: 0,
+  WST: 2,
+  XAD: 2,
+  XAF: 0,
+  XCD: 2,
+  XCG: 2,
+  XOF: 0,
+  XPF: 0,
+  YER: 2,
+  ZAR: 2,
+  ZMW: 2,
+  ZWG: 2,
+};
+
+/** A `minor` as phis-server accepts one: no sign, no leading zero, 16 digits at most. */
+const PHIS_PAYMENT_MINOR_PATTERN = /^(0|[1-9][0-9]{0,15})$/u;
+
+/**
+ * A minor amount as the major amount it is, written with a point: `"1990"` with exponent 2 is
+ * `"19.90"`, `"5"` is `"0.05"`; with exponent 0 the digits are the amount.
+ *
+ * Done on the digits, never by dividing: `1990 / 100` is a float, and a float carries no more than 15
+ * or so digits faithfully, which is fewer than a `minor` may have.
+ */
+export function phisMinorToMajorAmount(minor: string, exponent: number): string {
+  if (exponent === 0) return minor;
+  const digits = minor.padStart(exponent + 1, "0");
+  return `${digits.slice(0, -exponent)}.${digits.slice(-exponent)}`;
+}
+
+const moneyFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * An amount of money as a person reading `locale` writes it: `CHF 19.90` in de-CH, `19,90 €` in de-DE,
+ * `¥1,990` in ja-JP, with exactly as many places as the currency has (`PHIS_PAYMENT_CURRENCY_EXPONENTS`),
+ * never a fixed two.
+ *
+ * The amount reaches `Intl.NumberFormat` as a decimal string, which it formats exactly, so no digit of
+ * `minor` passes through a float. A currency a payment does not accept, or a `minor` that is not one,
+ * throws a `RangeError`: what cannot be a payment's money has no right way to be shown as one, and the
+ * caller that read the value is the one that knows what to show instead.
+ */
+export function formatPhisMoney(money: PhisPaymentMoney, locale: string): string {
+  const exponent = Object.hasOwn(PHIS_PAYMENT_CURRENCY_EXPONENTS, money.currency)
+    ? PHIS_PAYMENT_CURRENCY_EXPONENTS[money.currency]
+    : undefined;
+  if (exponent === undefined) throw new RangeError(`"${money.currency}" is not a currency a payment accepts.`);
+  if (!PHIS_PAYMENT_MINOR_PATTERN.test(money.minor)) throw new RangeError(`"${money.minor}" is not an amount in minor units.`);
+  const key = `${locale}\u0000${money.currency}`;
+  let formatter = moneyFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: money.currency,
+      minimumFractionDigits: exponent,
+      maximumFractionDigits: exponent,
+    });
+    moneyFormatters.set(key, formatter);
+  }
+  return formatter.format(phisMinorToMajorAmount(money.minor, exponent) as Intl.StringNumericLiteral);
+}
+
 export type PhisPaymentCaptureMode = "automatic" | "manual";
 export type PhisPaymentCheckoutKind = "redirect" | "provider-ui";
 
