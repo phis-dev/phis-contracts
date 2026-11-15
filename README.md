@@ -29,6 +29,7 @@ and change at different moments.
 @phis/contracts/references           the Page reference grammar both sides derive and compare
 @phis/contracts/resource-links       the links from a Phi record into an Add-on's own system
 @phis/contracts/support              the Support ticket vocabulary
+@phis/contracts/entitlements         who is entitled to what: kinds, subjects, entries and the capability
 @phis/contracts/threads              the thread vocabulary
 @phis/contracts/conditions           the runtime condition descriptors
 @phis/contracts/controls             the Control descriptors

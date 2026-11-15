@@ -90,6 +90,11 @@
       "import": "./dist/support.js",
       "default": "./dist/support.js"
     },
+    "./entitlements": {
+      "types": "./dist/entitlements.d.ts",
+      "import": "./dist/entitlements.js",
+      "default": "./dist/entitlements.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",

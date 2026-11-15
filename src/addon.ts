@@ -335,6 +335,19 @@ export type PhisAddonOccasionDescriptor = {
   parameters: { name: string; type: "text" | "path" }[];
 };
 
+/**
+ * One kind of entitlement an Add-on declares.
+ *
+ * `key` is the second half of the kind's id, `^[a-z][a-z0-9.-]*$`. `counted` says entries of the kind
+ * carry a quantity that adds up -- parties, seats, hours -- and absent means they do not.
+ */
+export type PhisAddonEntitlementKindDescriptor = {
+  key: string;
+  title: string;
+  description?: string;
+  counted?: boolean;
+};
+
 export type PhisAddonManifestV1 = {
   manifestVersion: typeof PHIS_ADDON_MANIFEST_VERSION;
   addonId: string;
@@ -410,6 +423,15 @@ export type PhisAddonManifestV1 = {
    * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
    */
   occasions?: PhisAddonOccasionDescriptor[];
+  /**
+   * The kinds of entitlement this Add-on uses and says the meaning of. Absent means none.
+   *
+   * Core keeps no table of kinds: the installed manifests are the catalogue, as they are for roles. A
+   * kind's id is `<addonId>:<key>`. An entry whose kind is no longer declared is kept and does not count.
+   *
+   * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
+   */
+  entitlementKinds?: PhisAddonEntitlementKindDescriptor[];
   /**
    * The Modules this package's other half contributes. Absent means it has no Module half.
    *

@@ -14,6 +14,7 @@
 
 import type { PhisAssetsCapabilityV1 } from "./assets.js";
 import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
+import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type {
   PhisPaymentChangedEventFacts,
   PhisPaymentNotificationsCapabilityV1,
@@ -125,6 +126,8 @@ export type PhisAddonCapabilities = {
   notifications?: PhisNotificationsCapabilityV1;
   /** Announcing an event this Add-on declared under its own name; Core owns the outbox and the delivery. */
   events?: PhisEventsCapabilityV1;
+  /** Reading who is entitled to what, and stating it as a source the Site allowed. */
+  entitlements?: PhisEntitlementsCapabilityV1;
 };
 
 /**
@@ -457,7 +460,7 @@ export type PhisAddonJobContext = {
  * rather than as a person.
  *
  * Thread delivery is bounded by a synced link. The Payment event reaches only its stored
- * consuming Add-on. The subject kind and event discriminate those two ownership models; approved
+ * consuming Add-on. The entitlement event reaches every enabled Add-on that declares a handler for it. The subject kind and event discriminate those two ownership models; approved
  * Payment facts are delivered through Core's durable owner-directed outbox.
  */
 export type PhisAddonEventFacts =
@@ -466,6 +469,7 @@ export type PhisAddonEventFacts =
       subject: { kind: "thread"; threadId: number; messageId: number | null };
     }
   | PhisPaymentChangedEventFacts
+  | PhisEntitlementChangedEventFacts
   | {
       event: PhisAddonEmittedEventId;
       subject: PhisAddonEmittedEventSubject;

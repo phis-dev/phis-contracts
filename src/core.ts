@@ -1,3 +1,4 @@
+import type { PhisEntitlementChangedEventFacts } from "./entitlements.js";
 import type { PhisPaymentChangedEventFacts } from "./payments.js";
 
 /**
@@ -54,6 +55,8 @@ export const PHIS_CORE_CAPABILITIES = {
   notifications: "@phis/server/notifications:v1",
   /** Announcing an event this Add-on declared under its own name, for the Add-ons of this Site that listen. */
   events: "@phis/server/events:v1",
+  /** Who is entitled to what: read by whoever provides a thing, written by the sources the Site allowed. */
+  entitlements: "@phis/server/entitlements:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -80,15 +83,18 @@ export const PHIS_ADDON_EVENTS = {
   /** The link itself is gone; what follows from that is the Add-on's own business. */
   threadLinkRemoved: "thread.link.removed",
   paymentChanged: "payment.changed",
+  /** A subject's answer for a kind of entitlement may have changed; the handler reads the current one. */
+  entitlementChanged: "entitlement.changed",
 } as const;
 
 export type PhisAddonThreadEventId =
-  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed">;
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed">;
 
-/** The events Core itself emits: the thread events and the Payment event. */
+/** The events Core itself emits: the thread events, the Payment event and the entitlement event. */
 export type PhisCoreEventId =
   | PhisAddonThreadEventId
-  | PhisPaymentChangedEventFacts["event"];
+  | PhisPaymentChangedEventFacts["event"]
+  | PhisEntitlementChangedEventFacts["event"];
 
 /**
  * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.
