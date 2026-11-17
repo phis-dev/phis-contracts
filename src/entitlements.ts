@@ -1,3 +1,4 @@
+import type { PhisPaymentSubscriptionId } from "./payments.js";
 import type { PhisProductId } from "./products.js";
 
 /**
@@ -45,12 +46,22 @@ export type PhisEntitlement = {
   /** The source's own name for it -- an order number -- unique per source and product. */
   readonly reference: string;
   readonly startsAt: string;
-  /** Null: without an end. */
+  /**
+   * Null: without an end. On an entry bound to a subscription it is not written by anybody: it is the end
+   * of that subscription's latest paid period, as Core reads it now.
+   */
   readonly endsAt: string | null;
+  /**
+   * The subscription of `payments:v1` the entry follows, or null. A bound entry counts while the
+   * subscription's paid period lasts and, as long as the subscription has not ended, for the Site's grace
+   * time after it (a setting of Core, in days, at most 14) -- so a renewal needs no write, a late payment
+   * does not switch anything off at once, and a period that stays unpaid ends the entitlement by itself.
+   */
+  readonly subscriptionId: PhisPaymentSubscriptionId | null;
   /** Null on a product that does not count. */
   readonly quantity: number | null;
   readonly flags: number;
-  /** Whether the entry counts now: neither flag, started, not ended, and its product not locked. */
+  /** Whether the entry counts now: neither flag, started, not ended (for a bound entry: its subscription still carries it), and its product not locked. */
   readonly valid: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -101,6 +112,11 @@ export type PhisEntitlementsCapabilityV1 = {
     /** Absent: now. */
     startsAt?: string;
     endsAt?: string | null;
+    /**
+     * Binds the entry to one of this source's own subscriptions; `endsAt` is then left out. Refused for a
+     * subscription the calling Add-on did not create.
+     */
+    subscriptionId?: PhisPaymentSubscriptionId;
     quantity?: number | null;
   }): Promise<PhisEntitlement>;
   /** Changes this source's own entry: a renewed period, a suspended one. Null where it has none by that name. */
