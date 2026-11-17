@@ -95,6 +95,11 @@
       "import": "./dist/entitlements.js",
       "default": "./dist/entitlements.js"
     },
+    "./products": {
+      "types": "./dist/products.d.ts",
+      "import": "./dist/products.js",
+      "default": "./dist/products.js"
+    },
     "./signals": {
       "types": "./dist/signals.d.ts",
       "import": "./dist/signals.js",

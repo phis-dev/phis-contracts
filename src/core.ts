@@ -1,4 +1,5 @@
 import type { PhisEntitlementChangedEventFacts } from "./entitlements.js";
+import type { PhisProductChangedEventFacts } from "./products.js";
 import type { PhisPaymentChangedEventFacts } from "./payments.js";
 
 /**
@@ -57,6 +58,8 @@ export const PHIS_CORE_CAPABILITIES = {
   events: "@phis/server/events:v1",
   /** Who is entitled to what: read by whoever provides a thing, written by the sources the Site allowed. */
   entitlements: "@phis/server/entitlements:v1",
+  /** The Site's products: registered by whoever supplies them, read by whoever sells or shows them. */
+  products: "@phis/server/products:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -83,18 +86,21 @@ export const PHIS_ADDON_EVENTS = {
   /** The link itself is gone; what follows from that is the Add-on's own business. */
   threadLinkRemoved: "thread.link.removed",
   paymentChanged: "payment.changed",
-  /** A subject's answer for a kind of entitlement may have changed; the handler reads the current one. */
+  /** A subject's answer for a product may have changed; the handler reads the current one. */
   entitlementChanged: "entitlement.changed",
+  /** A product was registered, changed, released or moved to another state; the handler reads it. */
+  productChanged: "product.changed",
 } as const;
 
 export type PhisAddonThreadEventId =
-  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed">;
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed">;
 
-/** The events Core itself emits: the thread events, the Payment event and the entitlement event. */
+/** The events Core itself emits: the thread events, the Payment event, the entitlement event and the product event. */
 export type PhisCoreEventId =
   | PhisAddonThreadEventId
   | PhisPaymentChangedEventFacts["event"]
-  | PhisEntitlementChangedEventFacts["event"];
+  | PhisEntitlementChangedEventFacts["event"]
+  | PhisProductChangedEventFacts["event"];
 
 /**
  * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.

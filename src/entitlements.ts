@@ -1,22 +1,16 @@
-/**
- * Entitlements: who is entitled to what, from when until when (`entitlements:v1`).
- *
- * The neutral fact between the one who sells and the one who provides. A source -- a shop, later a
- * reconciler of App Store purchases -- states that a subject is entitled to a kind; whoever provides the
- * thing reads whether. Core owns the entries and the rules, so neither needs to see the other's tables,
- * and the Site's operator says which source may write which kind.
- *
- * The vocabulary is neutral on purpose. Licence keys, devices, seats, prices, products and courses are
- * not Core's words: what being entitled *means* is the business of the Add-on that declared the kind.
- */
+import type { PhisProductId } from "./products.js";
 
 /**
- * A kind of entitlement, named under the Add-on that uses it: `@scope/name:key`.
+ * Entitlements: who holds which product, from when until when (`entitlements:v1`).
  *
- * The declaring Add-on's id is the first half, as with an emitted event, so two Add-ons cannot name the
- * same kind. The key is `^[a-z][a-z0-9.-]*$`.
+ * The neutral fact between the one who sells and the one who supplies. A source -- a shop, later a
+ * reconciler of App Store purchases -- states that a subject holds a product of the Site's directory
+ * (`products:v1`); the product's supplier reads whether. Core owns the entries and the rules, so neither
+ * needs to see the other's tables, and the Site's operator says which source may write.
+ *
+ * What holding a product *means* -- a licence key, a download, a seat -- is the business of the Add-on
+ * that supplies it. Prices, keys and devices are not Core's words.
  */
-export type PhisEntitlementKindId = `@${string}/${string}:${string}`;
 
 /**
  * Who is entitled: a reference Core issues, one per person and Site, and never a user id.
@@ -41,47 +35,36 @@ export const PhisEntitlementFlag = {
   Suspended: 1 << 1,
 } as const;
 
-/** A kind as the installed manifests declare it; the catalogue a source's settings page offers. */
-export type PhisEntitlementKind = {
-  readonly id: PhisEntitlementKindId;
-  /** The Add-on that declared it and says what it means. */
-  readonly addonId: string;
-  readonly title: string;
-  readonly description: string | null;
-  /** Whether entries of this kind carry a quantity that adds up. */
-  readonly counted: boolean;
-};
-
-/** One source's statement that a subject is entitled to a kind. */
+/** One source's statement that a subject holds a product. */
 export type PhisEntitlement = {
   readonly id: number;
-  readonly kind: PhisEntitlementKindId;
+  readonly product: PhisProductId;
   readonly subject: PhisEntitlementSubject;
   /** The Add-on that wrote it, or `PHIS_ENTITLEMENT_CORE_SOURCE`. */
   readonly source: string;
-  /** The source's own name for it -- an order number -- unique per source and kind. */
+  /** The source's own name for it -- an order number -- unique per source and product. */
   readonly reference: string;
   readonly startsAt: string;
   /** Null: without an end. */
   readonly endsAt: string | null;
-  /** Null on a kind that does not count. */
+  /** Null on a product that does not count. */
   readonly quantity: number | null;
   readonly flags: number;
-  /** Whether the entry counts now: neither flag, started, not ended. */
+  /** Whether the entry counts now: neither flag, started, not ended, and its product not locked. */
   readonly valid: boolean;
   readonly createdAt: string;
   readonly updatedAt: string;
 };
 
 /**
- * Whether a subject is entitled to a kind now.
+ * Whether a subject holds a product now.
  *
  * `entitled` is true while at least one entry is valid. `quantity` is the sum over the valid entries of a
- * counted kind, null otherwise; Core counts no use. `until` is the latest end among the valid entries,
+ * counted product, null otherwise; Core counts no use. `until` is the latest end among the valid entries,
  * null when one of them has none or nobody is entitled.
  */
 export type PhisEntitlementState = {
-  readonly kind: PhisEntitlementKindId;
+  readonly product: PhisProductId;
   readonly entitled: boolean;
   readonly quantity: number | null;
   readonly until: string | null;
@@ -90,28 +73,30 @@ export type PhisEntitlementState = {
 /**
  * `entitlements:v1`.
  *
- * Reading is open to every Add-on that requires the capability. Writing is for a source the Site's admin
- * allowed for the kind -- and for the Add-on that declared the kind, which needs nobody's leave for its
- * own. A source manages its own entries and nobody else's: another source's entry is not found, never
- * refused. An unverified hook reaches none of it.
+ * Reading is open to every Add-on that requires the capability. Writing is for a source the Site's
+ * operator allowed -- for every product, or for the products of the suppliers the operator named -- and
+ * for a supplier on its own product that is `free`, which needs nobody's leave. A source manages its own
+ * entries and nobody else's: another source's entry is not found, never refused. An unverified hook
+ * reaches none of it.
+ *
+ * A new entry is refused for a product that is not `active`. An entry that exists is changed and taken
+ * back whatever became of its product.
  *
  * A subject may be left out where somebody is acting: it is then theirs.
  */
 export type PhisEntitlementsCapabilityV1 = {
-  /** The kinds the Site's enabled Add-ons declare. */
-  kinds(): Promise<readonly PhisEntitlementKind[]>;
   /** The acting user's subject, issued on first asking; null when nobody is acting. */
   subject(): Promise<PhisEntitlementSubject | null>;
-  check(input: { kind: PhisEntitlementKindId; subject?: PhisEntitlementSubject }): Promise<PhisEntitlementState>;
+  check(input: { product: PhisProductId; subject?: PhisEntitlementSubject }): Promise<PhisEntitlementState>;
   /** The entries behind an answer, of every source, valid or not. */
-  list(input: { subject?: PhisEntitlementSubject; kind?: PhisEntitlementKindId }): Promise<readonly PhisEntitlement[]>;
+  list(input: { subject?: PhisEntitlementSubject; product?: PhisProductId }): Promise<readonly PhisEntitlement[]>;
   /**
-   * This source's statement. Idempotent on `(kind, reference)`: a second grant answers the entry the
+   * This source's statement. Idempotent on `(product, reference)`: a second grant answers the entry the
    * first one wrote and changes nothing, which is what lets a payment handler be delivered twice.
    */
   grant(input: {
     subject: PhisEntitlementSubject;
-    kind: PhisEntitlementKindId;
+    product: PhisProductId;
     reference: string;
     /** Absent: now. */
     startsAt?: string;
@@ -120,22 +105,22 @@ export type PhisEntitlementsCapabilityV1 = {
   }): Promise<PhisEntitlement>;
   /** Changes this source's own entry: a renewed period, a suspended one. Null where it has none by that name. */
   update(input: {
-    kind: PhisEntitlementKindId;
+    product: PhisProductId;
     reference: string;
     endsAt?: string | null;
     quantity?: number | null;
     suspended?: boolean;
   }): Promise<PhisEntitlement | null>;
   /** Takes this source's own entry back for good. Null where it has none by that name. */
-  revoke(input: { kind: PhisEntitlementKindId; reference: string }): Promise<PhisEntitlement | null>;
+  revoke(input: { product: PhisProductId; reference: string }): Promise<PhisEntitlement | null>;
 };
 
 /**
- * Core's event when a subject's answer for a kind may have changed: an entry was written, changed or
+ * Core's event when a subject's answer for a product may have changed: an entry was written, changed or
  * taken back, or one ended. It carries no state -- a handler reads the current answer through the
  * capability -- and reaches every enabled Add-on of the Site that declares a handler for it.
  */
 export type PhisEntitlementChangedEventFacts = {
   event: "entitlement.changed";
-  subject: { kind: "entitlement"; subject: PhisEntitlementSubject; entitlementKind: PhisEntitlementKindId };
+  subject: { kind: "entitlement"; subject: PhisEntitlementSubject; product: PhisProductId };
 };

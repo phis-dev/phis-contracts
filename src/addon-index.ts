@@ -5,6 +5,7 @@ export * from "./core.js";
 export * from "./entitlements.js";
 export * from "./media-storage.js";
 export * from "./payments.js";
+export * from "./products.js";
 export * from "./queries.js";
 export * from "./resource-links.js";
 export * from "./schema.js";
