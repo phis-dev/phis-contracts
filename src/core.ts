@@ -1,3 +1,4 @@
+import type { PhisAssetChangedEventFacts } from "./assets.js";
 import type { PhisEntitlementChangedEventFacts } from "./entitlements.js";
 import type { PhisProductChangedEventFacts } from "./products.js";
 import type { PhisPaymentChangedEventFacts } from "./payments.js";
@@ -90,17 +91,20 @@ export const PHIS_ADDON_EVENTS = {
   entitlementChanged: "entitlement.changed",
   /** A product was registered, changed, released or moved to another state; the handler reads it. */
   productChanged: "product.changed",
+  /** The files of one of this Add-on's own slots changed; the handler reads the slot. */
+  assetChanged: "asset.changed",
 } as const;
 
 export type PhisAddonThreadEventId =
-  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed">;
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed" | "asset.changed">;
 
 /** The events Core itself emits: the thread events, the Payment event, the entitlement event and the product event. */
 export type PhisCoreEventId =
   | PhisAddonThreadEventId
   | PhisPaymentChangedEventFacts["event"]
   | PhisEntitlementChangedEventFacts["event"]
-  | PhisProductChangedEventFacts["event"];
+  | PhisProductChangedEventFacts["event"]
+  | PhisAssetChangedEventFacts["event"];
 
 /**
  * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.

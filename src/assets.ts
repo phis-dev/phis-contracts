@@ -159,3 +159,16 @@ export type PhisAssetsCapabilityV1 = {
     quotaBytes: number | null;
   }>;
 };
+
+/**
+ * Core's event when the files of one of an Add-on's slots changed: a file arrived, or one went.
+ *
+ * A slot is filled by Core -- through `assets:v1`, or by a Site's upload widget talking to Core directly,
+ * where none of the Add-on's code runs. This is how the Add-on learns of it. It carries no state: a
+ * handler reads the slot through `assets:v1` and finds what is there now, which also makes a second
+ * delivery harmless. It reaches only the Add-on whose schema declares the slot.
+ */
+export type PhisAssetChangedEventFacts = {
+  event: "asset.changed";
+  subject: { kind: "asset"; table: string; ownerId: string; slot: string };
+};

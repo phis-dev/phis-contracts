@@ -12,7 +12,7 @@
  * at the point where it made the mistake.
  */
 
-import type { PhisAssetsCapabilityV1 } from "./assets.js";
+import type { PhisAssetChangedEventFacts, PhisAssetsCapabilityV1 } from "./assets.js";
 import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
@@ -463,7 +463,7 @@ export type PhisAddonJobContext = {
  * rather than as a person.
  *
  * Thread delivery is bounded by a synced link. The Payment event reaches only its stored
- * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The subject kind and event discriminate those two ownership models; approved
+ * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The asset event reaches only the Add-on whose slot it concerns. The subject kind and event discriminate those two ownership models; approved
  * Payment facts are delivered through Core's durable owner-directed outbox.
  */
 export type PhisAddonEventFacts =
@@ -474,6 +474,7 @@ export type PhisAddonEventFacts =
   | PhisPaymentChangedEventFacts
   | PhisEntitlementChangedEventFacts
   | PhisProductChangedEventFacts
+  | PhisAssetChangedEventFacts
   | {
       event: PhisAddonEmittedEventId;
       subject: PhisAddonEmittedEventSubject;
