@@ -55,8 +55,16 @@ export type PhisProduct = PhisProductReleasedTerms & {
   /** In the Site's source language; translated like a Module's text. */
   readonly title: string;
   readonly summary: string;
-  /** An Asset of the Site's Media library. */
+  /**
+   * The picture, as a Media Asset id -- what `assets:v1` answers as `mediaAssetId` for a file in one of
+   * the supplier's slots, or an Asset of the Site's Media library.
+   */
   readonly imageAssetId: number | null;
+  /**
+   * Where the picture is served from, Site-relative, as Core addresses its own Media; null without one.
+   * Read at the moment it is used and never stored, for the reason `PhisAddonAssetView.contentPath` gives.
+   */
+  readonly imagePath: string | null;
   /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
   readonly counted: boolean;
   readonly state: PhisProductState;
@@ -99,10 +107,12 @@ export type PhisProductDraft = {
 };
 
 export type PhisProductListInput = {
+  /** Exactly these, at most 200, in whatever state unless `states` says otherwise -- a seller's listings. */
+  ids?: readonly PhisProductId[];
   supplier?: string;
   publisher?: string;
   type?: string;
-  /** Absent: `active` only. */
+  /** Absent: `active` only; with `ids`, absent means every state. */
   states?: readonly PhisProductState[];
   /** Absent: both. `false` is what an operator's release list asks for. */
   released?: boolean;
