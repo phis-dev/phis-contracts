@@ -134,7 +134,13 @@ export type PhisProductListInput = {
  * Reading is open to every Add-on that requires the capability. A supplier writes its own products and
  * nobody else's: another supplier's product is not found, never refused. Any Add-on writes its own
  * entry of a product's attributes. Releasing, locking, and withdrawing somebody else's product are the
- * Site operator's and not here. An unverified hook reaches none of it.
+ * Site operator's and not here.
+ *
+ * An unverified hook -- a public read point, where nobody is signed in -- reads `active` products and
+ * nothing else: `get` answers null for a product in any other state, `list` answers active ones whatever
+ * `states` asks for, and `pendingTerms` is null there. It writes nothing. A catalogue is public; what is
+ * not yet or no longer in it is not. Attributes are therefore public as well, and an Add-on puts nothing
+ * there that is not.
  */
 export type PhisProductsCapabilityV1 = {
   list(input?: PhisProductListInput): Promise<{ products: readonly PhisProduct[]; nextCursor: string | null }>;
