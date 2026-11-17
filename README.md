@@ -89,6 +89,15 @@ What it covers:
   Forwarding. `PHIS_SERVICE_KINDS` names them
   and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
   Add-on built against a different digest at install.
+- **Files on a row** -- `PhisAssetsCapabilityV1` (`assets:v1`). A client's file goes through `begin` and
+  `finalize`; bytes the Add-on holds itself (a package's pictures, a job's output) go through `put` in one
+  call, under the Add-on's own authority with or without an actor, into a slot of its own row, at most
+  `PHIS_ASSET_PUT_MAX_BYTES` and within the slot's and the Site's ceilings. The same bytes in the same slot
+  of the same row answer with the file already there; the same bytes anywhere else in the Add-on's Space
+  are refused, as `finalize` refuses them.
+- **Products** -- `/products`: a product's `imageAssetId` is accepted only where a visitor is served the
+  Asset (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
+  declared products leaves a picture that is set alone.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out. Core separately validates delivery to
   Add-ons; a catalogue id such as `authentication` may serve Site Modules without a corresponding

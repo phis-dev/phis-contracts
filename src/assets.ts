@@ -16,6 +16,14 @@ import type { PhiMediaUploadPlan } from "./media-storage.js";
  * What comes back instead is a Media Asset id, which the delivery Core already has takes.
  */
 
+/**
+ * The most bytes one `put` takes, whatever the slot's `maxBytes` and the Site's object ceiling say: the
+ * bytes of a `put` are held in the Add-on's memory and Core's at once, so the call is for the small
+ * file a package or a job carries (a cover picture, a logo), not for an artifact. The effective limit
+ * is the least of the three; a larger file goes through `begin` and `finalize`.
+ */
+export const PHIS_ASSET_PUT_MAX_BYTES = 8 * 1024 * 1024;
+
 export type PhisAddonAssetView = {
   id: string;
   slot: string;
@@ -109,6 +117,45 @@ export type PhisAssetsCapabilityV1 = {
     token: string;
     /** Whatever the plan's issuer asked the client to bring back. Core passes it through unread. */
     completion?: unknown;
+  }): Promise<PhisAddonAssetView>;
+  /**
+   * Puts a file the Add-on already holds into a slot of one of its own rows, in one call.
+   *
+   * The counterpart of `begin` and `finalize` for the Add-on that has the bytes itself -- a package that
+   * carries its pictures in its artifact, a job, an event handler, the moment the Add-on is switched on
+   * -- and not a client that will send them. Nothing leaves the Add-on's process: Core takes bytes and
+   * fetches nothing from an address.
+   *
+   * The checks are the ones `begin` and `finalize` make. The slot is declared, the type is one the slot
+   * takes, the size is within the least of the slot's `maxBytes`, the Site's object ceiling and
+   * `PHIS_ASSET_PUT_MAX_BYTES`, and the bytes must be what the type says (a signature that names another
+   * type refuses the file; an SVG with script is refused). The file counts against the Add-on's Space.
+   * On a `one` slot it replaces what is there in the same transaction; on a `many` slot it is added.
+   * `asset.changed` is owed to the Add-on as it is for an upload, but only when something changed.
+   *
+   * The authority is the Add-on's own over its own tables, with or without an actor. Where there is an
+   * actor -- a request -- the row's authority applies as it does for `begin`, so a request cannot reach
+   * a row it may not change. Where Core runs the Add-on on its own account (a job, an event handler, the
+   * moment the Add-on is switched on for a Site) there is none to ask and the row is the Add-on's to
+   * fill. An unsigned hook is neither, and is refused. The Media Asset records no user as its creator,
+   * with an actor as without one: it is the Add-on that made it, and the Asset carries that in its meta.
+   *
+   * Idempotent. The same bytes already in the same slot of the same row answer with the file that is
+   * there and change nothing: no new Asset, no charge, no event. The same bytes already stored in the
+   * Add-on's Space for any other row, slot or table are refused, as `finalize` refuses them, naming the
+   * Asset: pointing a second row at a file the first one holds is a decision about custody, and the
+   * Add-on makes it by using the first row's file path, not by Core doing it quietly.
+   *
+   * Refused where the row does not exist.
+   */
+  put(input: {
+    table: string;
+    ownerId: string | number;
+    slot: string;
+    contentType: string;
+    bytes: Uint8Array;
+    /** What the file was called where it came from. Core makes one up when there is nothing to use. */
+    fileName?: string;
   }): Promise<PhisAddonAssetView>;
   /** Gives an unredeemed reservation up. An abandoned one expires on its own; this is the tidy path. */
   abandon(input: { table: string; token: string }): Promise<boolean>;

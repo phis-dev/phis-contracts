@@ -63,6 +63,11 @@ export type PhisProduct = PhisProductReleasedTerms & {
   /**
    * The picture, as a Media Asset id -- what `assets:v1` answers as `mediaAssetId` for a file in one of
    * the supplier's slots, or an Asset of the Site's Media library.
+   *
+   * Only an Asset a visitor is served is accepted: it is ready, delivered publicly, and lies in the
+   * Site's Space or in the registering supplier's own Add-on Space. An Asset of a User's or a Group's
+   * Space, or of another Add-on's, is refused. A manifest names no picture, so a sync of the declared
+   * products leaves the one that is set alone.
    */
   readonly imageAssetId: number | null;
   /**
@@ -101,6 +106,7 @@ export type PhisProductDraft = {
   type: string;
   title: string;
   summary: string;
+  /** As `PhisProduct.imageAssetId`: refused unless a visitor is served it. Absent: none. */
   imageAssetId?: number | null;
   /** Fixed once somebody holds the product. */
   counted?: boolean;
@@ -149,6 +155,10 @@ export type PhisProductsCapabilityV1 = {
    * Registers this supplier's product, or changes it. Idempotent on the key: the same draft twice changes
    * nothing. A new product starts as `draft`. On a released product of a publisher, changed terms are
    * held as `pendingTerms`.
+   *
+   * Refused where `imageAssetId` names an Asset a visitor would not be served: one that is not ready, not
+   * delivered publicly, or in neither the Site's Space nor this supplier's own Add-on Space. The message
+   * says so without saying whether an Asset of that id exists elsewhere.
    */
   register(input: PhisProductDraft): Promise<PhisProduct>;
   /**
@@ -176,5 +186,8 @@ export type PhisProductChangedEventFacts = {
 /**
  * A product a package carries, declared in its manifest and registered when the Add-on is enabled for a
  * Site. What an Add-on makes at runtime it registers through the capability.
+ *
+ * The manifest is the statement of every field it carries, and of nothing else: it names no picture, so
+ * a sync (enabling the Add-on, reconciling a release) neither sets nor clears `imageAssetId`.
  */
 export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId">;
