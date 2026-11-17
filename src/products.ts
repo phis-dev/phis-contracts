@@ -39,6 +39,11 @@ export type PhisProductReleasedTerms = {
   readonly sale: PhisProductSale;
   readonly referralUrl: string | null;
   readonly free: boolean;
+  /**
+   * Whether it can only be acquired with an account -- a licence, a subscription -- or by a guest as
+   * well. The supplier knows, and a seller's checkout asks for the sign-in where a product says so.
+   */
+  readonly accountRequired: boolean;
   readonly parts: readonly PhisProductId[];
 };
 
@@ -103,6 +108,8 @@ export type PhisProductDraft = {
   sale?: PhisProductSale;
   referralUrl?: string | null;
   free?: boolean;
+  /** Absent: false. */
+  accountRequired?: boolean;
   parts?: readonly PhisProductId[];
 };
 
