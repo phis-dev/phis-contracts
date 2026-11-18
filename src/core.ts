@@ -157,6 +157,17 @@ export const PHIS_SERVICE_KINDS = {
    * `@phis/contracts/support`.
    */
   supportForwarding: "@phis/server/service/support-forwarding",
+  /**
+   * Somewhere other than the Site's own Media library that a file can be taken from -- a stock archive,
+   * a DAM.
+   *
+   * A kind because Core owns the question and what follows from it: the Media picker asks through Core,
+   * and what somebody chooses is imported into the Site's library as an ordinary Asset by Core. What the
+   * implementation searches and how it signs in is its own business; several may be installed at once,
+   * and whoever has the picker open chooses among what they offer. The interface is
+   * `PhisMediaSourceAdapterV1` in `@phis/contracts/media-source`.
+   */
+  mediaSource: "@phis/server/service/media-source",
 } as const;
 
 export type PhisServiceKind =
@@ -186,6 +197,7 @@ export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, n
   [PHIS_SERVICE_KINDS.directory]: 1,
   [PHIS_SERVICE_KINDS.translation]: 1,
   [PHIS_SERVICE_KINDS.supportForwarding]: 1,
+  [PHIS_SERVICE_KINDS.mediaSource]: 1,
 };
 
 export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
@@ -199,4 +211,6 @@ export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, st
     "9bae2e7b92ded5cdde9321939a3bb8cd589f6e1ef8bca7bc5f65608313b3207d",
   [PHIS_SERVICE_KINDS.supportForwarding]:
     "e9d01711a5ebdfa37ea4c6828952c87935b6e755b98ab8e69cc397933dfbed6f",
+  [PHIS_SERVICE_KINDS.mediaSource]:
+    "252af23499cf2c3ed0ee0ae36d3f50a13eae920c5125d0fadbdb14cf3c490c88",
 };

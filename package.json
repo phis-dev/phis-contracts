@@ -85,6 +85,11 @@
       "import": "./dist/site-groups.js",
       "default": "./dist/site-groups.js"
     },
+    "./media-source": {
+      "types": "./dist/media-source.d.ts",
+      "import": "./dist/media-source.js",
+      "default": "./dist/media-source.js"
+    },
     "./support": {
       "types": "./dist/support.d.ts",
       "import": "./dist/support.js",

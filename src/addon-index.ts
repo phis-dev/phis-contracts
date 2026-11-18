@@ -3,6 +3,7 @@ export * from "./assets.js";
 export * from "./capabilities.js";
 export * from "./core.js";
 export * from "./entitlements.js";
+export * from "./media-source.js";
 export * from "./media-storage.js";
 export * from "./payments.js";
 export * from "./products.js";

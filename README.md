@@ -85,8 +85,10 @@ What it covers:
 - **Schema** -- `PhisAddonSchemaDescriptor` and its column, index and constraint descriptors. Tables are
   declared, not migrated by hand; phis applies them.
 - **Service kinds** -- the Core-owned kinds an Add-on may supply an implementation of: Media Storage
-  (`PhisMediaStorageAdapter`, upload plans, object I/O), Directory, Payments, Translation and Support
-  Forwarding. `PHIS_SERVICE_KINDS` names them
+  (`PhisMediaStorageAdapter`, upload plans, object I/O), Directory, Payments, Translation, Support
+  Forwarding and Media Source (`/media-source`: `PhisMediaSourceAdapterV1` lists what an archive offers
+  and hands over the bytes of what somebody chose; Core imports them into the Site's library, and the
+  same list contract is what a Module's source answers in the browser). `PHIS_SERVICE_KINDS` names them
   and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
   Add-on built against a different digest at install.
 - **Files on a row** -- `PhisAssetsCapabilityV1` (`assets:v1`). A client's file goes through `begin` and
