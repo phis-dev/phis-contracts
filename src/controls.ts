@@ -52,6 +52,13 @@ export type PhiControlOption<TValue extends string | number = string> = {
    * options as they come.
    */
   separator?: PhiControlOptionSeparator;
+  /**
+   * The `value` of the option this one stands under, where the Control can draw a hierarchy -- a
+   * Cascader lists it one level below that option. An option without it is top level, and a list in
+   * which no option carries it is the flat list it always was. A `parentValue` that names no option in
+   * the list, or that leads back to the option itself, leaves the option at the top level.
+   */
+  parentValue?: TValue;
 };
 
 export type PhiControlOptionSeparator = "before" | "after";
@@ -226,6 +233,7 @@ export function readPhiControlOptions(value: unknown): PhiControlOption[] {
           preview: readOptionPreview(record.preview),
           group: readString(record.group),
           separator: record.separator === "before" || record.separator === "after" ? record.separator : undefined,
+          parentValue: readString(record.parentValue),
         };
       })
       .filter((item): item is PhiControlOption => item != null);
