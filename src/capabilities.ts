@@ -16,6 +16,7 @@ import type { PhisAssetChangedEventFacts, PhisAssetsCapabilityV1 } from "./asset
 import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
+import type { PhisCdnCapabilityV1 } from "./cdn.js";
 import type {
   PhisPaymentChangedEventFacts,
   PhisPaymentNotificationsCapabilityV1,
@@ -131,6 +132,8 @@ export type PhisAddonCapabilities = {
   entitlements?: PhisEntitlementsCapabilityV1;
   /** Reading the Site's products, and registering this Add-on's own as their supplier. */
   products?: PhisProductsCapabilityV1;
+  /** Reading the Site's CDN catalogue; publishing is the operator's. */
+  cdn?: PhisCdnCapabilityV1;
 };
 
 /**

@@ -61,6 +61,8 @@ export const PHIS_CORE_CAPABILITIES = {
   entitlements: "@phis/server/entitlements:v1",
   /** The Site's products: registered by whoever supplies them, read by whoever sells or shows them. */
   products: "@phis/server/products:v1",
+  /** The Site's CDN catalogue, read-only: what the operator published, with its public address. */
+  cdn: "@phis/server/cdn:v1",
 } as const;
 
 export type PhisCoreCapabilityId =

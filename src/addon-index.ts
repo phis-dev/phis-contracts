@@ -1,6 +1,7 @@
 export * from "./addon.js";
 export * from "./assets.js";
 export * from "./capabilities.js";
+export * from "./cdn.js";
 export * from "./core.js";
 export * from "./entitlements.js";
 export * from "./media-source.js";

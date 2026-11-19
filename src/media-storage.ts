@@ -568,7 +568,39 @@ export interface PhisMediaStorageAdapter {
    * must never contain a credential.
    */
   storageIdentity(): string;
+  /**
+   * Creates what this Profile names, for an operator setting a storage up: the bucket, and where asked
+   * for, its website.
+   *
+   * Optional, and absent from a Provider whose storage has no such notion -- the Local one, or one that
+   * only ever addresses what somebody else made. `phis storage add --create-bucket` refuses where it is
+   * missing rather than pretending the bucket exists.
+   *
+   * Through the storage's own API only, so it is the same step for every endpoint the Provider speaks
+   * to. Credentials are not part of it: no common API creates a key, and the key this runs with is the
+   * one the operator already made. A bucket that exists and is this key's own is not an error
+   * (`created: false`); one that belongs to somebody else is.
+   *
+   * `website` asks the storage to serve the bucket as a website, which is how a CDN host reads it
+   * without a credential. An endpoint that does not offer that answers `"unsupported"` with a finding
+   * instead of failing, because a CDN service in front of the bucket does not need it.
+   *
+   * Not every endpoint makes the bucket known by its name this way: Garage names a bucket created through
+   * the S3 API only for the key that created it, and its website does not see such a name. That is the
+   * storage's behaviour, not this call's to correct; the operator guide creates CDN buckets on Garage with
+   * Garage's own tool.
+   */
+  provisionStorage?(input: { website: boolean }): Promise<PhisMediaStorageProvision>;
 }
+
+/** What `provisionStorage` did. */
+export type PhisMediaStorageProvision = {
+  /** False where the bucket already existed and was this key's own. */
+  created: boolean;
+  website: "enabled" | "unsupported" | "not-requested";
+  /** What did not go as asked, in an operator's terms. */
+  findings: string[];
+};
 
 /**
  * What a Provider factory is handed besides its configuration.
