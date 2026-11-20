@@ -14,6 +14,7 @@
 
 import type {
   PhisAddonCapabilities,
+  PhisAddonCommandHandler,
   PhisAddonEventHandler,
   PhisAddonJobHandler,
   PhisSiteAccess,
@@ -175,6 +176,31 @@ export type PhisAddonJobDescriptor = {
    * Optional like every field added after this manifest version was in the wild.
    */
   schedule?: PhisAddonJobSchedule;
+};
+
+/**
+ * One thing an operator may tell this Add-on to do from the shell, with `phis addon command`.
+ *
+ * The shell's counterpart of a `site-user` route: a person acting through the Add-on, named on the
+ * command line with `--as`, so the roles that person holds and the row-level ladder apply exactly as
+ * they would in the browser, and what changes has that person as its author. It is not a job -- a job
+ * is the Add-on acting on its own data with nobody behind it -- and it is not reachable from a request:
+ * Core starts one only for a caller holding the internal token, which is the operator.
+ *
+ * The input is one JSON value, read from a file or standard input, and the answer is one JSON value
+ * the CLI prints. What the input holds is the Add-on's to define and to check, as a route body is.
+ */
+export type PhisAddonCommandDescriptor = {
+  /** The name an operator types, the Add-on's own vocabulary: `product.add`, `order.cancel`. */
+  id: string;
+  handler: string;
+  /** One line `phis addon commands` lists, saying what the command does. */
+  description: string;
+  /**
+   * What the input holds, as `phis addon commands` shows it: the fields by name, or a short example.
+   * Absent for a command that takes none.
+   */
+  input?: string;
 };
 
 /**
@@ -348,6 +374,12 @@ export type PhisAddonManifestV1 = {
   apiRoutes: PhisAddonApiRouteDescriptor[];
   hooks: PhisAddonHookDescriptor[];
   jobs: PhisAddonJobDescriptor[];
+  /**
+   * What an operator may tell this Add-on to do with `phis addon command`. Absent means nothing.
+   *
+   * Optional like every field added after this manifest version was in the wild.
+   */
+  commands?: PhisAddonCommandDescriptor[];
   /**
    * The events this Add-on wants delivered. Absent means none.
    *
@@ -524,6 +556,7 @@ export type PhisAddonRuntimeV1 = {
   hookHandlers?: Readonly<Record<string, PhisAddonHandler>>;
   serviceFactories?: Readonly<Record<string, PhisAddonServiceFactory>>;
   jobHandlers?: Readonly<Record<string, PhisAddonJobHandler>>;
+  commandHandlers?: Readonly<Record<string, PhisAddonCommandHandler>>;
   eventHandlers?: Readonly<Record<string, PhisAddonEventHandler>>;
 };
 

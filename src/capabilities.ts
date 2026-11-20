@@ -458,6 +458,37 @@ export type PhisAddonJobContext = {
 };
 
 /**
+ * What a command receives: one person's instruction from the shell (`phis addon command`).
+ *
+ * A command has an actor, unlike a job. The operator names a member of the Site with `--as`, and the
+ * capabilities are bound to that person as a `site-user` route's are -- the roles answer for them, the
+ * guarded queries refuse what they may not do, and rows they write carry them as the author. A command
+ * therefore cannot do anything that person could not do in the browser; it is a second door to the same
+ * rooms, not a key to more of them.
+ */
+export type PhisAddonCommandContext = {
+  addonId: string;
+  commandId: string;
+  /** This run, for correlating what the command logs with what the operator started. */
+  runId: string;
+  site: { id: number; key: string; publicBaseUrl: string };
+  actor: { kind: "user"; id: number };
+  /** The parsed JSON the operator handed over, `null` where none was. The Add-on checks its shape. */
+  input: unknown;
+  capabilities: PhisAddonCapabilities;
+  signal: AbortSignal;
+};
+
+/**
+ * Runs a command and answers with one JSON-serializable value, which the CLI prints.
+ *
+ * A refusal is thrown: the message is what the operator reads, and the command counts as failed.
+ */
+export type PhisAddonCommandHandler = (
+  context: PhisAddonCommandContext,
+) => Promise<unknown> | unknown;
+
+/**
  * One event Core hands an Add-on after the fact.
  *
  * A handler runs with no actor -- nobody called it, something happened -- and reaches exactly what the
