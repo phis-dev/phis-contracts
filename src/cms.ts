@@ -82,6 +82,10 @@ export function isPhiCmsAreaKey(value: unknown): value is PhiCmsAreaKey {
   return typeof value === "string" && PHI_CMS_AREA_KEY_SET.has(value);
 }
 
+/*
+ * One bit per Area. `1 << 9` is reserved for a later Intra Area -- staff only, apart from the customer-facing
+ * Public and App (phis-ui design/SITE_SHELLS.md) -- and the gaps below `BuilderArea` are not reused.
+ */
 export const PhiCmsVisibilityContext = {
   PublicArea: 1 << 0,
   AppArea: 1 << 1,
@@ -155,6 +159,20 @@ export const PhiCmsRevisionFlags = {
   Draft: 1 << 0,
   Published: 1 << 1,
   Deleted: 1 << 2,
+} as const;
+
+/**
+ * An Area revision's flags: the shared ones, and whether the revision holds the Area's Module selection
+ * rather than its structure.
+ *
+ * A Modules revision carries `{ area, preset: { config: { modules } } }` and nothing else, so saving or
+ * publishing which Modules an Area runs never writes or freezes a structure, and clearing a structure
+ * never takes the selection with it (phis-ui design/SITE_SHELLS.md). Page, Navigation and Theme
+ * revisions never carry the bit.
+ */
+export const PhiCmsAreaRevisionFlags = {
+  ...PhiCmsRevisionFlags,
+  Modules: 1 << 3,
 } as const;
 
 export const DEFAULT_PHI_CMS_VISIBILITY_MASK = PhiCmsVisibilityContext.PublicArea;
