@@ -967,7 +967,34 @@ export type PhisPaymentPricingFeatures = {
   promotionCodes: "none" | "alone" | "with-discounts";
   collectsCustomerDetails: boolean;
   collectsTaxIds: boolean;
+  /**
+   * What the Provider does as Merchant of Record. Present exactly when `tax` includes
+   * `merchant-of-record`, `null` otherwise.
+   *
+   * A consumer offers no more than this: a Shop sells under this handling only to these countries and only
+   * these categories, and offers a business with a VAT id only what `businessTaxIds` names. Stripe is one
+   * Provider of several, so none of it is assumed; each Provider states its own reach.
+   */
+  merchantOfRecord: PhisPaymentMerchantOfRecordFeatures | null;
 };
+
+/**
+ * Where and what a Provider sells as Merchant of Record, owing the tax there itself.
+ *
+ * `countries` are ISO 3166-1 alpha-2 codes: the countries the Provider takes the tax liability for. A sale
+ * to another country is the merchant's tax to handle, which a consumer that relies on the Provider does not
+ * offer. `taxCategories` are the categories it admits as Merchant of Record. `businessTaxIds` says what a
+ * business customer's VAT id does: `charge` -- the tax is charged anyway and the business reclaims it as
+ * input tax; `reverse-charge` -- with a valid id the tax is not charged, and a tax-inclusive price is
+ * reduced by its tax share. A Provider that supports both lets the consumer choose.
+ */
+export type PhisPaymentMerchantOfRecordFeatures = {
+  countries: readonly string[];
+  taxCategories: readonly PhisPaymentTaxCategory[];
+  businessTaxIds: readonly PhisPaymentBusinessTaxIdHandling[];
+};
+
+export type PhisPaymentBusinessTaxIdHandling = "charge" | "reverse-charge";
 
 export type PhisPaymentAdditionKind = "tax" | "shipping" | "discount";
 
