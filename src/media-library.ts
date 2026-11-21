@@ -61,8 +61,11 @@ export type PhisMediaCapabilityV1 = {
   get(input: { ids: readonly number[] }): Promise<PhisMediaAssetV1[]>;
 };
 
-/** The most ids one `release` takes. Each is its own transaction and, where it goes, its own store delete. */
-export const PHIS_MEDIA_RELEASE_MAX_IDS = 50;
+/**
+ * The most ids one `release` takes, the bound `get` has. Each is its own transaction and, where it goes,
+ * its own store delete, so the bound keeps one call inside a request; a longer list is released in parts.
+ */
+export const PHIS_MEDIA_RELEASE_MAX_IDS = 200;
 
 /**
  * What became of one released Asset.
