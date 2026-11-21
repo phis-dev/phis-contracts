@@ -46,7 +46,12 @@ export type PhisAddonColumnDefault =
  *
  * A group exists only inside a Site, so a table pointing at `core.group` must be Site-scoped and Core
  * binds the pair rather than the id alone. Core never references a group any other way, and an Add-on
- * that could would be able to name a group belonging to a different Site.
+ * that could would be able to name a group belonging to a different Site. A `core.mediaAsset` column is
+ * bound the same way, for the same reason.
+ *
+ * Such a column keeps the delete rule it declares. `setNull` (on a nullable column, as everywhere)
+ * clears the referencing column alone, `ON DELETE SET NULL (column)`, because the key covers the Site
+ * column too and that one is never nulled.
  */
 export const PHIS_ADDON_CORE_REFERENCES = {
   site: "core.site",
@@ -63,8 +68,8 @@ export const PHIS_ADDON_CORE_REFERENCES = {
    * The Media library counts such a column: deleting an Asset that a row of an installed Add-on still
    * names on the Site is refused there (`media_asset_in_use`, a reference of scope `addon`), whether or
    * not the Add-on is enabled, the way a Page's reference refuses it, and `media-release:v1` keeps such an
-   * Asset for the same reason. The delete rule stays what the database does where an Asset goes some
-   * other way. The links Core keeps for an Add-on's own slots are not counted -- deleting such a file in
+   * Asset for the same reason. The column's delete rule stays what the database does where an Asset
+   * goes some other way: `cascade` takes the row along, `setNull` clears the column alone. The links Core keeps for an Add-on's own slots are not counted -- deleting such a file in
    * the Media view is meant to work.
    */
   mediaAsset: "core.mediaAsset",
@@ -121,7 +126,10 @@ export type PhisAddonReferenceColumnDescriptor = {
   references: PhisAddonCoreReference | { table: string };
   nullable?: boolean;
   unique?: boolean;
-  /** `setNull` requires a nullable column. */
+  /**
+   * `setNull` requires a nullable column. On a Site-bound reference (`core.group`, `core.mediaAsset`, a
+   * Site-scoped table of this Add-on) it clears this column alone and never the Site column.
+   */
   onDelete: PhisAddonDeleteRule;
 };
 
