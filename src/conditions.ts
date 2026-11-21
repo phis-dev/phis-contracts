@@ -24,8 +24,15 @@ import { isPhiRecord, readPhiDotPath } from "./record.js";
  * that is already settled before the first Widget renders. A confirmation link carries its token there,
  * an external login returns with its outcome there, and a Widget that should appear only for one of
  * those can say so without a component of its own to read the query string.
+ *
+ * `record` is the record the Page is about, read through the fields its Provider declares: `valuePath`
+ * names a field by its key, the same key a Widget's `recordField` names, and reads the value that field
+ * has. It is settled on the server, where the record is read once before anything renders, and never
+ * handed to the browser. A record without the field answers as a value that is not there -- `truthy` does
+ * not hold -- which is how a Widget bound to a field the record may lack takes its place in the Layout
+ * with it rather than leaving an empty slot.
  */
-export const PHI_RUNTIME_CONDITION_SOURCES = ["row", "form", "controller", "page", "widget", "feature"] as const;
+export const PHI_RUNTIME_CONDITION_SOURCES = ["row", "form", "controller", "page", "widget", "feature", "record"] as const;
 export const PHI_RUNTIME_CONDITION_OPERATORS = ["truthy", "falsy", "equals", "contains"] as const;
 export const PHI_RUNTIME_CONDITION_GROUP_MATCHES = ["all", "any"] as const;
 
@@ -98,6 +105,8 @@ export type PhiRuntimeConditionSourceValues = {
   /** Reported by Widgets, keyed by the address each one sends from. */
   widgets?: Readonly<Record<string, Record<string, unknown>>> | null;
   page?: PhiRuntimePageConditionState | null;
+  /** The fields of the record the Page is about, by key, each as the value it has. */
+  record?: Readonly<Record<string, unknown>> | null;
 };
 
 export type PhiRuntimeConditionStateSignalValue = {
@@ -206,6 +215,7 @@ function resolvePhiRuntimeConditionSource(
   if (condition.source === "form") return sources.form ?? null;
   if (condition.source === "page") return sources.page ?? null;
   if (condition.source === "feature") return sources.features ?? null;
+  if (condition.source === "record") return sources.record ?? null;
   if (condition.source === "widget") {
     return condition.widgetAddress ? sources.widgets?.[condition.widgetAddress] ?? null : null;
   }
