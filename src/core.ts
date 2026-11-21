@@ -63,6 +63,13 @@ export const PHIS_CORE_CAPABILITIES = {
   products: "@phis/server/products:v1",
   /** The Site's CDN catalogue, read-only: what the operator published, with its public address. */
   cdn: "@phis/server/cdn:v1",
+  /** The Site's Media library, read-only: an Asset by its id, and whether a visitor is served it. */
+  media: "@phis/server/media:v1",
+  /**
+   * Giving up Media library Assets this Add-on used: Core deletes one that nothing references any more.
+   * Separate from `media`, so being able to read Assets is not being able to delete them.
+   */
+  mediaRelease: "@phis/server/media-release:v1",
 } as const;
 
 export type PhisCoreCapabilityId =

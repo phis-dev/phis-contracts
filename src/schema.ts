@@ -59,6 +59,13 @@ export const PHIS_ADDON_CORE_REFERENCES = {
    * place for every upload it has ever handled, whoever asked. An Add-on's asset row names one of them
    * and holds nothing about it, so there is no second copy to fall out of step, and no key an Add-on
    * could pass anywhere.
+   *
+   * The Media library counts such a column: deleting an Asset that a row of an installed Add-on still
+   * names on the Site is refused there (`media_asset_in_use`, a reference of scope `addon`), whether or
+   * not the Add-on is enabled, the way a Page's reference refuses it, and `media-release:v1` keeps such an
+   * Asset for the same reason. The delete rule stays what the database does where an Asset goes some
+   * other way. The links Core keeps for an Add-on's own slots are not counted -- deleting such a file in
+   * the Media view is meant to work.
    */
   mediaAsset: "core.mediaAsset",
 } as const;

@@ -17,6 +17,7 @@ import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js"
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
 import type { PhisCdnCapabilityV1 } from "./cdn.js";
+import type { PhisMediaCapabilityV1, PhisMediaReleaseCapabilityV1 } from "./media-library.js";
 import type {
   PhisPaymentChangedEventFacts,
   PhisPaymentNotificationsCapabilityV1,
@@ -134,6 +135,10 @@ export type PhisAddonCapabilities = {
   products?: PhisProductsCapabilityV1;
   /** Reading the Site's CDN catalogue; publishing is the operator's. */
   cdn?: PhisCdnCapabilityV1;
+  /** Reading Assets of the Site's Media library by id, and whether a visitor is served them. */
+  media?: PhisMediaCapabilityV1;
+  /** Giving up Media library Assets; Core deletes one nothing references any more. */
+  mediaRelease?: PhisMediaReleaseCapabilityV1;
 };
 
 /**
