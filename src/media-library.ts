@@ -21,6 +21,10 @@ export const PHIS_MEDIA_GET_MAX_IDS = 200;
 /** One Asset of the Media library, as `media:v1` hands it over. */
 export type PhisMediaAssetV1 = {
   id: number;
+  /** The file name the Asset was uploaded or imported under. */
+  name: string;
+  /** The Asset's title in the Site's source language; null without one. */
+  title: string | null;
   contentType: string;
   /** Null while the size is not known yet. */
   byteSize: number | null;
@@ -44,6 +48,16 @@ export type PhisMediaAssetV1 = {
    * changes, and a path kept from an earlier read is then the stale one.
    */
   path: string | null;
+  /**
+   * Where Core serves the Asset's thumbnail and its preview, Site-relative, as the Media library's own
+   * listing addresses them -- with the cache revision and the variant version, so read them when used and
+   * never store them, as `path`. Core makes these variants of an image Asset only: null for any other
+   * kind, and null wherever `servable` is false.
+   */
+  thumbnailPath: string | null;
+  previewPath: string | null;
+  /** A tiny blurred stand-in for an image Asset, as a `data:` URL, to show while it loads; null without one. */
+  blurDataUrl: string | null;
 };
 
 /**

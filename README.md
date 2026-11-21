@@ -101,7 +101,8 @@ What it covers:
   of the same row answer with the file already there; the same bytes anywhere else in the Add-on's Space
   are refused, as `finalize` refuses them.
 - **Media library** -- `PhisMediaCapabilityV1` (`media:v1`) reads Assets of the Site's library by id, at
-  most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path`; `PhisMediaReleaseCapabilityV1`
+  most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path` and what a media tile draws (`name`, `title`,
+  `alt`, `thumbnailPath`, `previewPath`, `blurDataUrl`); `PhisMediaReleaseCapabilityV1`
   (`media-release:v1`, a grant of its own) gives them up, at most `PHIS_MEDIA_RELEASE_MAX_IDS`, and Core
   deletes each one nothing references any more -- for good, there is no trash. An Asset id an Add-on keeps
   sits in a `core.mediaAsset` column, one row per picture; one in JSON is not counted by the Media
