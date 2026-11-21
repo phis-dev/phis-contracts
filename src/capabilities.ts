@@ -218,7 +218,8 @@ export type PhisRolesCapabilityV1 = {
  *
  * This is not the Media library. Assets that a person uploads, browses, and references belong in a
  * Media Space with its folders, quotas and delivery policies. This is for what an Add-on keeps for
- * itself: a release artifact, a generated preview, an export waiting to be fetched.
+ * itself: a release artifact, a generated preview, an export waiting to be fetched. An Asset of the Media
+ * library is kept by id in a `core.mediaAsset` column and read through `media`.
  */
 export type PhisStorageCapabilityV1 = {
   /**

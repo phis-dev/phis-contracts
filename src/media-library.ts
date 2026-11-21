@@ -5,7 +5,9 @@
  * An Add-on that keeps Media Asset ids of its own -- a cover, an icon, a gallery, in columns that point
  * at `core.mediaAsset` -- has to show them and has to know, when one is saved, whether a visitor would
  * be served it. `assets:v1` answers only for the files in this Add-on's own slots, and `products:v1`
- * only for a product's picture; this answers for an Asset by its id.
+ * only for a product's picture; this answers for an Asset by its id. A slot is the file a row owns; a
+ * `core.mediaAsset` column is an Asset a person chose from the Site's library -- phis's `ADDON_HOWTO.md`,
+ * "A picture for an Add-on row", decides between them.
  *
  * What is in reach is what `products:v1` accepts as a picture: an Asset of the calling Site that lies in
  * the Site's Space or in this Add-on's own Add-on Space. An Asset of a User's or a Group's Space, of

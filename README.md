@@ -32,7 +32,7 @@ and change at different moments.
 @phis/contracts/entitlements         who holds which product: subjects, entries and the capability
 @phis/contracts/products             the Site's product directory: products, states, the capability and the event
 @phis/contracts/threads              the thread vocabulary
-@phis/contracts/conditions           the runtime condition descriptors
+@phis/contracts/conditions           the runtime condition descriptors and the sources they read, the Page's record among them
 @phis/contracts/controls             the Control descriptors
 @phis/contracts/forms                the Form descriptors and their parsers
 @phis/contracts/layout               the layout vocabulary
@@ -83,7 +83,10 @@ What it covers:
 - **Runtime** -- `PhisAddonRuntimeV1`, `PhisAddonHandler`, `PhisAddonRequestContext`. The artifact
   exports it under the name `phisAddon` (`PhisAddonRuntimeModuleV1`).
 - **Schema** -- `PhisAddonSchemaDescriptor` and its column, index and constraint descriptors. Tables are
-  declared, not migrated by hand; phis applies them.
+  declared, not migrated by hand; phis applies them. A column points at Core through
+  `PHIS_ADDON_CORE_REFERENCES` (`core.site`, `core.user`, `core.group`, `core.mediaAsset`); a `core.group`
+  or `core.mediaAsset` column needs a `siteScoped` table and keeps either delete rule, `setNull` clearing
+  that column alone.
 - **Service kinds** -- the Core-owned kinds an Add-on may supply an implementation of: Media Storage
   (`PhisMediaStorageAdapter`, upload plans, object I/O), Directory, Payments, Translation, Support
   Forwarding and Media Source (`/media-source`: `PhisMediaSourceAdapterV1` lists what an archive offers
@@ -97,11 +100,19 @@ What it covers:
   `PHIS_ASSET_PUT_MAX_BYTES` and within the slot's and the Site's ceilings. The same bytes in the same slot
   of the same row answer with the file already there; the same bytes anywhere else in the Add-on's Space
   are refused, as `finalize` refuses them.
+- **Media library** -- `PhisMediaCapabilityV1` (`media:v1`) reads Assets of the Site's library by id, at
+  most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path`; `PhisMediaReleaseCapabilityV1`
+  (`media-release:v1`, a grant of its own) gives them up, at most `PHIS_MEDIA_RELEASE_MAX_IDS`, and Core
+  deletes each one nothing references any more -- for good, there is no trash. An Asset id an Add-on keeps
+  sits in a `core.mediaAsset` column, one row per picture; one in JSON is not counted by the Media
+  library's delete guard. A slot of `assets:v1` or such a column: phis's
+  [`ADDON_HOWTO.md`](https://github.com/phis-dev/phis-server/blob/main/ADDON_HOWTO.md#a-picture-for-an-add-on-row-slot-or-media-library-reference).
 - **Products** -- `/products`: a product's `imageAssetId` is accepted only where a visitor is served the
   Asset (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
   declared products leaves a picture that is set alone.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
-  against these constants rather than spelling the ids out. Core separately validates delivery to
+  against these constants rather than spelling the ids out, and read the list before concluding that
+  Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
   Add-ons; a catalogue id such as `authentication` may serve Site Modules without a corresponding
   Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
 

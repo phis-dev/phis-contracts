@@ -13,7 +13,8 @@ import type { PhisPaymentChangedEventFacts } from "./payments.js";
  * storage digest as a copied hex literal for that reason.
  *
  * This list is a promise, not a plan. A capability appears here when Core delivers it, never before:
- * an Add-on that finds a name here must be able to rely on it. `images:v1` is therefore absent.
+ * an Add-on that finds a name here must be able to rely on it. `images:v1` (image processing) is therefore
+ * absent; reading Media library Assets is `media`.
  *
  * Still no node builtins. The digests are stated rather than derived, so a manifest stays readable
  * without hashing anything -- Core recomputes them and checks, which is where that belongs.

@@ -71,6 +71,11 @@ export const PHIS_ADDON_CORE_REFERENCES = {
    * Asset for the same reason. The column's delete rule stays what the database does where an Asset
    * goes some other way: `cascade` takes the row along, `setNull` clears the column alone. The links Core keeps for an Add-on's own slots are not counted -- deleting such a file in
    * the Media view is meant to work.
+   *
+   * Keep every Asset id in such a column, one per Asset: a gallery is a table with one row per picture
+   * and its position, not a JSON list. An id in JSON or text has no foreign key, so the delete guard does
+   * not count it and `media-release:v1` cannot see it. Whether a picture belongs here or in a slot
+   * (`assets`) is decided in phis's `ADDON_HOWTO.md`, "A picture for an Add-on row".
    */
   mediaAsset: "core.mediaAsset",
 } as const;
