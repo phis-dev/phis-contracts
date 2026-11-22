@@ -457,8 +457,14 @@ export type PhisAddonJobContext = {
   jobId: string;
   /** This run, for correlating what the job logs with what the operator started. */
   runId: string;
-  /** The Site this run is for. A job always runs against exactly one. */
-  site: { id: number; key: string };
+  /**
+   * The Site this run is for. A job always runs against exactly one.
+   *
+   * `timeZone` is the Site's IANA zone, exactly as on a request (`PhisAddonRequestContext`): never
+   * empty, `"UTC"` where none was named, and the zone a job's days and periods are counted in. Core
+   * offers no date functions in a declared query, so the job works the day out itself and stores it.
+   */
+  site: { id: number; key: string; timeZone: string };
   capabilities: PhisAddonCapabilities;
   signal: AbortSignal;
 };
@@ -477,7 +483,14 @@ export type PhisAddonCommandContext = {
   commandId: string;
   /** This run, for correlating what the command logs with what the operator started. */
   runId: string;
-  site: { id: number; key: string; publicBaseUrl: string };
+  /**
+   * The Site the command runs on, as on a request (`PhisAddonRequestContext`).
+   *
+   * `timeZone` is the Site's IANA zone: never empty, `"UTC"` where none was named, and the zone the
+   * command's days and periods are counted in. Core offers no date functions in a declared query, so
+   * the command works the day out itself and stores it.
+   */
+  site: { id: number; key: string; publicBaseUrl: string; timeZone: string };
   actor: { kind: "user"; id: number };
   /** The parsed JSON the operator handed over, `null` where none was. The Add-on checks its shape. */
   input: unknown;
@@ -524,7 +537,15 @@ export type PhisAddonEventContext = PhisAddonEventFacts & {
   addonId: string;
   /** This delivery, stable across retries, so a handler can recognise one it already settled. */
   deliveryId: string;
-  site: { id: number; key: string };
+  /**
+   * The Site the event happened on.
+   *
+   * `timeZone` is the Site's IANA zone, exactly as on a request (`PhisAddonRequestContext`): never
+   * empty, `"UTC"` where none was named, and the zone a handler counts days and periods in -- the day a
+   * payment was made is the day it was on this Site. Core offers no date functions in a declared query,
+   * so the handler works the day out itself and stores it.
+   */
+  site: { id: number; key: string; timeZone: string };
   capabilities: PhisAddonCapabilities;
   signal: AbortSignal;
 };

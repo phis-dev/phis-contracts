@@ -508,6 +508,17 @@ export type PhisAddonRequestContext = {
          * an internal one carries none at all -- so it is the Site's own record that says it.
          */
         publicBaseUrl: string;
+        /**
+         * The IANA zone this Site keeps its calendar in, as Core stores it: in its canonical spelling,
+         * never empty, and `"UTC"` where the operator named none.
+         *
+         * For whatever an Add-on counts in days and periods -- sold per day, revenue per month, a period
+         * that ends at midnight. A day is the Site's day, not the host's and not UTC's, and the host's
+         * zone plays no part. Core offers no date functions in a declared query -- `now` is an instant,
+         * and nothing turns one into a day -- so an Add-on that groups by day works the day out itself, in
+         * this zone, and stores it beside the instant it belongs to.
+         */
+        timeZone: string;
       }
     | null;
   actor:
