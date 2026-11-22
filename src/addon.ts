@@ -25,6 +25,7 @@ import type {
   PhisCoreCapabilityId,
   PhisServiceKind,
 } from "./core.js";
+import type { PhiMediaKind } from "./media.js";
 import type { PhisAddonProductDescriptor } from "./products.js";
 import type { PhisAddonQueryCatalog } from "./queries.js";
 import type { PhisAddonSchemaDescriptor } from "./schema.js";
@@ -482,6 +483,21 @@ export type PhisAddonManifestV1 = {
    * operator who thinks they switched a feature on finds nothing.
    */
   modules?: string[];
+  /**
+   * What this Add-on takes as Media through its own Forms: the largest file in bytes, the kinds of file
+   * (`PhiMediaKind` values), and the most Assets one multi-Asset field holds. Absent means no limit of the
+   * Add-on's own beyond Core's.
+   *
+   * The Site UI applies it in the Media fields of the Add-on's Module (`media-asset`, `media-assets`):
+   * a field's own `max` may be lower, never higher. The Add-on enforces it again where it stores a
+   * value, since a Form is not the only way in. Core does not check an upload against it: an upload goes
+   * into the Media library and is not addressed to an Add-on.
+   */
+  media?: {
+    maxFileBytes?: number;
+    kinds?: (typeof PhiMediaKind)[keyof typeof PhiMediaKind][];
+    maxPerField?: number;
+  };
   /**
    * The tables this Add-on owns, or null when it owns none.
    *

@@ -85,6 +85,15 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly iconAssetId: number | null;
   /** Where the icon is served from, as `imagePath` is for the picture; null without one. */
   readonly iconPath: string | null;
+  /**
+   * The picture as a list or a table shows it: the Media library's `icon` variant (64 x 64, fitted whole
+   * on a transparent ground, `PhiImageAssetVariantKey.Icon`), Site-relative and cache-safe (it carries
+   * the Asset's revision). Null without a picture or where the picture is not an image. Read at the
+   * moment it is used and never stored, as `imagePath`.
+   */
+  readonly imageListPath: string | null;
+  /** The icon as a list or a table shows it, as `imageListPath` is for the picture; null without one. */
+  readonly iconListPath: string | null;
   /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
   readonly counted: boolean;
   readonly state: PhisProductState;

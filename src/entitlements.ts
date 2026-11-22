@@ -117,6 +117,21 @@ export type PhisEntitlementsCapabilityV1 = {
   /** The acting user's subject, issued on first asking; null when nobody is acting. */
   subject(): Promise<PhisEntitlementSubject | null>;
   check(input: { product: PhisProductId; subject?: PhisEntitlementSubject }): Promise<PhisEntitlementState>;
+  /**
+   * `check` for several products at once, in one read: one answer per product asked for, in the order
+   * asked, duplicates answered once each where they stand. At most 100 products; more are refused. What
+   * a licence for a bundle of twenty parts needs on every refresh, without twenty round trips.
+   */
+  checkMany(input: { products: readonly PhisProductId[]; subject?: PhisEntitlementSubject }): Promise<readonly PhisEntitlementState[]>;
+  /**
+   * The subject of another person of this Site, issued on first asking -- for staff acting on a
+   * person's behalf, a licence granted by hand being the case that asked for it. Allowed only while the
+   * acting user holds the Site access `accounting` or `support` (an Admin, an Accountant, a Supporter or
+   * a Maintainer); refused otherwise, and refused with no acting user. Null for a user who is not a
+   * member of this Site. The Add-on keeps the subject and never the user id, which it holds only for
+   * this call.
+   */
+  subjectForUser(input: { userId: number }): Promise<PhisEntitlementSubject | null>;
   /** The entries behind an answer, of every source, valid or not. */
   list(input: {
     subject?: PhisEntitlementSubject;
