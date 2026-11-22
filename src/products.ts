@@ -75,6 +75,15 @@ export type PhisProduct = PhisProductReleasedTerms & {
    * Read at the moment it is used and never stored, for the reason `PhisAddonAssetView.contentPath` gives.
    */
   readonly imagePath: string | null;
+  /**
+   * The icon, a small picture (a logo, an app icon) shown beside the title on the product's page, as a
+   * Media Asset id. Accepted under exactly the rules of `imageAssetId`: only an Asset a visitor is served,
+   * in the Site's Space or the registering supplier's own Add-on Space. A manifest names no icon either,
+   * so a sync of the declared products leaves the one that is set alone.
+   */
+  readonly iconAssetId: number | null;
+  /** Where the icon is served from, as `imagePath` is for the picture; null without one. */
+  readonly iconPath: string | null;
   /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
   readonly counted: boolean;
   readonly state: PhisProductState;
@@ -85,7 +94,7 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly released: boolean;
   /**
    * What the publisher asked to change of the released terms and the operator has not released yet. The
-   * terms above stay in force until then. Title, summary and picture change at once.
+   * terms above stay in force until then. Title, summary, picture and icon change at once.
    */
   readonly pendingTerms: PhisProductReleasedTerms | null;
   /**
@@ -108,6 +117,8 @@ export type PhisProductDraft = {
   summary: string;
   /** As `PhisProduct.imageAssetId`: refused unless a visitor is served it. Absent: none. */
   imageAssetId?: number | null;
+  /** As `PhisProduct.iconAssetId`: refused unless a visitor is served it. Absent: none. */
+  iconAssetId?: number | null;
   /** Fixed once somebody holds the product. */
   counted?: boolean;
   /** Absent: `own`. */
@@ -156,9 +167,9 @@ export type PhisProductsCapabilityV1 = {
    * nothing. A new product starts as `draft`. On a released product of a publisher, changed terms are
    * held as `pendingTerms`.
    *
-   * Refused where `imageAssetId` names an Asset a visitor would not be served: one that is not ready, not
-   * delivered publicly, or in neither the Site's Space nor this supplier's own Add-on Space. The message
-   * says so without saying whether an Asset of that id exists elsewhere.
+   * Refused where `imageAssetId` or `iconAssetId` names an Asset a visitor would not be served: one that
+   * is not ready, not delivered publicly, or in neither the Site's Space nor this supplier's own Add-on
+   * Space. The message says so without saying whether an Asset of that id exists elsewhere.
    */
   register(input: PhisProductDraft): Promise<PhisProduct>;
   /**
@@ -187,7 +198,8 @@ export type PhisProductChangedEventFacts = {
  * A product a package carries, declared in its manifest and registered when the Add-on is enabled for a
  * Site. What an Add-on makes at runtime it registers through the capability.
  *
- * The manifest is the statement of every field it carries, and of nothing else: it names no picture, so
- * a sync (enabling the Add-on, reconciling a release) neither sets nor clears `imageAssetId`.
+ * The manifest is the statement of every field it carries, and of nothing else: it names no picture and no
+ * icon, so a sync (enabling the Add-on, reconciling a release) neither sets nor clears `imageAssetId` or
+ * `iconAssetId`.
  */
-export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId">;
+export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId">;

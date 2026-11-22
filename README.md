@@ -108,9 +108,10 @@ What it covers:
   sits in a `core.mediaAsset` column, one row per picture; one in JSON is not counted by the Media
   library's delete guard. A slot of `assets:v1` or such a column: phis's
   [`ADDON_HOWTO.md`](https://github.com/phis-dev/phis-server/blob/main/ADDON_HOWTO.md#a-picture-for-an-add-on-row-slot-or-media-library-reference).
-- **Products** -- `/products`: a product's `imageAssetId` is accepted only where a visitor is served the
-  Asset (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
-  declared products leaves a picture that is set alone.
+- **Products** -- `/products`: a product's `imageAssetId` (its picture) and `iconAssetId` (a small
+  picture beside its title, a logo or an app icon) are accepted only where a visitor is served the Asset
+  (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
+  declared products leaves a picture or an icon that is set alone.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
