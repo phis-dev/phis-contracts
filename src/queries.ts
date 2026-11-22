@@ -224,7 +224,67 @@ type PhisAddonRoleGuarded = {
   alsoAllowedByRole?: string;
 };
 
-export type PhisAddonSelectQueryDescriptor = PhisAddonRoleGuarded & {
+/**
+ * Whose authority a query runs under: the caller's, which is the default, or the Add-on's own.
+ *
+ * Core knows two kinds of authority over an Add-on's rows. The caller's is the ladder on an owned or
+ * grouped row and a declared role everywhere else. The Add-on's own is what a job, an event handler and a
+ * verified hook write under, where nobody is calling. What neither covers is the case between them: a
+ * guest, or a customer holding no role, sets off a write that only the Add-on may make in their name.
+ */
+type PhisAddonQueryAuthority =
+  | (PhisAddonRoleGuarded & {
+      /**
+       * The caller's authority, and what an absent `authority` means. The ladder judges an owned or
+       * grouped row, the group an insert names must be one the caller stands in, and a role guard asks
+       * the caller.
+       */
+      authority?: "caller";
+    })
+  | {
+      /**
+       * The Add-on's own authority, the one a job runs under, whoever called the route.
+       *
+       * For the write a guest sets off and only the Add-on may make: a seat taken from a capacity, a code
+       * redeemed up to its limit, a download counted, a one-time code spent. The caller has no row to be
+       * judged on and no role to show -- a guest is nobody, and a customer's roles have no reason to name
+       * a stock count -- so without this such a write is reachable only by handing every caller a role,
+       * which is this bypass declared for everyone and visible nowhere, or from a job, which answers
+       * after the guest has stopped waiting.
+       *
+       * It is a bypass, and it is named so that writing it down feels like declaring one. The Add-on
+       * vouches for exactly this query: whoever reaches a route that calls it runs it, and neither the
+       * ladder, nor the caller's standing in a group, nor a role is asked. `phis addon check` and the
+       * installation list every query that states it, and a `delete` among them as a warning.
+       *
+       * A capacity wants a guarded update: `add` takes from the count, and a `where` on the same update
+       * says there must be enough. Test and write are then one statement, and two guests cannot both get
+       * the last seat -- the second answers `null`. Nothing requires the guard, because a download
+       * counter has nothing to guard, but an unguarded write under this authority is one any caller can
+       * repeat as often as the route lets them.
+       *
+       * What still holds:
+       * - the statement is bound to the Site like every other, so the Add-on's authority ends where the
+       *   Site does;
+       * - an `update` and a `delete` still change exactly one row, addressed by its key. On an owned or
+       *   grouped table that is any row of the Site, as it is for a job;
+       * - the scope columns are still Core's, never the Add-on's. An insert writes the Site and, as owner,
+       *   the caller -- null for a guest -- and the group from `groupParameter`, which must be a group of
+       *   this Site but no longer one the caller stands in;
+       * - `actor` still names the caller. What changes is the authority, not who is acting;
+       * - a request nobody authenticated, an unverified hook, still writes nothing;
+       * - everything else the request runs keeps the caller's authority, inside a `transaction` too. The
+       *   authority belongs to this query, not to the call that runs it.
+       *
+       * Not combined with `requiresRole` or `alsoAllowedByRole`: a role narrows or widens the caller's
+       * authority, and this query does not run on it.
+       */
+      authority: "addon";
+      requiresRole?: never;
+      alsoAllowedByRole?: never;
+    };
+
+export type PhisAddonSelectQueryDescriptor = PhisAddonQueryAuthority & {
   kind: "select";
   name: string;
   table: string;
@@ -249,7 +309,7 @@ export type PhisAddonSelectQueryDescriptor = PhisAddonRoleGuarded & {
  * context; the group comes from a declared parameter because a row can belong to any group the actor is
  * in, and Core refuses one they are not.
  */
-export type PhisAddonInsertQueryDescriptor = PhisAddonRoleGuarded & {
+export type PhisAddonInsertQueryDescriptor = PhisAddonQueryAuthority & {
   kind: "insert";
   name: string;
   table: string;
@@ -266,7 +326,7 @@ export type PhisAddonInsertQueryDescriptor = PhisAddonRoleGuarded & {
  * the discipline. An Add-on that needs to rewrite many rows at once is doing something Core should be
  * doing for it.
  */
-export type PhisAddonUpdateQueryDescriptor = PhisAddonRoleGuarded & {
+export type PhisAddonUpdateQueryDescriptor = PhisAddonQueryAuthority & {
   kind: "update";
   name: string;
   table: string;
@@ -304,7 +364,7 @@ export type PhisAddonUpdateQueryDescriptor = PhisAddonRoleGuarded & {
   where?: PhisAddonQueryCondition;
 };
 
-export type PhisAddonDeleteQueryDescriptor = PhisAddonRoleGuarded & {
+export type PhisAddonDeleteQueryDescriptor = PhisAddonQueryAuthority & {
   kind: "delete";
   name: string;
   table: string;
@@ -346,7 +406,7 @@ export type PhisAddonQueryAggregate = {
  * `NOT NULL`, and why there is no ordering by an aggregated value: ranking by an average would page on a
  * key that is neither unique nor known before the group is computed.
  */
-export type PhisAddonAggregateQueryDescriptor = PhisAddonRoleGuarded & {
+export type PhisAddonAggregateQueryDescriptor = PhisAddonQueryAuthority & {
   kind: "aggregate";
   name: string;
   table: string;
