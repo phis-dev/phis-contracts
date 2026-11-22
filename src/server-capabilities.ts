@@ -1,3 +1,5 @@
+import type { PhiMediaKind } from "./media.js";
+
 /**
  * What phis says about a capability provider, in the words the site UI reads it with.
  *
@@ -34,11 +36,26 @@ export type PhiCapabilityDescriptor = {
   interfaceDigest: string;
 };
 
+/**
+ * What an Add-on takes as Media through its own Forms, as its manifest states it (`media`): the largest
+ * file in bytes, the kinds of file, and the most Assets one multi-Asset field holds.
+ */
+export type PhiAddonMediaLimits = {
+  maxFileBytes?: number;
+  kinds?: (typeof PhiMediaKind)[keyof typeof PhiMediaKind][];
+  maxPerField?: number;
+};
+
 export type PhiCapabilityProvider = {
   providerId: PhiCapabilityProviderId;
   state: PhiCapabilityState;
   diagnosticCode: string | null;
   capabilities: readonly PhiCapabilityDescriptor[];
+  /**
+   * The Add-on's manifest `media`, passed on so the Site UI can apply it in the Media fields of the
+   * Add-on's Module. Absent when the manifest states none, and for Core.
+   */
+  media?: PhiAddonMediaLimits;
 };
 
 export type PhiCapabilitySnapshot = {

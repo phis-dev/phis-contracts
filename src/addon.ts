@@ -25,7 +25,7 @@ import type {
   PhisCoreCapabilityId,
   PhisServiceKind,
 } from "./core.js";
-import type { PhiMediaKind } from "./media.js";
+import type { PhiAddonMediaLimits } from "./server-capabilities.js";
 import type { PhisAddonProductDescriptor } from "./products.js";
 import type { PhisAddonQueryCatalog } from "./queries.js";
 import type { PhisAddonSchemaDescriptor } from "./schema.js";
@@ -493,11 +493,7 @@ export type PhisAddonManifestV1 = {
    * value, since a Form is not the only way in. Core does not check an upload against it: an upload goes
    * into the Media library and is not addressed to an Add-on.
    */
-  media?: {
-    maxFileBytes?: number;
-    kinds?: (typeof PhiMediaKind)[keyof typeof PhiMediaKind][];
-    maxPerField?: number;
-  };
+  media?: PhiAddonMediaLimits;
   /**
    * The tables this Add-on owns, or null when it owns none.
    *
