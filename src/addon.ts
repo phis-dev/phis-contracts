@@ -294,7 +294,7 @@ export type PhisAddonRoleDescriptor = {
    * Two Add-ons that both need "whoever keeps the books" would otherwise each define a role for it, and
    * the Site would grant the same person the same standing twice -- once per package. With this, both
    * roles hang on the access Core already derives from its own roles (`accounting`: an Accountant or a
-   * Developer; `support`: a Supporter or a Developer), and granting that Core role once is enough. The
+   * Maintainer; `support`: a Supporter or a Maintainer), and granting that Core role once is enough. The
    * Add-ons still do not know each other, and the role can still be granted on its own to somebody who
    * holds no such access.
    *

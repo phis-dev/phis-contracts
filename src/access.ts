@@ -28,7 +28,7 @@ export const PhiBaseRole = {
   Builder: 1 << 1,
   Publisher: 1 << 2,
   Author: 1 << 3,
-  Developer: 1 << 4,
+  Maintainer: 1 << 4,
   Supporter: 1 << 5,
   Accountant: 1 << 6,
   /**
@@ -36,7 +36,7 @@ export const PhiBaseRole = {
    *
    * It grants no capability at all, which is what it is for: being Staff decides who may be written to
    * and who may open a thread with a colleague, and until this bit existed the only way to say it was to
-   * hand out a role that also grants something -- a developer bit to somebody who never touches a log.
+   * hand out a role that also grants something -- a maintainer bit to somebody who never touches a log.
    *
    * Staff is whoever holds *any* Core role, so every role above implies it and this is the one to give
    * somebody who holds none of them. Roles an Add-on defines never make anybody Staff: they are

@@ -55,7 +55,7 @@ export type PhisRowIntent = "read" | "update" | "delete";
  */
 export const PHIS_SITE_ACCESS = {
   siteAdmin: "site-admin",
-  developerTools: "developer-tools",
+  siteMaintenance: "site-maintenance",
   structureAuthoring: "structure-authoring",
   contentEditing: "content-editing",
   publishing: "publishing",
