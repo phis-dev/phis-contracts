@@ -216,6 +216,32 @@ export type PhiFormSuccessDescriptor = {
   complete?: boolean;
 };
 
+/**
+ * A refusal text with values of the refusal in it: `"%1" is not in stock in that quantity.`, `%1` being
+ * the `product` the handler answered beside its `code`.
+ *
+ * The sentence is translated and the values are not, which is the rule every text with a value in it
+ * follows (TRANSLATIONS.md): `%1` to `%n` stand for `params` in order, each the name of a field of the
+ * refusal's body, and they are filled after the template is read in the visitor's language.
+ *
+ * `otherwise` is what the form says where a value is not there -- absent, empty, or neither a string nor a
+ * finite number. Declared, and required, because each of the two silent answers is wrong: the template
+ * with its `%1` standing, or with the value left out, is a sentence nobody wrote, and the body's `error`
+ * line is the log's English. A code's general text is what a code without values says anyway, so it is
+ * what this one says when its values do not come.
+ */
+export type PhiFormErrorTemplateDescriptor = {
+  /** The sentence, `%1` to `%n` for `params`. Its source text holds exactly those placeholders. */
+  template: PhiFormTextDescriptor;
+  /** Names of the refusal's body fields the placeholders take, in order. At least one, no repeats. */
+  params: readonly string[];
+  /** What the form says without the values. No placeholder of its own. */
+  otherwise: PhiFormTextDescriptor;
+};
+
+/** What a form says for one refusal `code`: a text, or a text with values of the refusal in it. */
+export type PhiFormErrorTextDescriptor = PhiFormTextDescriptor | PhiFormErrorTemplateDescriptor;
+
 export type PhiFormDescriptor = {
   schemaVersion: typeof PHI_FORM_DESCRIPTOR_SCHEMA_VERSION;
   key: string;
@@ -230,8 +256,11 @@ export type PhiFormDescriptor = {
    * their language, and a response body cannot be. A handler answers `{ code: "invalid_credentials" }`
    * and the wording is looked up here, in the form's own label set. A code nothing maps falls back to
    * the body's `error` line, which is English because its other reader is a log.
+   *
+   * A code's text may name values of the refusal itself -- the product a shop is out of -- through a
+   * `PhiFormErrorTemplateDescriptor`.
    */
-  errors?: Readonly<Record<string, PhiFormTextDescriptor>>;
+  errors?: Readonly<Record<string, PhiFormErrorTextDescriptor>>;
   /**
    * Whether what has been typed survives leaving the page, for as long as the tab is open.
    *
@@ -293,6 +322,58 @@ function readTextDescriptor(value: unknown, path: string): PhiFormTextDescriptor
     };
   }
   throw new Error(`${path}.kind must be "literal", "label" or "config".`);
+}
+
+const PHI_FORM_TEXT_PLACEHOLDER_PATTERN = /%(\d+)/gu;
+const PHI_FORM_ERROR_PARAM_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
+
+/** The text a translation is made from: what a reader without a label or a placed value would read. */
+function phiFormSourceText(text: PhiFormTextDescriptor) {
+  return text.kind === "literal" ? text.value : text.fallback;
+}
+
+/** The placeholder numbers a source text holds, each once, in ascending order. */
+function readPlaceholderNumbers(source: string) {
+  return [...new Set([...source.matchAll(PHI_FORM_TEXT_PLACEHOLDER_PATTERN)].map((match) => Number(match[1])))]
+    .sort((left, right) => left - right);
+}
+
+function readErrorTextDescriptor(value: unknown, path: string): PhiFormErrorTextDescriptor {
+  if (!isPhiRecord(value) || !("template" in value)) {
+    // Values beside a plain text would be dropped without a word, and the sentence shown with `%1` in it.
+    if (isPhiRecord(value) && ("params" in value || "otherwise" in value)) {
+      throw new Error(`${path} names params or otherwise without a template; write { template, params, otherwise }.`);
+    }
+    return readTextDescriptor(value, path);
+  }
+  const template = readTextDescriptor(value.template, `${path}.template`);
+  if (value.otherwise == null) {
+    throw new Error(`${path}.otherwise must say what the form shows when the refusal lacks a value.`);
+  }
+  const otherwise = readTextDescriptor(value.otherwise, `${path}.otherwise`);
+  if (!Array.isArray(value.params) || value.params.length === 0) {
+    throw new Error(`${path}.params must name at least one field of the refusal.`);
+  }
+  const params = value.params.map((param, index) => {
+    if (typeof param !== "string" || !PHI_FORM_ERROR_PARAM_PATTERN.test(param)) {
+      throw new Error(`${path}.params[${index}] must be a field name (letters, digits, _): ${JSON.stringify(param)}.`);
+    }
+    return param;
+  });
+  if (new Set(params).size !== params.length) {
+    throw new Error(`${path}.params must not name a field twice.`);
+  }
+  const source = phiFormSourceText(template);
+  const placeholders = readPlaceholderNumbers(source);
+  if (placeholders.length !== params.length || placeholders.some((number, index) => number !== index + 1)) {
+    throw new Error(
+      `${path}.template must hold %1 to %${params.length} for its ${params.length} params and no other placeholder: ${JSON.stringify(source)}.`,
+    );
+  }
+  if (readPlaceholderNumbers(phiFormSourceText(otherwise)).length > 0) {
+    throw new Error(`${path}.otherwise is the text without the values and holds no placeholder: ${JSON.stringify(phiFormSourceText(otherwise))}.`);
+  }
+  return { template, params, otherwise };
 }
 
 function readGridRange(value: unknown, path: string): PhiFormGridRange | undefined {
@@ -564,7 +645,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
       ? Object.fromEntries(
           Object.entries(value.errors).map(([code, text]) => [
             code,
-            readTextDescriptor(text, `errors.${code}`),
+            readErrorTextDescriptor(text, `errors.${code}`),
           ]),
         )
       : (() => { throw new Error("errors must be an object."); })();
@@ -768,6 +849,35 @@ export function resolvePhiFormText(
     return typeof value === "string" && value.trim() ? value : text.fallback;
   }
   return labels?.[text.key] ?? text.fallback;
+}
+
+/**
+ * What the form says for a refusal whose `code` maps to `text`, `body` being the refusal's answer.
+ *
+ * A template is read in the visitor's language first and filled after, in one pass so that a value with
+ * `%2` in it is not filled again. A value the body lacks, leaves empty, or holds as anything but a
+ * string or a finite number makes it `otherwise` -- never the template with a gap or a `%1` in it.
+ */
+export function resolvePhiFormErrorText(
+  text: PhiFormErrorTextDescriptor,
+  body: Readonly<Record<string, unknown>> | null | undefined,
+  labels?: Readonly<Record<string, string>>,
+  formConfig?: Readonly<Record<string, unknown>>,
+) {
+  if (!("template" in text)) {
+    return resolvePhiFormText(text, labels, formConfig);
+  }
+  const values: string[] = [];
+  for (const param of text.params) {
+    const raw = body && Object.hasOwn(body, param) ? body[param] : undefined;
+    const value = typeof raw === "string" ? raw.trim() : typeof raw === "number" && Number.isFinite(raw) ? String(raw) : "";
+    if (!value) {
+      return resolvePhiFormText(text.otherwise, labels, formConfig);
+    }
+    values.push(value);
+  }
+  return resolvePhiFormText(text.template, labels, formConfig)
+    .replace(PHI_FORM_TEXT_PLACEHOLDER_PATTERN, (token, number: string) => values[Number(number) - 1] ?? token);
 }
 
 export function assertPhiFormLabelSetKey(
