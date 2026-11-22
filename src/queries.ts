@@ -135,9 +135,36 @@ export type PhisAddonQueryOrdering = {
   direction: "asc" | "desc";
 };
 
+/** Writing a value into a column: `column = value`. */
 export type PhisAddonQueryAssignment = {
   column: string;
   value: PhisAddonQueryValue;
+  add?: never;
+};
+
+/**
+ * Adding to what a column already holds: `column = column + add`, with a negative value to take away.
+ *
+ * The write a stock count or a counter needs, and the one an assignment cannot express. Without it an
+ * Add-on reads the row, does the arithmetic in its handler and writes the result back -- and every
+ * change that reached the row between the read and the write is lost: two orders each read a stock of
+ * 3 and each write 2. Here the database does the arithmetic on the row it is about to change, so two
+ * concurrent writes both land.
+ *
+ * Only in an `update`, where there is a value to add to, and only on an integer column
+ * (`smallInteger`, `integer`, `bigInteger`). `add` is a non-nullable integer parameter or an integer
+ * literal: a null summand would turn the column null rather than leave it alone. A column that is null
+ * stays null, because in SQL nothing plus anything is nothing -- which is what a nullable count usually
+ * means anyway ("unlimited"), and a `where` on the same update says how a null is to be treated.
+ *
+ * A `range` constraint on the column still holds, and a sum that would leave it refuses the statement
+ * with an error. Where falling short is an expected outcome rather than a fault -- not enough stock --
+ * the update's `where` says so instead, and the answer is then `null`.
+ */
+export type PhisAddonQueryIncrement = {
+  column: string;
+  add: PhisAddonQueryValue;
+  value?: never;
 };
 
 /**
@@ -234,18 +261,47 @@ export type PhisAddonInsertQueryDescriptor = PhisAddonRoleGuarded & {
 /**
  * Changing or removing exactly one row, addressed by its primary key.
  *
- * There is no `where` here and no bulk form. Core checks `mayActOnRow` against the row before it
- * writes, and a check that has to be remembered is one that eventually is not -- so the shape makes it
- * unskippable rather than the discipline. An Add-on that needs to rewrite many rows at once is doing
- * something Core should be doing for it.
+ * There is no bulk form. Core checks `mayActOnRow` against the row before it writes, and a check that
+ * has to be remembered is one that eventually is not -- so the shape makes it unskippable rather than
+ * the discipline. An Add-on that needs to rewrite many rows at once is doing something Core should be
+ * doing for it.
  */
 export type PhisAddonUpdateQueryDescriptor = PhisAddonRoleGuarded & {
   kind: "update";
   name: string;
   table: string;
-  set: PhisAddonQueryAssignment[];
+  set: (PhisAddonQueryAssignment | PhisAddonQueryIncrement)[];
   /** Names the parameter carrying the row's primary key value. */
   idParameter: string;
+  /**
+   * What the row must also satisfy for the update to happen, joined to the key with `AND`.
+   *
+   * It narrows the one row and never widens to more: the key still addresses exactly one, and this only
+   * decides whether that one is changed. The same conditions a select takes, `flags`, `compare` and
+   * `whenPresent` included.
+   *
+   * It exists because deciding in the handler and writing afterwards is not one step. An Add-on that
+   * reads a row, sees an order still unpaid and then marks it paid has a gap in which a second delivery
+   * of the same event does the same, and the order is paid twice. Here the test and the write are one
+   * statement, which the database runs against the row as it stands when it locks it.
+   *
+   * When the condition does not hold, nothing is written and the answer is `null` -- the same answer as
+   * for an id that is not there. Null means: no such row, or the condition did not hold. That is exactly
+   * what makes a change of state happen once: the first call gets the row back, every repetition gets
+   * `null`.
+   *
+   * Taking stock only when there is enough -- `quantity` and `taken` are two parameters, the caller
+   * passing the same amount positive and negated:
+   * `set: [{ column: "stock", add: { kind: "parameter", name: "taken" } }]`,
+   * `where: { kind: "compare", column: "stock", operator: ">=", value: { kind: "parameter", name: "quantity" } }`.
+   *
+   * Setting a flag bit only once. Adding the bit is setting it, because the condition has just said it
+   * is not set:
+   * `set: [{ column: "flags", add: { kind: "literal", value: 4 } }]`,
+   * `where: { kind: "flags", column: "flags", mask: { kind: "literal", value: 4 }, match: "none" }` --
+   * the second call finds the bit set and answers `null`.
+   */
+  where?: PhisAddonQueryCondition;
 };
 
 export type PhisAddonDeleteQueryDescriptor = PhisAddonRoleGuarded & {
@@ -378,8 +434,10 @@ export type PhisAddonQueryPageRequest = {
  *
  * Every mutation answers with the row it wrote and `null` where it wrote none. `null` means the row was
  * not there or was not the caller's to change, and the two are deliberately the same answer: telling
- * them apart would report the existence of a row the caller may not have. The row itself withholds
- * nothing further, because it comes back only when the write it describes actually happened.
+ * them apart would report the existence of a row the caller may not have. An update's `where` that did
+ * not hold answers the same `null`, for the same reason and for one of its own: it is how a repeated
+ * change of state learns that it already happened. The row itself withholds nothing further, because it
+ * comes back only when the write it describes actually happened.
  *
  * A select answers with a page. There is no method that returns everything, because the caller who
  * wanted everything is the one who brings the instance down.
@@ -404,10 +462,11 @@ export type PhisDataCapabilityV1 = {
   /** Returns the inserted row, with the scope columns Core filled in. */
   insert(name: string, args?: PhisAddonQueryArguments): Promise<PhisAddonQueryRow | null>;
   /**
-   * Returns the row as it stands after the write, or `null` when nothing was written.
+   * Returns the row as it stands after the write, or `null` when nothing was written: no such row, not
+   * the caller's to change, or the query's `where` did not hold.
    *
    * The row rather than a count, because what was sent and what is now stored are not the same thing
-   * wherever a default, a constraint, or a column the query did not name had a say.
+   * wherever a default, a constraint, an `add`, or a column the query did not name had a say.
    */
   update(
     name: string,

@@ -281,6 +281,18 @@ export type PhisPaymentFeatures = {
   pricing: PhisPaymentPricingFeatures;
   /** Absent or `null`: this method cannot be stored. That is every Provider built before stored methods. */
   stored?: PhisPaymentStoredFeatures | null;
+  /**
+   * How long after `create` its checkout may be made to end (`PhisPaymentCreateInput.expiresAt`), in whole
+   * seconds from the moment Core accepts the payment, both ends included. Absent or `null`: the method's
+   * checkout ends when the Provider decides and cannot be given an end.
+   */
+  checkoutExpiry?: PhisPaymentCheckoutExpiryFeatures | null;
+};
+
+/** The earliest and the latest end a method's checkout can be given, in seconds after the payment is created. */
+export type PhisPaymentCheckoutExpiryFeatures = {
+  minSeconds: number;
+  maxSeconds: number;
 };
 
 export type PhisPaymentMethod = {
@@ -486,7 +498,9 @@ export type PhisPaymentErrorCode =
   /** A stored method could not be charged without the customer: they must authenticate or register again. */
   | "customer_action_required"
   /** The stored method is gone, revoked or expired at the Provider. */
-  | "stored_method_unavailable";
+  | "stored_method_unavailable"
+  /** Asked again too soon; the answer names nothing and changes nothing. */
+  | "rate_limited";
 
 export type PhisPaymentOperation = {
   id: PhisPaymentOperationId;
@@ -527,11 +541,32 @@ export type PhisPaymentCreateInput = {
    * `stored.setup` with `with-payment`, and only under a grant that includes `method-store`.
    */
   store?: { payerReference: string } | null;
+  /**
+   * The instant (ISO 8601) until which the customer can complete the payment; absent or `null`: as long as
+   * the Provider allows. Only for a method that declares `checkoutExpiry`, and within it: Core refuses an end
+   * outside it with `invalid_input` and never moves it. The Provider keeps it within its own limits and
+   * reports the end it set as the checkout's `expiresAt`; when it comes, the payment becomes `expired`,
+   * with `payment.changed`, as for any checkout that ran out.
+   */
+  expiresAt?: string | null;
 };
 
 export type PhisPaymentCommandInput = {
   paymentId: PhisPaymentId;
   idempotencyKey: string;
+};
+
+/**
+ * What a profile can sell as Merchant of Record in one currency, as Core last recorded it from the Provider:
+ * the union over its methods for that currency. A single payment may still be refused (amount, the
+ * merchant's account), which `create` decides when it is made.
+ */
+export type PhisPaymentProfileReach = {
+  currency: string;
+  /** When the Provider was last asked in this currency. */
+  probedAt: string;
+  /** Null where no method of the profile sells as Merchant of Record in this currency. */
+  merchantOfRecord: PhisPaymentMerchantOfRecordFeatures | null;
 };
 
 export interface PhisPaymentsCapabilityV1 {
@@ -543,6 +578,18 @@ export interface PhisPaymentsCapabilityV1 {
     pricing: PhisPaymentPricingSelector;
     usage?: PhisPaymentUsage;
   }): Promise<readonly PhisPaymentMethod[]>;
+  /**
+   * The profile's reach in one currency, read from what Core recorded; the Provider is never asked. Under
+   * the grant `read`, and the one operation a hook may call: it names what the Provider sells, nothing of
+   * a payment, a customer or the account. `null` where the profile was never probed in this currency.
+   */
+  profileReach(input: { profileKey: string; currency: string }): Promise<PhisPaymentProfileReach | null>;
+  /**
+   * Asks the Provider again, once per currency, and records each answer; what `profileReach` reads
+   * from then on. A merchant action under the grant's `profileRefresh` policy, never from a hook, and
+   * at most once a minute per profile: sooner answers `rate_limited`.
+   */
+  refreshProfileReach(input: { profileKey: string; currencies: readonly string[] }): Promise<readonly PhisPaymentProfileReach[]>;
   /** Core binds Site/consumer/profile; the consumer checks access to its business resource. */
   create(input: PhisPaymentCreateInput): Promise<PhisPaymentCommandResult>;
   get(paymentId: PhisPaymentId): Promise<PhisPayment | null>;
@@ -710,6 +757,12 @@ export type PhisPaymentProviderCommand = {
       notificationUrl: string;
       /** Sent only for a method whose probe declared `stored.setup` with `with-payment`. */
       store?: { payerReference: string } | null;
+      /**
+       * Sent only where the consumer stated one, for a method whose probe declared `checkoutExpiry`, and
+       * within it: the instant the checkout ends. The Provider ends it then, or earlier where its own unit
+       * is coarser, never later, and reports that end as `checkout.expiresAt`.
+       */
+      expiresAt?: string | null;
     }
   | {
       /**
@@ -850,6 +903,8 @@ export type PhisPaymentProfileGrant = {
     subscriptionEnd?: PhisPaymentMerchantActionPolicy;
     /** Who may change what a subscription costs from its next period on. Absent: nobody. */
     subscriptionPrice?: PhisPaymentMerchantActionPolicy;
+    /** Who may ask the Provider again for the profile's reach. Absent: nobody. */
+    profileRefresh?: PhisPaymentMerchantActionPolicy;
   };
 };
 

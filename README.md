@@ -143,7 +143,10 @@ currency; capture and refunds inherit it. Core never infers conversion or settle
 Core implements Payment execution separately. Its catalogue exports `payments`, `paymentNotifications`,
 the Payment service kind/interface digest and `payment.changed`. Notification ingress is available
 only in a bound hook context. The Add-on event context discriminates thread and Payment subjects;
-thread producers remain explicitly typed as thread events.
+thread producers remain explicitly typed as thread events. A profile's Merchant-of-Record reach is
+recorded per currency when the Provider is asked (`refreshProfileReach`, a merchant action) and read
+back with `profileReach`, the one Payment operation a hook may call; a checkout can be given an end
+(`create` with `expiresAt`) within the method's `checkoutExpiry`.
 See the normative [Payment contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS.md)
 and [Stripe/profile contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS_STRIPE.md).
 
