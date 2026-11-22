@@ -70,15 +70,29 @@ export type PhisEntitlement = {
 /**
  * Whether a subject holds a product now.
  *
- * `entitled` is true while at least one entry is valid. `quantity` is the sum over the valid entries of a
- * counted product, null otherwise; Core counts no use. `until` is the latest end among the valid entries,
- * null when one of them has none or nobody is entitled.
+ * Whoever holds a bundle holds each of its parts (`parts` of `products:v1`), also through a bundle inside a
+ * bundle, so a supplier asks about its own product and never looks for the bundles it is sold in. The
+ * entries that count are therefore the valid ones on the product itself and on every bundle that contains
+ * it. A locked product passes nothing on: a locked part is held through no bundle, and a locked bundle --
+ * held directly or inside another one -- gives none of its parts.
+ *
+ * `entitled` is true while at least one of those entries is valid. `until` is the latest end among them,
+ * null when one of them has none or nobody is entitled. `quantity` is the product's own: on a counted
+ * product the sum over the valid entries on the product itself -- 0 when it is held through bundles only,
+ * since a bundle is never counted -- and null on one that does not count or when nobody is entitled; Core
+ * counts no use.
  */
 export type PhisEntitlementState = {
   readonly product: PhisProductId;
   readonly entitled: boolean;
   readonly quantity: number | null;
   readonly until: string | null;
+  /**
+   * The products through which the subject holds this one now: the product itself when it has a valid
+   * entry, then every bundle with a valid entry that contains it, directly or through nested bundles, in
+   * id order. Empty when nobody is entitled.
+   */
+  readonly via: readonly PhisProductId[];
 };
 
 /**
@@ -100,7 +114,17 @@ export type PhisEntitlementsCapabilityV1 = {
   subject(): Promise<PhisEntitlementSubject | null>;
   check(input: { product: PhisProductId; subject?: PhisEntitlementSubject }): Promise<PhisEntitlementState>;
   /** The entries behind an answer, of every source, valid or not. */
-  list(input: { subject?: PhisEntitlementSubject; product?: PhisProductId }): Promise<readonly PhisEntitlement[]>;
+  list(input: {
+    subject?: PhisEntitlementSubject;
+    product?: PhisProductId;
+    /**
+     * With `product`: also the entries on every bundle that contains it, directly or through nested
+     * bundles, whatever the bundle's state. Each entry is as it is -- its `product` is the bundle's id, its
+     * `valid` the entry's own. Absent or false: the product's own entries only. Without `product` it changes
+     * nothing, since every entry of the subject is listed already.
+     */
+    resolveBundles?: boolean;
+  }): Promise<readonly PhisEntitlement[]>;
   /**
    * This source's statement. Idempotent on `(product, reference)`: a second grant answers the entry the
    * first one wrote and changes nothing, which is what lets a payment handler be delivered twice.
@@ -135,6 +159,10 @@ export type PhisEntitlementsCapabilityV1 = {
  * Core's event when a subject's answer for a product may have changed: an entry was written, changed or
  * taken back, or one ended. It carries no state -- a handler reads the current answer through the
  * capability -- and reaches every enabled Add-on of the Site that declares a handler for it.
+ *
+ * An entry on a bundle changes the answer for its parts as well, so the event is also emitted once for
+ * each part, directly or through nested bundles, with the part as `product`: one event per subject and
+ * product, however many of the changed entries lead to it.
  */
 export type PhisEntitlementChangedEventFacts = {
   event: "entitlement.changed";

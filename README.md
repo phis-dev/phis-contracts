@@ -29,7 +29,7 @@ and change at different moments.
 @phis/contracts/references           the Page reference grammar both sides derive and compare
 @phis/contracts/resource-links       the links from a Phi record into an Add-on's own system
 @phis/contracts/support              the Support ticket vocabulary
-@phis/contracts/entitlements         who holds which product: subjects, entries and the capability
+@phis/contracts/entitlements         who holds which product: subjects, entries and the capability; a bundle's holder holds its parts
 @phis/contracts/products             the Site's product directory: products, states, the capability and the event
 @phis/contracts/threads              the thread vocabulary
 @phis/contracts/conditions           the runtime condition descriptors and the sources they read, the Page's record among them

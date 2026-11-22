@@ -44,6 +44,7 @@ export type PhisProductReleasedTerms = {
    * well. The supplier knows, and a seller's checkout asks for the sign-in where a product says so.
    */
   readonly accountRequired: boolean;
+  /** A bundle's parts. Whoever holds the bundle holds each of them (`entitlements:v1` resolves it). */
   readonly parts: readonly PhisProductId[];
 };
 
