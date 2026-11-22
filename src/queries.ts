@@ -135,6 +135,20 @@ export type PhisAddonQueryOrdering = {
   direction: "asc" | "desc";
 };
 
+/**
+ * Which of a select's declared `orderings` a page is read in, and which way round.
+ *
+ * `asc` runs the ordering as it is declared; `desc` turns every entry of it around, the primary key Core
+ * completes it with included, so the rows come back in exactly the declared order reversed. An ordering
+ * is therefore declared the way it reads ascending -- by date, by number, by name -- and a caller who
+ * sorts a column the other way names the same key with `desc` rather than a second declaration.
+ */
+export type PhisAddonQueryOrderingChoice = {
+  /** A key of the query's `orderings`. */
+  key: string;
+  direction: "asc" | "desc";
+};
+
 /** Writing a value into a column: `column = value`. */
 export type PhisAddonQueryAssignment = {
   column: string;
@@ -182,7 +196,7 @@ export type PhisAddonQueryIncrement = {
  * Every column named in `orderBy` must be declared `NOT NULL`. Where nulls sort is a decision the
  * descriptor cannot express, so an order over a nullable column is underdetermined -- and a keyset
  * comparison against a null value matches nothing at all, which would end the paging early rather than
- * loudly.
+ * loudly. The same holds for every column of every one of `orderings`.
  */
 /**
  * A role the acting user must hold for this query to run at all.
@@ -292,6 +306,23 @@ export type PhisAddonSelectQueryDescriptor = PhisAddonQueryAuthority & {
   columns?: string[];
   where?: PhisAddonQueryCondition;
   orderBy?: PhisAddonQueryOrdering[];
+  /**
+   * The orders a caller may choose between, each under a key of the Add-on's own (`^[a-z][a-z0-9_]*$`),
+   * written as `orderBy` is and held to the same rules: at least one column, every column `NOT NULL`, the
+   * primary key added by Core.
+   *
+   * A list a person sorts by its columns wants one order per column and two directions, and declaring
+   * each as a query of its own repeats the filters and the limit as many times, kept in step by hand.
+   * Here the query is declared once and a call names the order it is read in
+   * (`PhisAddonQueryPageRequest.ordering`). Every order is still known before the Add-on is installed,
+   * both ways round, and Core compiles each of them then: what a call chooses is which of those
+   * statements runs, never what one says.
+   *
+   * Not combined with `orderBy`: the order a call that names none is read in is `defaultOrdering`.
+   */
+  orderings?: Readonly<Record<string, PhisAddonQueryOrdering[]>>;
+  /** The order a call that names none is read in. Required with `orderings`, and only with them. */
+  defaultOrdering?: PhisAddonQueryOrderingChoice;
   /**
    * The largest page this query will ever serve, whatever the caller asks for.
    *
@@ -470,7 +501,8 @@ export type PhisAddonQueryRow = Readonly<Record<string, unknown>>;
  * which costs a row and no count.
  *
  * The cursor is opaque. It encodes the ordering it was made for and is refused by a query with a
- * different one, because paging on somebody else's order silently skips and repeats rows.
+ * different one, because paging on somebody else's order silently skips and repeats rows -- and so is
+ * a cursor read in one of a query's `orderings` when the call names another.
  */
 export type PhisAddonQueryPage = {
   rows: PhisAddonQueryRow[];
@@ -483,6 +515,15 @@ export type PhisAddonQueryPageRequest = {
   limit?: number;
   /** From a previous page. Absent starts at the beginning. */
   cursor?: string | null;
+  /**
+   * Which of the select's `orderings` the page is read in. Absent: its `defaultOrdering`, or its
+   * `orderBy`.
+   *
+   * Refused for a key the query does not declare, and by a query that declares no `orderings` -- an
+   * aggregate among them, which its grouping orders. The cursor belongs to the order it was read in: a
+   * page asked for in another one with it is refused, not read on from a place in a different list.
+   */
+  ordering?: PhisAddonQueryOrderingChoice;
 };
 
 /**
