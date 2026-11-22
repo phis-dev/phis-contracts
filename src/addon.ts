@@ -288,6 +288,22 @@ export type PhisAddonRoleDescriptor = {
    * are one role under two names.
    */
   includes?: string[];
+  /**
+   * A Site access whose holders hold this role without a grant of it.
+   *
+   * Two Add-ons that both need "whoever keeps the books" would otherwise each define a role for it, and
+   * the Site would grant the same person the same standing twice -- once per package. With this, both
+   * roles hang on the access Core already derives from its own roles (`accounting`: an Accountant or a
+   * Developer; `support`: a Supporter or a Developer), and granting that Core role once is enough. The
+   * Add-ons still do not know each other, and the role can still be granted on its own to somebody who
+   * holds no such access.
+   *
+   * Core answers `has()` with yes for a holder of the access, in every place it asks a role (a guarded
+   * query, a slot, the `roles:v1` capability, a grant policy, the roles a Site viewer carries), and what
+   * the role `includes` follows from it as from a grant. Nothing is stored: losing the access loses the
+   * role. It widens who holds the role and never narrows it.
+   */
+  impliedBy?: { siteAccess: PhisSiteAccess };
 };
 
 /**
