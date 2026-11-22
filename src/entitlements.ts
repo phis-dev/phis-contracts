@@ -48,7 +48,8 @@ export type PhisEntitlement = {
   readonly startsAt: string;
   /**
    * Null: without an end. On an entry bound to a subscription it is not written by anybody: it is the end
-   * of that subscription's latest paid period, as Core reads it now.
+   * of that subscription's latest paid period, as Core reads it now, without the grace -- the entry may
+   * go on counting after it (`subscriptionId`), and `PhisEntitlementState.until` says until when.
    */
   readonly endsAt: string | null;
   /**
@@ -76,11 +77,14 @@ export type PhisEntitlement = {
  * it. A locked product passes nothing on: a locked part is held through no bundle, and a locked bundle --
  * held directly or inside another one -- gives none of its parts.
  *
- * `entitled` is true while at least one of those entries is valid. `until` is the latest end among them,
- * null when one of them has none or nobody is entitled. `quantity` is the product's own: on a counted
- * product the sum over the valid entries on the product itself -- 0 when it is held through bundles only,
- * since a bundle is never counted -- and null on one that does not count or when nobody is entitled; Core
- * counts no use.
+ * `entitled` is true while at least one of those entries is valid. `until` is the moment the answer stops
+ * counting: the latest instant at which one of them stops counting, by the very rule that makes it valid --
+ * an entry's `endsAt`, and for an entry bound to a subscription its paid period's end plus the Site's grace
+ * while the subscription has not ended, the period's end once it has. So `until` is never in the past while
+ * `entitled` is true, also during the grace; it is null when one of them has no end or nobody is entitled.
+ * `quantity` is the product's own: on a counted product the sum over the valid entries on the product
+ * itself -- 0 when it is held through bundles only, since a bundle is never counted -- and null on one that
+ * does not count or when nobody is entitled; Core counts no use.
  */
 export type PhisEntitlementState = {
   readonly product: PhisProductId;
