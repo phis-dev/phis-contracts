@@ -116,6 +116,12 @@ export const PhiImageAssetVariantKey = {
   Logo: 7,
   Landscape: 8,
   Portrait: 9,
+  /**
+   * A small square for lists and tables: an icon, a logo, a product's picture beside its name. Fitted
+   * whole on a transparent ground rather than cropped, because an app icon or a logo that loses an edge
+   * is a different mark; 64 px is a 32 px cell on a high-density screen.
+   */
+  Icon: 10,
 } as const;
 
 export const PhiImageAssetVariantKeyName = {
@@ -129,6 +135,7 @@ export const PhiImageAssetVariantKeyName = {
   [PhiImageAssetVariantKey.Logo]: "logo",
   [PhiImageAssetVariantKey.Landscape]: "landscape",
   [PhiImageAssetVariantKey.Portrait]: "portrait",
+  [PhiImageAssetVariantKey.Icon]: "icon",
 } as const;
 
 export type PhiImageAssetVariantSpec = {
@@ -282,6 +289,8 @@ export function resolvePhiImageAssetVariantSpec(
       return { width: 640, height: 396, fit: "cover", quality: 82, format: "webp" };
     case PhiImageAssetVariantKey.Portrait:
       return { width: 396, height: 640, fit: "cover", quality: 82, format: "webp" };
+    case PhiImageAssetVariantKey.Icon:
+      return { width: 64, height: 64, fit: "contain", quality: 80, format: "webp" };
     default:
       return null;
   }
