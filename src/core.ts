@@ -2,6 +2,7 @@ import type { PhisAssetChangedEventFacts } from "./assets.js";
 import type { PhisEntitlementChangedEventFacts } from "./entitlements.js";
 import type { PhisProductChangedEventFacts } from "./products.js";
 import type { PhisPaymentChangedEventFacts } from "./payments.js";
+import type { PhisUserChangedEventFacts, PhisUserRegisteredEventFacts } from "./users.js";
 
 /**
  * What Core offers, named once so both sides can spell it the same way.
@@ -71,6 +72,11 @@ export const PHIS_CORE_CAPABILITIES = {
    * Separate from `media`, so being able to read Assets is not being able to delete them.
    */
   mediaRelease: "@phis/server/media-release:v1",
+  /**
+   * A person of the Site -- name, e-mail, telephone, the Site's addresses -- as far as the acting person
+   * may read them, or as far as the Site's admin granted this Add-on in the background (`users.ts`).
+   */
+  users: "@phis/server/users:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -103,18 +109,24 @@ export const PHIS_ADDON_EVENTS = {
   productChanged: "product.changed",
   /** The files of one of this Add-on's own slots changed; the handler reads the slot. */
   assetChanged: "asset.changed",
+  /** A person became a member of the Site; the handler reads what it may through `users:v1`. */
+  userRegistered: "user.registered",
+  /** Which groups of a person's data changed, never their values; the handler reads them through `users:v1`. */
+  userChanged: "user.changed",
 } as const;
 
 export type PhisAddonThreadEventId =
-  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed" | "asset.changed">;
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed" | "asset.changed" | "user.registered" | "user.changed">;
 
-/** The events Core itself emits: the thread events, the Payment event, the entitlement event and the product event. */
+/** The events Core itself emits: the thread events, the Payment event, the entitlement, product and asset events, and the user events. */
 export type PhisCoreEventId =
   | PhisAddonThreadEventId
   | PhisPaymentChangedEventFacts["event"]
   | PhisEntitlementChangedEventFacts["event"]
   | PhisProductChangedEventFacts["event"]
-  | PhisAssetChangedEventFacts["event"];
+  | PhisAssetChangedEventFacts["event"]
+  | PhisUserRegisteredEventFacts["event"]
+  | PhisUserChangedEventFacts["event"];
 
 /**
  * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.

@@ -31,6 +31,7 @@ and change at different moments.
 @phis/contracts/support              the Support ticket vocabulary
 @phis/contracts/entitlements         who holds which product: subjects, entries and the capability; a bundle's holder holds its parts
 @phis/contracts/products             the Site's product directory: products, states, the capability and the event
+@phis/contracts/users                a person of the Site for Add-ons: fields by role, the Site's address book, the user events
 @phis/contracts/threads              the thread vocabulary
 @phis/contracts/conditions           the runtime condition descriptors and the sources they read, the Page's record among them
 @phis/contracts/controls             the Control descriptors

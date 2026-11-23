@@ -132,6 +132,16 @@ export type PhisEntitlementsCapabilityV1 = {
    * this call.
    */
   subjectForUser(input: { userId: number }): Promise<PhisEntitlementSubject | null>;
+  /**
+   * Delivers `entitlement.changed` to this Add-on again, for every subject that holds `product` on this
+   * Site now (directly or through a bundle containing it), in batches through Core's event outbox -- and
+   * to no other Add-on. For an Add-on that starts acting on a product only later, such as a licence rule
+   * added after purchases were made: its own handler then catches up on what it missed, and nobody has to
+   * ask for it. Needs an acting user holding the Site access `accounting` (Admin, Accountant, Maintainer)
+   * and a handler for `entitlement.changed` in the manifest; refused otherwise. Answers how many subjects
+   * were queued; a second call while the first is still being delivered queues nothing new.
+   */
+  redeliver(input: { product: PhisProductId }): Promise<{ queued: number }>;
   /** The entries behind an answer, of every source, valid or not. */
   list(input: {
     subject?: PhisEntitlementSubject;

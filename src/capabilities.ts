@@ -27,6 +27,7 @@ import type { PhisDataCapabilityV1 } from "./queries.js";
 import type { PhisResourceLinksCapabilityV1 } from "./resource-links.js";
 import type { PhisSupportCapabilityV1 } from "./support.js";
 import type { PhisThreadsCapabilityV1 } from "./threads.js";
+import type { PhisUserChangedEventFacts, PhisUserRegisteredEventFacts, PhisUsersCapabilityV1 } from "./users.js";
 
 /**
  * The cumulative group levels, by name.
@@ -139,6 +140,8 @@ export type PhisAddonCapabilities = {
   media?: PhisMediaCapabilityV1;
   /** Giving up Media library Assets; Core deletes one nothing references any more. */
   mediaRelease?: PhisMediaReleaseCapabilityV1;
+  /** A person's name, e-mail, telephone and the Site's addresses, as far as the acting person or the admin's grant allows. */
+  users?: PhisUsersCapabilityV1;
 };
 
 /**
@@ -516,7 +519,7 @@ export type PhisAddonCommandHandler = (
  * rather than as a person.
  *
  * Thread delivery is bounded by a synced link. The Payment event reaches only its stored
- * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The asset event reaches only the Add-on whose slot it concerns. The subject kind and event discriminate those two ownership models; approved
+ * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The asset event reaches only the Add-on whose slot it concerns. The user events reach every enabled Add-on that requires `users:v1` and declares a handler for them. The subject kind and event discriminate those two ownership models; approved
  * Payment facts are delivered through Core's durable owner-directed outbox.
  */
 export type PhisAddonEventFacts =
@@ -528,6 +531,8 @@ export type PhisAddonEventFacts =
   | PhisEntitlementChangedEventFacts
   | PhisProductChangedEventFacts
   | PhisAssetChangedEventFacts
+  | PhisUserRegisteredEventFacts
+  | PhisUserChangedEventFacts
   | {
       event: PhisAddonEmittedEventId;
       subject: PhisAddonEmittedEventSubject;

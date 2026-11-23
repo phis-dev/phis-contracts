@@ -33,6 +33,12 @@ export const PhisThreadKind = {
   CrossGroup: 2,
   /** A requester and a Support queue's group. */
   Support: 3,
+  /**
+   * A person's file on a Site: Staff's record of them, one per person and Site, never readable by the
+   * person. Calls, notes and what Add-ons report (an order paid, a key issued) are its messages, all
+   * `Internal`, only ever added to. Support and accounting read it beside the person's Support threads.
+   */
+  File: 4,
 } as const;
 
 export type PhisThreadKindValue =
@@ -389,6 +395,15 @@ export type PhisThreadsCapabilityV1 = {
    * or `reply`, so it finds its way back to a conversation it already knows about and to no other.
    */
   findByExternalRef(externalRef: string): Promise<PhisThreadDetail | null>;
+  /**
+   * The file of one person of this Site (`PhisThreadKind.File`), opened on first asking: the thread an
+   * Add-on writes what happened with this person into, through `reply` with `messageFlags` `Internal` and
+   * an `externalRef` (an event delivered twice writes once) and a resource link to its own record. Messages
+   * are only ever added; an Add-on writes a new one ("order refunded") rather than changing an old one.
+   * Null for a subject that is no member of this Site. Without an actor it answers only an Add-on with
+   * background access to `users:v1` on this Site.
+   */
+  fileOf(input: { subject: string }): Promise<{ threadId: number } | null>;
   /**
    * Records that a message of a reachable thread was written out to the other system, under that
    * system's id for it. True when recorded now, false when it already was -- an event delivered twice

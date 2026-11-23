@@ -26,6 +26,7 @@ import type {
   PhisServiceKind,
 } from "./core.js";
 import type { PhiAddonMediaLimits } from "./server-capabilities.js";
+import type { PhisAddonUsersAccess } from "./users.js";
 import type { PhisAddonProductDescriptor } from "./products.js";
 import type { PhisAddonQueryCatalog } from "./queries.js";
 import type { PhisAddonSchemaDescriptor } from "./schema.js";
@@ -494,6 +495,12 @@ export type PhisAddonManifestV1 = {
    * into the Media library and is not addressed to an Add-on.
    */
   media?: PhiAddonMediaLimits;
+  /**
+   * What this Add-on reads of a person through `users:v1`: the fields at all, and those it reads without an
+   * acting person (`background`), which the Site's admin grants per Site. Required with `users:v1`; a field
+   * not listed is refused on every road. Optional for the reason `settings` is.
+   */
+  users?: PhisAddonUsersAccess;
   /**
    * The tables this Add-on owns, or null when it owns none.
    *
