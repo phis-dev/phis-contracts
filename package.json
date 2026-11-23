@@ -1,6 +1,6 @@
 {
   "name": "@phis/contracts",
-  "version": "0.8.9",
+  "version": "0.8.10",
   "license": "Apache-2.0",
   "type": "module",
   "publishConfig": {
@@ -99,6 +99,11 @@
       "types": "./dist/entitlements.d.ts",
       "import": "./dist/entitlements.js",
       "default": "./dist/entitlements.js"
+    },
+    "./users": {
+      "types": "./dist/users.d.ts",
+      "import": "./dist/users.js",
+      "default": "./dist/users.js"
     },
     "./products": {
       "types": "./dist/products.d.ts",
