@@ -112,15 +112,24 @@ What it covers:
 - **Products** -- `/products`: a product's `imageAssetId` (its picture) and `iconAssetId` (a small
   picture beside its title, a logo or an app icon) are accepted only where a visitor is served the Asset
   (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
-  declared products leaves a picture or an icon that is set alone. A Site package (Module) proposes
+  declared products leaves a picture or an icon that is set alone. A product also carries a `description`
+  (Markdown, in the source language and translated like `title` and `summary`, at most
+  `PHIS_PRODUCT_DESCRIPTION_MAX`) and a `gallery`: further pictures in order, at most
+  `PHIS_PRODUCT_GALLERY_MAX`, written as Asset ids (`PhisProductDraft.gallery`) under the picture's rules
+  and read as `PhisProductGalleryPicture` (`assetId`, the public `path`, `listPath`); a change of either
+  owes `product.changed`, and a manifest names no gallery. Every Add-on reads them through `products:v1`;
+  a seller keeps no gallery or description of its own. A Site package (Module) proposes
   products of its own under `phis.products` in its `package.json`: `PhisSitePackageProductProposal`
-  (`key`, `title`, `summary?`, `kind?`, `state?` `draft`/`active`, `flags?` as `PhisSitePackageProductFlag`
-  -- `Counted`, `AccountRequired` --, `picture?` and `icon?` as keys of the package's `phis.media.files`),
+  (`key`, `title`, `summary?`, `description?`, `kind?`, `state?` `draft`/`active`, `flags?` as
+  `PhisSitePackageProductFlag` -- `Counted`, `AccountRequired` --, `picture?` and `icon?` as keys of the
+  package's `phis.media.files`, `gallery?` as a list of such keys in order),
   read by `readPhisSitePackageProductProposals` (a whole package block, strict) and
   `readPhisSitePackageProductProposal` (one, as Core is handed it). Core has the supplier
   `PHIS_SITE_PACKAGE_PRODUCT_SUPPLIER` (`@phis/products`, command `product.add`) make each one once per
   Site, under the key `phisSitePackageProductKey` derives: the package name's parts and the proposal's key
-  joined by dots (`@phis/phisys` + `phivoice-ai` is `phis.phisys.phivoice-ai`).
+  joined by dots (`@phis/phisys` + `phivoice-ai` is `phis.phisys.phivoice-ai`) -- when a Site Admin
+  activates the package in the Builder, as that admin, and once every picture it names is in the Site's
+  Media library.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to

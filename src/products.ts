@@ -62,6 +62,12 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly title: string;
   readonly summary: string;
   /**
+   * The long description, as Markdown, in the Site's source language and translated like `title` and
+   * `summary`; empty for none. What a product page shows under its heading -- a seller shows the product's,
+   * it keeps none of its own. At most `PHIS_PRODUCT_DESCRIPTION_MAX` characters.
+   */
+  readonly description: string;
+  /**
    * The picture, as a Media Asset id -- what `assets:v1` answers as `mediaAssetId` for a file in one of
    * the supplier's slots, or an Asset of the Site's Media library.
    *
@@ -94,6 +100,16 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly imageListPath: string | null;
   /** The icon as a list or a table shows it, as `imageListPath` is for the picture; null without one. */
   readonly iconListPath: string | null;
+  /**
+   * Further pictures, first to last, beside `imageAssetId`: what a product page shows as its gallery. Each is
+   * accepted under exactly the rules of `imageAssetId` -- only an Asset a visitor is served, in the Site's
+   * Space or the registering supplier's own Add-on Space -- so every `path` here is a public address a
+   * seller may hand on (a storefront elsewhere, a feed). An Asset deleted from the Media library leaves the
+   * gallery; the Media library refuses to delete one a product still shows, as it does for the picture. At
+   * most `PHIS_PRODUCT_GALLERY_MAX`. A manifest names no gallery, so a sync of the declared products leaves
+   * the one that is set alone.
+   */
+  readonly gallery: readonly PhisProductGalleryPicture[];
   /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
   readonly counted: boolean;
   readonly state: PhisProductState;
@@ -117,6 +133,26 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly updatedAt: string;
 };
 
+/** One picture of a product's gallery (`PhisProduct.gallery`). */
+export type PhisProductGalleryPicture = {
+  /** The Media Asset id, as `PhisProduct.imageAssetId` is for the picture. */
+  readonly assetId: number;
+  /**
+   * Where it is served from, Site-relative and cache-safe (it carries the Asset's revision), as
+   * `imagePath`; read at the moment it is used and never stored. It changes when the picture does, and a
+   * change of the gallery owes `product.changed`, so a seller that copied the addresses elsewhere copies
+   * them again.
+   */
+  readonly path: string;
+  /** The picture as a list shows it small, as `imageListPath`; null where it is not an image. */
+  readonly listPath: string | null;
+};
+
+/** The longest description Core keeps, in characters. */
+export const PHIS_PRODUCT_DESCRIPTION_MAX = 20000;
+/** The most pictures a product's gallery holds. */
+export const PHIS_PRODUCT_GALLERY_MAX = 20;
+
 /** What a supplier says of its own product. */
 export type PhisProductDraft = {
   /** The key half of the id. */
@@ -125,10 +161,17 @@ export type PhisProductDraft = {
   type: string;
   title: string;
   summary: string;
+  /** Markdown, as `PhisProduct.description`. Absent: none. */
+  description?: string;
   /** As `PhisProduct.imageAssetId`: refused unless a visitor is served it. Absent: none. */
   imageAssetId?: number | null;
   /** As `PhisProduct.iconAssetId`: refused unless a visitor is served it. Absent: none. */
   iconAssetId?: number | null;
+  /**
+   * The gallery's Media Asset ids, first to last, as `PhisProduct.gallery`: each refused unless a visitor is
+   * served it, none twice, at most `PHIS_PRODUCT_GALLERY_MAX`. Absent: none.
+   */
+  gallery?: readonly number[];
   /** Fixed once somebody holds the product. */
   counted?: boolean;
   /** Absent: `own`. */
@@ -177,9 +220,11 @@ export type PhisProductsCapabilityV1 = {
    * nothing. A new product starts as `draft`. On a released product of a publisher, changed terms are
    * held as `pendingTerms`.
    *
-   * Refused where `imageAssetId` or `iconAssetId` names an Asset a visitor would not be served: one that
-   * is not ready, not delivered publicly, or in neither the Site's Space nor this supplier's own Add-on
-   * Space. The message says so without saying whether an Asset of that id exists elsewhere.
+   * Refused where `imageAssetId`, `iconAssetId` or an entry of `gallery` names an Asset a visitor would not
+   * be served: one that is not ready, not delivered publicly, or in neither the Site's Space nor this
+   * supplier's own Add-on Space. The message says so without saying whether an Asset of that id exists
+   * elsewhere. A change of the description or of the gallery -- its pictures or their order -- is a change
+   * like any other: it raises the version and owes `product.changed`.
    */
   register(input: PhisProductDraft): Promise<PhisProduct>;
   /**
@@ -195,8 +240,8 @@ export type PhisProductsCapabilityV1 = {
 };
 
 /**
- * Core's event when a product was registered, changed, released, moved to another state or lost or
- * regained its supplier. It carries no state -- a handler reads the product -- and reaches every enabled
+ * Core's event when a product was registered, changed (its description and its gallery included), released,
+ * moved to another state or lost or regained its supplier. It carries no state -- a handler reads the product -- and reaches every enabled
  * Add-on of the Site that declares a handler for it. A seller takes a product out of sale on it.
  */
 export type PhisProductChangedEventFacts = {
@@ -208,11 +253,12 @@ export type PhisProductChangedEventFacts = {
  * A product a package carries, declared in its manifest and registered when the Add-on is enabled for a
  * Site. What an Add-on makes at runtime it registers through the capability.
  *
- * The manifest is the statement of every field it carries, and of nothing else: it names no picture and no
- * icon, so a sync (enabling the Add-on, reconciling a release) neither sets nor clears `imageAssetId` or
- * `iconAssetId`.
+ * The manifest is the statement of every field it carries, and of nothing else: it names no picture, no
+ * icon and no gallery, so a sync (enabling the Add-on, reconciling a release) neither sets nor clears
+ * `imageAssetId`, `iconAssetId` or `gallery`. It may carry a `description`, which it then states as every
+ * other text: absent is none.
  */
-export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId">;
+export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId" | "gallery">;
 
 /**
  * Who makes the products a Site package proposes: `@phis/products`, the supplier of the Site's own
@@ -246,6 +292,10 @@ export const PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX = 64;
 /** As Core keeps them (`phis.products`: `VARCHAR(200)`, `VARCHAR(1000)`). */
 export const PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX = 200;
 export const PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX = 1000;
+/** As Core keeps it (`PHIS_PRODUCT_DESCRIPTION_MAX`). */
+export const PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX = PHIS_PRODUCT_DESCRIPTION_MAX;
+/** As a product's gallery holds them (`PHIS_PRODUCT_GALLERY_MAX`). */
+export const PHIS_SITE_PACKAGE_PRODUCT_GALLERY_MAX = PHIS_PRODUCT_GALLERY_MAX;
 /** A product key in Core (`^[a-z][a-z0-9.-]*$`, at most 96 characters). */
 const PHIS_PRODUCT_KEY_PATTERN = /^[a-z][a-z0-9.-]*$/;
 const PHIS_PRODUCT_KEY_MAX = 96;
@@ -258,8 +308,11 @@ const PHIS_SITE_PACKAGE_NAME_PART_PATTERN = /^[a-z][a-z0-9-]*$/;
  * What `@phis/products`' `product.add` takes, and nothing else: a Site package proposes products the Site
  * then owns, so it can say what a person on the Products page could say. Core makes each one once per Site
  * (`phis module products sync`), keyed by the package and this key, and never again: a product the Site
- * already had under the key, or changed or removed since, is left as it is. Title and summary are in the
- * package's `sourceLocale`.
+ * already had under the key, or changed or removed since, is left as it is. Title, summary and description
+ * are in the package's `sourceLocale`.
+ *
+ * Core takes them when a Site Admin activates the package in the Builder (publishes an Area's Module
+ * selection that holds one of its Modules), as that admin, and with `phis module products sync --as`.
  */
 export type PhisSitePackageProductProposal = {
   /** The package's own name for it, unique in the package; the product's key is derived from it (`phisSitePackageProductKey`). */
@@ -267,6 +320,8 @@ export type PhisSitePackageProductProposal = {
   title: string;
   /** Absent: none. */
   summary?: string;
+  /** Markdown, at most `PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX` characters. Absent: none. */
+  description?: string;
   /** Absent: `@phis/products`' default, `product`. */
   kind?: string;
   /** Absent: `draft`, as `product.add` makes it. */
@@ -277,6 +332,12 @@ export type PhisSitePackageProductProposal = {
   picture?: string;
   /** As `picture`, for the small picture beside the title. */
   icon?: string;
+  /**
+   * The gallery, first to last: keys of this package's own Media files as `picture` is, none twice, at most
+   * `PHIS_SITE_PACKAGE_PRODUCT_GALLERY_MAX`. Core takes the proposal only once every one of them is in the
+   * Site's Media library. Absent: none.
+   */
+  gallery?: string[];
 };
 
 /**
@@ -304,7 +365,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const PROPOSAL_FIELDS = ["key", "title", "summary", "kind", "state", "flags", "picture", "icon"] as const;
+const PROPOSAL_FIELDS = ["key", "title", "summary", "description", "kind", "state", "flags", "picture", "icon", "gallery"] as const;
 
 /**
  * Reads one proposal, reporting into `report(where, message)`. `mediaFileKeys` are the keys of the
@@ -339,7 +400,7 @@ function readProposal(
   if (phisSitePackageProductKey(packageName, key) === null) {
     fault(at, `the product key cannot be made from the package name: each part of it must be lowercase letters, digits or hyphens, starting with a letter, and the whole at most ${PHIS_PRODUCT_KEY_MAX} characters`);
   }
-  const text = (name: "title" | "summary", max: number, required: boolean) => {
+  const text = (name: "title" | "summary" | "description", max: number, required: boolean) => {
     const value = entry[name];
     if (value === undefined && !required) return undefined;
     if (typeof value !== "string" || value.trim() === "" || value.trim().length > max) {
@@ -350,6 +411,7 @@ function readProposal(
   };
   const title = text("title", PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX, true);
   const summary = text("summary", PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX, false);
+  const description = text("description", PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX, false);
   const kind = entry.kind;
   if (kind !== undefined && (typeof kind !== "string" || kind.length > PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX || !PHIS_SITE_PACKAGE_PRODUCT_KIND_PATTERN.test(kind))) {
     fault(at, `\`kind\` must be a lower-case word, or words joined by dashes, of at most ${PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX} characters`);
@@ -360,11 +422,22 @@ function readProposal(
   if (flags !== undefined && (!Number.isSafeInteger(flags) || (flags as number) < 0 || ((flags as number) & ~PHIS_SITE_PACKAGE_PRODUCT_FLAG_MASK) !== 0)) {
     fault(at, "`flags` must be a sum of PhisSitePackageProductFlag bits (Counted 1, AccountRequired 2)");
   }
+  const isMediaKey = (value: unknown) =>
+    typeof value === "string" && (mediaFileKeys ? mediaFileKeys.has(value) : /^[a-z0-9][a-z0-9-]*$/.test(value));
   for (const name of ["picture", "icon"] as const) {
     const value = entry[name];
     if (value === undefined) continue;
-    if (typeof value !== "string" || (mediaFileKeys ? !mediaFileKeys.has(value) : !/^[a-z0-9][a-z0-9-]*$/.test(value))) {
-      fault(at, `\`${name}\` ${JSON.stringify(value)} must be the key of one of this package's phis.media.files`);
+    if (!isMediaKey(value)) fault(at, `\`${name}\` ${JSON.stringify(value)} must be the key of one of this package's phis.media.files`);
+  }
+  const gallery = entry.gallery;
+  if (gallery !== undefined) {
+    if (!Array.isArray(gallery) || gallery.length > PHIS_SITE_PACKAGE_PRODUCT_GALLERY_MAX) {
+      fault(at, `\`gallery\` must be a list of at most ${PHIS_SITE_PACKAGE_PRODUCT_GALLERY_MAX} keys of this package's phis.media.files`);
+    } else {
+      for (const value of gallery) {
+        if (!isMediaKey(value)) fault(at, `\`gallery\` entry ${JSON.stringify(value)} must be the key of one of this package's phis.media.files`);
+      }
+      if (new Set(gallery).size !== gallery.length) fault(at, "`gallery` names a Media file twice");
     }
   }
   if (!valid || title === undefined) return null;
@@ -372,11 +445,13 @@ function readProposal(
     key,
     title,
     ...(summary !== undefined ? { summary } : {}),
+    ...(description !== undefined ? { description } : {}),
     ...(typeof kind === "string" ? { kind } : {}),
     ...(state === "draft" || state === "active" ? { state } : {}),
     ...(typeof flags === "number" && flags !== 0 ? { flags } : {}),
     ...(typeof entry.picture === "string" ? { picture: entry.picture } : {}),
     ...(typeof entry.icon === "string" ? { icon: entry.icon } : {}),
+    ...(Array.isArray(gallery) && gallery.length > 0 ? { gallery: [...gallery] as string[] } : {}),
   };
 }
 
@@ -385,8 +460,8 @@ function readProposal(
  * and the key it is about.
  *
  * Strict, as `phis.media` is read: an unknown property, a wrong type, a key that is not one or comes twice,
- * a package name that cannot stand in a product key, flags this release does not name, and a `picture` or
- * `icon` that is no key of the package's `phis.media.files`. `proposals` is empty when the package
+ * a package name that cannot stand in a product key, flags this release does not name, and a `picture`,
+ * `icon` or `gallery` entry that is no key of the package's `phis.media.files` (or one the gallery names twice). `proposals` is empty when the package
  * proposes nothing or proposes wrongly; `issues` says which.
  */
 export function readPhisSitePackageProductProposals(
@@ -421,7 +496,7 @@ export function readPhisSitePackageProductProposals(
 
 /**
  * One proposal as Core is handed it, without the package around it: the same rules, except that a
- * `picture` or `icon` need only be a Media key -- whether the package declares it is the sender's to
+ * `picture`, `icon` or `gallery` entry need only be a Media key -- whether the package declares it is the sender's to
  * check, and whether the Site holds it is Core's.
  */
 export function readPhisSitePackageProductProposal(
