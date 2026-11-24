@@ -571,6 +571,14 @@ export type PhisAddonRequestContext = {
       }
     | null;
   /**
+   * The language the request is read in, as Core resolves it for its own reads: the `x-locale` a Site
+   * sends for the page it draws, else the browser's `Accept-Language`, else English -- a locale key
+   * (`de`, `pt-BR`). What a handler hands `products:v1` and `translations:v1` to answer a reader in their
+   * language. Null where no reader stands behind the request: a command run as a member, which writes and
+   * reads the texts as they were written.
+   */
+  locale: string | null;
+  /**
    * What Core hands this request, bound to the Site and actor above.
    *
    * Only what the manifest declared arrives. A capability is not fetched, looked up, or constructed by

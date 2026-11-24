@@ -130,3 +130,58 @@ export type PhisTranslationServiceContext = {
   /** The Provider's own secret, or null when its configuration names none. */
   readSecret: () => Promise<string | null>;
 };
+
+/** The longest context an Add-on names for its texts, in characters (`PhisTranslationsCapabilityV1`). */
+export const PHIS_ADDON_TRANSLATION_CONTEXT_MAX = 64;
+/** The most texts one call of `translations:v1` takes. */
+export const PHIS_ADDON_TRANSLATION_TEXTS_MAX = 200;
+/** The longest text `translations:v1` takes, in characters: as long as a product's description may be. */
+export const PHIS_ADDON_TRANSLATION_TEXT_MAX = 20000;
+
+/**
+ * `@phis/server/translations:v1`: words an Add-on keeps in its own tables -- a listing's hint, a
+ * category's name -- as source texts of the Site's translation store, and read back in a reader's
+ * language.
+ *
+ * They are the Site's words, written in the Site's source language by whoever administers the Add-on, so
+ * they live where a Page's words live (`tr_site_msg`): Editor > Translations lists them and a translator
+ * translates them there, `phis translations export --site` and `import` carry them, and a reader in
+ * another language is answered the translation -- a person's where one is held, else the configured
+ * translation provider's, asked once and kept, as for a Widget's words.
+ *
+ * `context` is the Add-on's own natural-language word for what the texts are (`listing hint`), at most
+ * `PHIS_ADDON_TRANSLATION_CONTEXT_MAX` characters, not starting with `[`, and never a resource identity: no
+ * id, no key, no address. Core keeps the texts under `<addonId>: <context>` (`@phis/shop: listing hint`),
+ * built by Core and never taken from the caller, so an Add-on's texts never land in a register of the
+ * platform's or of another Add-on, and the translator reads whose words they are. The same text under the
+ * same context is one message, however many rows carry it: "20 % off" is translated once.
+ *
+ * Absent from the payload: dynamic values. A text is what an author wrote, never a visitor's input, a
+ * name, an address or a number filled in.
+ */
+export type PhisTranslationsCapabilityV1 = {
+  /**
+   * Records texts as source texts of the Site, so a translator finds them before anybody reads them in
+   * another language. Called where the Add-on writes them -- a save -- with the texts it saved; recording a
+   * text twice changes nothing, and an empty text is skipped. Refused from an unverified hook: a visitor
+   * writes nothing into the Site's store.
+   *
+   * Nothing is taken away when a text changes or its row goes: the message may be another row's too, and
+   * `phis translations usage` finds what nobody reads any more.
+   */
+  record(input: { context: string; texts: readonly string[] }): Promise<void>;
+  /**
+   * The texts in `locale`, each at its position: the translation held for it, else the provider's, asked
+   * for the missing ones in one request and kept; the text as written where `locale` is the Site's source
+   * language, null, or no language the Site translates into, and for a text never recorded (`record`),
+   * which this never records. `provisional` is true where any answer is the text as written standing in
+   * for a provider that failed: a caller that keeps answers does not keep that one.
+   *
+   * `locale` is the reader's, `PhisAddonRequestContext.locale` for a request.
+   */
+  translate(input: {
+    context: string;
+    locale: string | null;
+    texts: readonly string[];
+  }): Promise<{ texts: string[]; provisional: boolean }>;
+};

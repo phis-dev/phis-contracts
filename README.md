@@ -112,9 +112,11 @@ What it covers:
 - **Products** -- `/products`: a product's `imageAssetId` (its picture) and `iconAssetId` (a small
   picture beside its title, a logo or an app icon) are accepted only where a visitor is served the Asset
   (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
-  declared products leaves a picture or an icon that is set alone. A product also carries a `description`
-  (Markdown, in the source language and translated like `title` and `summary`, at most
-  `PHIS_PRODUCT_DESCRIPTION_MAX`) and a `gallery`: further pictures in order, at most
+  declared products leaves a picture or an icon that is set alone. Its `title`, `summary` and
+  `description` are source texts of the Site's translation store, each under the product's own context
+  (`product <n> title`), recorded by Core on every `register`; `list` and `get` answer them in a reader's
+  language with `locale` (`PhisAddonRequestContext.locale`) and as written without it. A product also
+  carries a `description` (Markdown, at most `PHIS_PRODUCT_DESCRIPTION_MAX`) and a `gallery`: further pictures in order, at most
   `PHIS_PRODUCT_GALLERY_MAX`, written as Asset ids (`PhisProductDraft.gallery`) under the picture's rules
   and read as `PhisProductGalleryPicture` (`assetId`, the public `path`, `listPath`); a change of either
   owes `product.changed`, and a manifest names no gallery. Every Add-on reads them through `products:v1`;
@@ -130,6 +132,12 @@ What it covers:
   joined by dots (`@phis/phisys` + `phivoice-ai` is `phis.phisys.phivoice-ai`) -- when a Site Admin
   activates the package in the Builder, as that admin, and once every picture it names is in the Site's
   Media library.
+- **An Add-on's own words** -- `PhisTranslationsCapabilityV1` (`translations:v1`, `/translation`): texts an
+  Add-on keeps in its tables (a listing's hint) are `record`ed as source texts of the Site's translation
+  store under `<addonId>: <context>`, which Core builds, and `translate` answers them in a reader's
+  language (`PhisAddonRequestContext.locale`), at most `PHIS_ADDON_TRANSLATION_TEXTS_MAX` texts of
+  `PHIS_ADDON_TRANSLATION_TEXT_MAX` characters under a context of at most
+  `PHIS_ADDON_TRANSLATION_CONTEXT_MAX`. Editor > Translations lists them beside a Page's words.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to

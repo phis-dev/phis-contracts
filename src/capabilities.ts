@@ -17,6 +17,7 @@ import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js"
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
 import type { PhisCdnCapabilityV1 } from "./cdn.js";
+import type { PhisTranslationsCapabilityV1 } from "./translation.js";
 import type { PhisMediaCapabilityV1, PhisMediaReleaseCapabilityV1 } from "./media-library.js";
 import type {
   PhisPaymentChangedEventFacts,
@@ -142,6 +143,8 @@ export type PhisAddonCapabilities = {
   mediaRelease?: PhisMediaReleaseCapabilityV1;
   /** A person's name, e-mail, telephone and the Site's addresses, as far as the acting person or the admin's grant allows. */
   users?: PhisUsersCapabilityV1;
+  /** This Add-on's own words as source texts of the Site's translation store, and read in a reader's language. */
+  translations?: PhisTranslationsCapabilityV1;
 };
 
 /**

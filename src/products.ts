@@ -58,13 +58,29 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly publisher: string | null;
   /** The supplier's own word for what it is (`addon`, `download`, `plan`). Core keeps no list of them. */
   readonly type: string;
-  /** In the Site's source language; translated like a Module's text. */
+  /**
+   * The name, as the supplier wrote it in the Site's source language -- or, read with a `locale`
+   * (`PhisProductListInput.locale`), in that language.
+   *
+   * Title, summary and description are source texts of the Site's translation store, each under the
+   * product's own context (`product <n> title`, `... summary`, `... description`, `<n>` Core's number for
+   * the product), recorded by Core whenever the supplier registers the product: Editor > Translations lists
+   * them, a translator translates them there, and a change of the text is a new message whose old
+   * translation goes with the old text.
+   */
   readonly title: string;
+  /**
+   * The short text, as `title`: the source text, or with a `locale` its translation. Empty for none. Read in
+   * a language nobody translated it into yet, title and summary are asked of the Site's translation provider
+   * once and the answer kept, as a Widget's words are.
+   */
   readonly summary: string;
   /**
-   * The long description, as Markdown, in the Site's source language and translated like `title` and
-   * `summary`; empty for none. What a product page shows under its heading -- a seller shows the product's,
-   * it keeps none of its own. At most `PHIS_PRODUCT_DESCRIPTION_MAX` characters.
+   * The long description, as Markdown, as `title`: the source text, or with a `locale` the translation a
+   * person wrote under Editor > Translations (or imported), the source text where nobody did -- a Markdown
+   * document is never handed to a provider whole. Empty for none. What a product page shows under its
+   * heading -- a seller shows the product's, it keeps none of its own. At most `PHIS_PRODUCT_DESCRIPTION_MAX`
+   * characters.
    */
   readonly description: string;
   /**
@@ -196,6 +212,13 @@ export type PhisProductListInput = {
   cursor?: string | null;
   /** At most 200; absent: 50. */
   limit?: number;
+  /**
+   * The language to answer `title`, `summary` and `description` in -- a reader's, `PhisAddonRequestContext.locale`
+   * of the request a catalogue answers. Null or absent: the texts as the supplier wrote them, in the Site's
+   * source language, which is what a supplier reads to write its product back and what a seller copies into
+   * an order. A language the Site does not translate into is answered the source texts.
+   */
+  locale?: string | null;
 };
 
 /**
@@ -214,11 +237,13 @@ export type PhisProductListInput = {
  */
 export type PhisProductsCapabilityV1 = {
   list(input?: PhisProductListInput): Promise<{ products: readonly PhisProduct[]; nextCursor: string | null }>;
-  get(input: { id: PhisProductId }): Promise<PhisProduct | null>;
+  /** One product; `locale` as `PhisProductListInput.locale`. */
+  get(input: { id: PhisProductId; locale?: string | null }): Promise<PhisProduct | null>;
   /**
    * Registers this supplier's product, or changes it. Idempotent on the key: the same draft twice changes
    * nothing. A new product starts as `draft`. On a released product of a publisher, changed terms are
-   * held as `pendingTerms`.
+   * held as `pendingTerms`. Title, summary and description are recorded as the Site's source texts in the
+   * same transaction (`PhisProduct.title`), and the answer is in the source language.
    *
    * Refused where `imageAssetId`, `iconAssetId` or an entry of `gallery` names an Asset a visitor would not
    * be served: one that is not ready, not delivered publicly, or in neither the Site's Space nor this

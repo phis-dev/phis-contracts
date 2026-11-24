@@ -77,6 +77,11 @@ export const PHIS_CORE_CAPABILITIES = {
    * may read them, or as far as the Site's admin granted this Add-on in the background (`users.ts`).
    */
   users: "@phis/server/users:v1",
+  /**
+   * Words this Add-on keeps -- a listing's hint -- as source texts of the Site's translation store, and
+   * read in a reader's language (`translation.ts`, `PhisTranslationsCapabilityV1`).
+   */
+  translations: "@phis/server/translations:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
