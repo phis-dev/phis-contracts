@@ -8,6 +8,22 @@
  *
  * Three kinds of Add-on meet here without knowing each other: a supplier registers products and delivers
  * them, a seller reads them and sells them, a showcase reads them and shows them.
+ *
+ * Which language a product's texts are written in (`PhisProduct.sourceLocale`) is decided by one rule, for
+ * every way a product reaches Core -- several suppliers or publishers may sell through one Site, each
+ * writing in their own language:
+ *
+ * 1. The language the hand-over states always wins: `PhisProductDraft.sourceLocale` of a register,
+ *    `sourceLocale` of `@phis/products`' `product.add` and of its Forms ("Language of the texts"), and a
+ *    Site package proposal's (`PhisSitePackageProductProposal.sourceLocale`, the package's
+ *    `phis.sourceLocale`).
+ * 2. Otherwise, where the text is shipped by the Add-on itself -- the products of its manifest, and the
+ *    texts it records through `translations:v1` without naming a language -- the manifest's
+ *    `sourceLocale` (`PhisAddonManifestV1.sourceLocale`), which a manifest that declares products or
+ *    requires `translations:v1` must state.
+ * 3. Otherwise the text was typed by a person on the Site -- a staff Form, a seller's listing hint -- and
+ *    is in the Site's source language. `@phis/products`' manifest language never stands in for what staff
+ *    type into its Form: that is rule 3, unless the Form states another language, which is rule 1.
  */
 
 /**
@@ -59,14 +75,32 @@ export type PhisProduct = PhisProductReleasedTerms & {
   /** The supplier's own word for what it is (`addon`, `download`, `plan`). Core keeps no list of them. */
   readonly type: string;
   /**
-   * The name, as the supplier wrote it in the Site's source language -- or, read with a `locale`
+   * The language title, summary and description are written in, as a locale key in the catalogue's own
+   * spelling (`de`, `pt-BR`): the product's own where its supplier stated one, else the Site's source
+   * language. Always a language: Core states the Site's where the product keeps none, so a reader never
+   * has to know the Site to know what it is reading. Which one it is, the rule at the top of this file
+   * says.
+   */
+  readonly sourceLocale: string;
+  /**
+   * Which of title, summary and description answer a translation into the `locale` read rather than the
+   * text as written, as `PhisProductText` bits. Zero without a `locale`, in the product's own language and
+   * wherever a provider failed. A description has the bit only where a person translated it whole under
+   * Editor > Translations (or imported it): a Markdown document is never handed to a provider whole, and a
+   * renderer translates a description without the bit paragraph by paragraph from `sourceLocale`.
+   */
+  readonly translated: number;
+  /**
+   * The name, as the supplier wrote it in `sourceLocale` -- or, read with a `locale`
    * (`PhisProductListInput.locale`), in that language.
    *
    * Title, summary and description are source texts of the Site's translation store, each under the
    * product's own context (`product <n> title`, `... summary`, `... description`, `<n>` Core's number for
    * the product), recorded by Core whenever the supplier registers the product: Editor > Translations lists
    * them, a translator translates them there, and a change of the text is a new message whose old
-   * translation goes with the old text.
+   * translation goes with the old text. A product written in another language than the Site's is read as
+   * an external source (phis-server TRANSLATIONS.md, "External and non-canonical sources"): rendered into the
+   * Site's language once, and every other language from that rendering.
    */
   readonly title: string;
   /**
@@ -164,6 +198,13 @@ export type PhisProductGalleryPicture = {
   readonly listPath: string | null;
 };
 
+/** The texts of a product, as bits (`PhisProduct.translated`). */
+export const PhisProductText = {
+  Title: 1 << 0,
+  Summary: 1 << 1,
+  Description: 1 << 2,
+} as const;
+
 /** The longest description Core keeps, in characters. */
 export const PHIS_PRODUCT_DESCRIPTION_MAX = 20000;
 /** The most pictures a product's gallery holds. */
@@ -179,6 +220,12 @@ export type PhisProductDraft = {
   summary: string;
   /** Markdown, as `PhisProduct.description`. Absent: none. */
   description?: string;
+  /**
+   * The language title, summary and description are written in, a locale key Core knows (`fr`, `pt-BR`);
+   * refused otherwise. Absent or null: the Site's source language (rule 3 at the top of this file) -- `register` is the whole statement, so a supplier that changes a product written in another
+   * language states it again. A change of the language is a change of every text: their translations go.
+   */
+  sourceLocale?: string | null;
   /** As `PhisProduct.imageAssetId`: refused unless a visitor is served it. Absent: none. */
   imageAssetId?: number | null;
   /** As `PhisProduct.iconAssetId`: refused unless a visitor is served it. Absent: none. */
@@ -214,9 +261,10 @@ export type PhisProductListInput = {
   limit?: number;
   /**
    * The language to answer `title`, `summary` and `description` in -- a reader's, `PhisAddonRequestContext.locale`
-   * of the request a catalogue answers. Null or absent: the texts as the supplier wrote them, in the Site's
-   * source language, which is what a supplier reads to write its product back and what a seller copies into
-   * an order. A language the Site does not translate into is answered the source texts.
+   * of the request a catalogue answers. Null or absent: the texts as the supplier wrote them, in the
+   * product's `sourceLocale`, which is what a supplier reads to write its product back and what a seller
+   * copies into an order. A language the Site does not translate into is answered the source texts.
+   * `PhisProduct.translated` says which text answers a translation.
    */
   locale?: string | null;
 };
@@ -243,7 +291,8 @@ export type PhisProductsCapabilityV1 = {
    * Registers this supplier's product, or changes it. Idempotent on the key: the same draft twice changes
    * nothing. A new product starts as `draft`. On a released product of a publisher, changed terms are
    * held as `pendingTerms`. Title, summary and description are recorded as the Site's source texts in the
-   * same transaction (`PhisProduct.title`), and the answer is in the source language.
+   * same transaction (`PhisProduct.title`), and the answer is in the source language, `sourceLocale` the
+   * draft's or the Site's.
    *
    * Refused where `imageAssetId`, `iconAssetId` or an entry of `gallery` names an Asset a visitor would not
    * be served: one that is not ready, not delivered publicly, or in neither the Site's Space nor this
@@ -281,9 +330,9 @@ export type PhisProductChangedEventFacts = {
  * The manifest is the statement of every field it carries, and of nothing else: it names no picture, no
  * icon and no gallery, so a sync (enabling the Add-on, reconciling a release) neither sets nor clears
  * `imageAssetId`, `iconAssetId` or `gallery`. It may carry a `description`, which it then states as every
- * other text: absent is none.
+ * other text: absent is none. Its texts are in the manifest's `sourceLocale` (rule 2 at the top of this file), which a manifest declaring products must state; a descriptor names no language of its own.
  */
-export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId" | "gallery">;
+export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId" | "gallery" | "sourceLocale">;
 
 /**
  * Who makes the products a Site package proposes: `@phis/products`, the supplier of the Site's own
@@ -334,7 +383,8 @@ const PHIS_SITE_PACKAGE_NAME_PART_PATTERN = /^[a-z][a-z0-9-]*$/;
  * then owns, so it can say what a person on the Products page could say. Core makes each one once per Site
  * (`phis module products sync`), keyed by the package and this key, and never again: a product the Site
  * already had under the key, or changed or removed since, is left as it is. Title, summary and description
- * are in the package's `sourceLocale`.
+ * are in the package's `phis.sourceLocale` (`PhisModulePackageDeclaration`, null meaning `en`), which the
+ * reader states on every proposal as `sourceLocale` and Core hands on to `product.add`.
  *
  * Core takes them when a Site Admin activates the package in the Builder (publishes an Area's Module
  * selection that holds one of its Modules), as that admin, and with `phis module products sync --as`.
@@ -342,6 +392,12 @@ const PHIS_SITE_PACKAGE_NAME_PART_PATTERN = /^[a-z][a-z0-9-]*$/;
 export type PhisSitePackageProductProposal = {
   /** The package's own name for it, unique in the package; the product's key is derived from it (`phisSitePackageProductKey`). */
   key: string;
+  /**
+   * The language its texts are written in: the package's `phis.sourceLocale`, `en` where it states none.
+   * Never written per product in `package.json` -- one package is written by one hand -- but stated by
+   * `readPhisSitePackageProductProposals` on each proposal it reads, and required of one Core is handed.
+   */
+  sourceLocale: string;
   title: string;
   /** Absent: none. */
   summary?: string;
@@ -392,16 +448,22 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 const PROPOSAL_FIELDS = ["key", "title", "summary", "description", "kind", "state", "flags", "picture", "icon", "gallery"] as const;
 
+/** A locale key as a package states one (`fr`, `pt-BR`); whether Core translates it is Core's to say. */
+const PHIS_SITE_PACKAGE_LOCALE_PATTERN = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
+
 /**
  * Reads one proposal, reporting into `report(where, message)`. `mediaFileKeys` are the keys of the
  * package's `phis.media.files` a `picture` or `icon` must name; null where the caller does not hold the
- * package (Core, which is handed one proposal), and then they need only be a key.
+ * package (Core, which is handed one proposal), and then they need only be a key. `packageSourceLocale` is
+ * the package's language where the caller holds the package, and the proposal then names none of its
+ * own; null where Core is handed one, which must state its `sourceLocale`.
  */
 function readProposal(
   packageName: string,
   entry: unknown,
   where: string,
   mediaFileKeys: ReadonlySet<string> | null,
+  packageSourceLocale: string | null,
   report: (where: string, message: string) => void,
 ): PhisSitePackageProductProposal | null {
   if (!isPlainRecord(entry)) {
@@ -413,8 +475,11 @@ function readProposal(
     valid = false;
     report(at, message);
   };
+  const known: readonly string[] = packageSourceLocale === null ? [...PROPOSAL_FIELDS, "sourceLocale"] : PROPOSAL_FIELDS;
   for (const name of Object.keys(entry)) {
-    if (!(PROPOSAL_FIELDS as readonly string[]).includes(name)) fault(where, `unknown property "${name}"`);
+    if (!known.includes(name)) {
+      fault(where, name === "sourceLocale" ? "a proposal names no language of its own; the package's phis.sourceLocale is its language" : `unknown property "${name}"`);
+    }
   }
   const key = entry.key;
   if (typeof key !== "string" || key.length > PHIS_SITE_PACKAGE_PRODUCT_KEY_MAX || !PHIS_SITE_PACKAGE_PRODUCT_KEY_PATTERN.test(key)) {
@@ -434,6 +499,10 @@ function readProposal(
     }
     return value.trim();
   };
+  const sourceLocale = packageSourceLocale ?? entry.sourceLocale;
+  if (typeof sourceLocale !== "string" || !PHIS_SITE_PACKAGE_LOCALE_PATTERN.test(sourceLocale)) {
+    fault(at, `\`sourceLocale\` ${JSON.stringify(sourceLocale)} must be a locale key such as en, fr or pt-BR`);
+  }
   const title = text("title", PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX, true);
   const summary = text("summary", PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX, false);
   const description = text("description", PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX, false);
@@ -465,9 +534,10 @@ function readProposal(
       if (new Set(gallery).size !== gallery.length) fault(at, "`gallery` names a Media file twice");
     }
   }
-  if (!valid || title === undefined) return null;
+  if (!valid || title === undefined || typeof sourceLocale !== "string") return null;
   return {
     key,
+    sourceLocale,
     title,
     ...(summary !== undefined ? { summary } : {}),
     ...(description !== undefined ? { description } : {}),
@@ -487,7 +557,8 @@ function readProposal(
  * Strict, as `phis.media` is read: an unknown property, a wrong type, a key that is not one or comes twice,
  * a package name that cannot stand in a product key, flags this release does not name, and a `picture`,
  * `icon` or `gallery` entry that is no key of the package's `phis.media.files` (or one the gallery names twice). `proposals` is empty when the package
- * proposes nothing or proposes wrongly; `issues` says which.
+ * proposes nothing or proposes wrongly; `issues` says which. Every proposal carries the package's
+ * `phis.sourceLocale` as its `sourceLocale`, `en` where the package states none.
  */
 export function readPhisSitePackageProductProposals(
   packageName: string,
@@ -500,6 +571,8 @@ export function readPhisSitePackageProductProposals(
     report("phis.products", "must be an array");
     return { proposals: [], issues };
   }
+  // Null means en, as PhisModulePackageDeclaration says; a malformed one is the declaration reader's to refuse.
+  const packageSourceLocale = typeof phisBlock.sourceLocale === "string" && phisBlock.sourceLocale.trim() ? phisBlock.sourceLocale.trim() : "en";
   const media = isPlainRecord(phisBlock.media) && Array.isArray(phisBlock.media.files) ? phisBlock.media.files : [];
   const mediaFileKeys = new Set(media.flatMap((file) =>
     isPlainRecord(file) && typeof file.key === "string" ? [file.key] : []));
@@ -507,7 +580,7 @@ export function readPhisSitePackageProductProposals(
   const proposals: PhisSitePackageProductProposal[] = [];
   phisBlock.products.forEach((entry: unknown, index: number) => {
     const where = `phis.products[${index}]`;
-    const proposal = readProposal(packageName, entry, where, mediaFileKeys, report);
+    const proposal = readProposal(packageName, entry, where, mediaFileKeys, packageSourceLocale, report);
     if (!proposal) return;
     if (seen.has(proposal.key)) {
       report(`${where} (key "${proposal.key}")`, "key is already used by another product of this package");
@@ -522,14 +595,15 @@ export function readPhisSitePackageProductProposals(
 /**
  * One proposal as Core is handed it, without the package around it: the same rules, except that a
  * `picture`, `icon` or `gallery` entry need only be a Media key -- whether the package declares it is the sender's to
- * check, and whether the Site holds it is Core's.
+ * check, and whether the Site holds it is Core's -- and `sourceLocale` is required, as the package's reader
+ * stated it.
  */
 export function readPhisSitePackageProductProposal(
   packageName: string,
   value: unknown,
 ): { proposal: PhisSitePackageProductProposal | null; issues: string[] } {
   const issues: string[] = [];
-  const proposal = readProposal(packageName, value, "proposal", null, (where, message) =>
+  const proposal = readProposal(packageName, value, "proposal", null, null, (where, message) =>
     issues.push(`${packageName}: ${where}: ${message}`));
   return { proposal: issues.length > 0 ? null : proposal, issues };
 }

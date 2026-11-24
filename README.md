@@ -115,14 +115,25 @@ What it covers:
   declared products leaves a picture or an icon that is set alone. Its `title`, `summary` and
   `description` are source texts of the Site's translation store, each under the product's own context
   (`product <n> title`), recorded by Core on every `register`; `list` and `get` answer them in a reader's
-  language with `locale` (`PhisAddonRequestContext.locale`) and as written without it. A product also
+  language with `locale` (`PhisAddonRequestContext.locale`) and as written without it, and say per text
+  whether it answers a translation (`translated`, `PhisProductText` bits; a description only where a person
+  translated it). A product's texts are written in its own `sourceLocale` -- several suppliers may sell
+  through one Site, each in their language -- decided by one rule, stated at the top of `src/products.ts`:
+  (1) the language a hand-over states always wins (`PhisProductDraft.sourceLocale`, `product.add`'s and
+  `@phis/products`' Form field, a proposal's); (2) otherwise, for texts the Add-on ships itself (its
+  manifest's products, its `translations:v1` texts named without a language), the manifest's
+  `sourceLocale`, required where a manifest declares products or requires `translations:v1`; (3)
+  otherwise the text was typed on the Site and is in the Site's source language
+  (`PhisAddonRequestContext.site.sourceLocale`). Core reads a product written in another language than the
+  Site's as an external source, as the TR route does. A product also
   carries a `description` (Markdown, at most `PHIS_PRODUCT_DESCRIPTION_MAX`) and a `gallery`: further pictures in order, at most
   `PHIS_PRODUCT_GALLERY_MAX`, written as Asset ids (`PhisProductDraft.gallery`) under the picture's rules
   and read as `PhisProductGalleryPicture` (`assetId`, the public `path`, `listPath`); a change of either
   owes `product.changed`, and a manifest names no gallery. Every Add-on reads them through `products:v1`;
   a seller keeps no gallery or description of its own. A Site package (Module) proposes
   products of its own under `phis.products` in its `package.json`: `PhisSitePackageProductProposal`
-  (`key`, `title`, `summary?`, `description?`, `kind?`, `state?` `draft`/`active`, `flags?` as
+  (`key`, `sourceLocale` -- the package's `phis.sourceLocale`, `en` where it states none, stated by the
+  reader and never per product --, `title`, `summary?`, `description?`, `kind?`, `state?` `draft`/`active`, `flags?` as
   `PhisSitePackageProductFlag` -- `Counted`, `AccountRequired` --, `picture?` and `icon?` as keys of the
   package's `phis.media.files`, `gallery?` as a list of such keys in order),
   read by `readPhisSitePackageProductProposals` (a whole package block, strict) and
@@ -137,7 +148,9 @@ What it covers:
   store under `<addonId>: <context>`, which Core builds, and `translate` answers them in a reader's
   language (`PhisAddonRequestContext.locale`), at most `PHIS_ADDON_TRANSLATION_TEXTS_MAX` texts of
   `PHIS_ADDON_TRANSLATION_TEXT_MAX` characters under a context of at most
-  `PHIS_ADDON_TRANSLATION_CONTEXT_MAX`. Editor > Translations lists them beside a Page's words.
+  `PHIS_ADDON_TRANSLATION_CONTEXT_MAX`. Editor > Translations lists them beside a Page's words. Both take
+  an optional `sourceLocale`, the texts' language: absent, the manifest's `sourceLocale`; what staff typed
+  states the Site's (`PhisAddonRequestContext.site.sourceLocale`).
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to

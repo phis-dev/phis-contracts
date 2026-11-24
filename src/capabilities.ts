@@ -494,9 +494,10 @@ export type PhisAddonCommandContext = {
    *
    * `timeZone` is the Site's IANA zone: never empty, `"UTC"` where none was named, and the zone the
    * command's days and periods are counted in. Core offers no date functions in a declared query, so
-   * the command works the day out itself and stores it.
+   * the command works the day out itself and stores it. `sourceLocale` is the language the Site's own
+   * texts are written in, as on a request.
    */
-  site: { id: number; key: string; publicBaseUrl: string; timeZone: string };
+  site: { id: number; key: string; publicBaseUrl: string; timeZone: string; sourceLocale: string };
   actor: { kind: "user"; id: number };
   /** The parsed JSON the operator handed over, `null` where none was. The Add-on checks its shape. */
   input: unknown;

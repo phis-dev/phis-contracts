@@ -472,6 +472,20 @@ export type PhisAddonManifestV1 = {
    */
   products?: PhisAddonProductDescriptor[];
   /**
+   * The language the texts this Add-on ships are written in, a locale key Core knows (`en`, `fr`, `pt-BR`):
+   * the titles, summaries and descriptions of `products`, and what it records through `translations:v1`
+   * without naming a language (`@phis/contracts/products`, the source-language rule). An Add-on reads it
+   * from its package's `phis.sourceLocale`, the language its Module half is written in.
+   *
+   * Required where the manifest declares `products` or requires `translations:v1`, refused there when
+   * absent or not a locale Core knows; absent elsewhere, where the Add-on ships no texts. It never stands
+   * for what a person types on the Site through the Add-on's Forms: that is the Site's language, or the
+   * one the Form states.
+   *
+   * Optional for the reason `settings` is: it arrived after the manifest version was in the wild.
+   */
+  sourceLocale?: string;
+  /**
    * The Modules this package's other half contributes. Absent means it has no Module half.
    *
    * Each id is `<package name>/<module key>`, and the package name is this manifest's own -- one package
@@ -554,6 +568,13 @@ export type PhisAddonRequestContext = {
          * this zone, and stores it beside the instant it belongs to.
          */
         timeZone: string;
+        /**
+         * The language the Site's own texts are written in, as Core keeps it (`sites.overrides.<siteKey>.sourceLocale`,
+         * immutable): what a person on the Site types is in it unless they say otherwise. For a Form's
+         * default ("Language of the texts") and for the texts an Add-on records for a person
+         * (`translations:v1`'s `sourceLocale`), as the source-language rule of `@phis/contracts/products` says.
+         */
+        sourceLocale: string;
       }
     | null;
   actor:

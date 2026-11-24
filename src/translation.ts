@@ -143,9 +143,8 @@ export const PHIS_ADDON_TRANSLATION_TEXT_MAX = 20000;
  * category's name -- as source texts of the Site's translation store, and read back in a reader's
  * language.
  *
- * They are the Site's words, written in the Site's source language by whoever administers the Add-on, so
- * they live where a Page's words live (`tr_site_msg`): Editor > Translations lists them and a translator
- * translates them there, `phis translations export --site` and `import` carry them, and a reader in
+ * They are the Site's words, so they live where a Page's words live (`tr_site_msg`): Editor > Translations
+ * lists them and a translator translates them there, `phis translations export --site` and `import` carry them, and a reader in
  * another language is answered the translation -- a person's where one is held, else the configured
  * translation provider's, asked once and kept, as for a Widget's words.
  *
@@ -155,6 +154,15 @@ export const PHIS_ADDON_TRANSLATION_TEXT_MAX = 20000;
  * built by Core and never taken from the caller, so an Add-on's texts never land in a register of the
  * platform's or of another Add-on, and the translator reads whose words they are. The same text under the
  * same context is one message, however many rows carry it: "20 % off" is translated once.
+ *
+ * `sourceLocale` is the language the texts are written in, a locale key Core knows; refused otherwise.
+ * Absent: the manifest's `sourceLocale`, the Add-on's own language -- right for texts the Add-on ships.
+ * What a person typed on the Site -- a listing's hint written by staff -- is in the Site's language, which
+ * the Add-on states (`PhisAddonRequestContext.site.sourceLocale`), as the source-language rule of
+ * `@phis/contracts/products` says. A text in another language than the Site's is an external source
+ * (phis-server TRANSLATIONS.md, "External and non-canonical sources"): `record` keeps it as written, and
+ * `translate` renders it into the Site's language once and every other language from that rendering. The
+ * same `sourceLocale` is given to both.
  *
  * Absent from the payload: dynamic values. A text is what an author wrote, never a visitor's input, a
  * name, an address or a number filled in.
@@ -169,19 +177,21 @@ export type PhisTranslationsCapabilityV1 = {
    * Nothing is taken away when a text changes or its row goes: the message may be another row's too, and
    * `phis translations usage` finds what nobody reads any more.
    */
-  record(input: { context: string; texts: readonly string[] }): Promise<void>;
+  record(input: { context: string; texts: readonly string[]; sourceLocale?: string }): Promise<void>;
   /**
    * The texts in `locale`, each at its position: the translation held for it, else the provider's, asked
-   * for the missing ones in one request and kept; the text as written where `locale` is the Site's source
+   * for the missing ones in one request and kept; the text as written where `locale` is the texts' source
    * language, null, or no language the Site translates into, and for a text never recorded (`record`),
    * which this never records. `provisional` is true where any answer is the text as written standing in
    * for a provider that failed: a caller that keeps answers does not keep that one.
    *
-   * `locale` is the reader's, `PhisAddonRequestContext.locale` for a request.
+   * `locale` is the reader's, `PhisAddonRequestContext.locale` for a request; `sourceLocale` as `record`'s,
+   * and the text as written where `locale` is that language.
    */
   translate(input: {
     context: string;
     locale: string | null;
     texts: readonly string[];
+    sourceLocale?: string;
   }): Promise<{ texts: string[]; provisional: boolean }>;
 };
