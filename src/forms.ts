@@ -12,7 +12,9 @@ import {
   type PhiRuntimeConditionExpression,
 } from "./conditions.js";
 import {
+  PHI_CONTROL_OPTION_FLAGS_MAX,
   parsePhiControlOptionsProviderConfig,
+  readPhiControlOptionFlags,
   type PhiControlOption,
   type PhiControlOptionsProviderConfig,
 } from "./controls.js";
@@ -466,7 +468,38 @@ function readOption(value: unknown, path: string): PhiFormOptionDescriptor {
       : readTextDescriptor(value.description, `${path}.description`),
     disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
     icon: readOptionalString(value.icon, `${path}.icon`),
+    flags: readOptionFlags(value.flags, `${path}.flags`),
   };
+}
+
+function readOptionFlags(value: unknown, path: string) {
+  if (value == null) return undefined;
+  const flags = readPhiControlOptionFlags(value);
+  if (flags === undefined && value !== 0) {
+    throw new Error(`${path} must be a whole number from 0 to ${PHI_CONTROL_OPTION_FLAGS_MAX}.`);
+  }
+  return flags;
+}
+
+/**
+ * An `optionFlag` condition reads the option chosen in another field of the same Form, so it has to name
+ * one that offers options -- written out or from an Options Provider. A key that names nothing, or a
+ * field without options, would leave the condition unavailable for good, which hides a field silently.
+ */
+function assertOptionFlagConditionsNameChoiceFields(fields: readonly PhiFormFieldDescriptor[]) {
+  fields.forEach((field, index) => {
+    for (const [name, expression] of [["visibleWhen", field.visibleWhen], ["disabledWhen", field.disabledWhen]] as const) {
+      for (const condition of collectPhiRuntimeValueConditions(expression)) {
+        if (condition.operator !== "optionFlag") continue;
+        const chosenIn = fields.find((other) => other.key === condition.valuePath);
+        if (!chosenIn || chosenIn === field || (!chosenIn.options && !chosenIn.optionsProvider)) {
+          throw new Error(
+            `fields[${index}].${name} reads the option chosen in "${condition.valuePath}", which is no other field of this Form that offers options.`,
+          );
+        }
+      }
+    }
+  });
 }
 
 function assertUniqueKeys(items: readonly { key: string }[], path: string) {
@@ -606,6 +639,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
   }
   const fields = value.fields.map((field, index) => readField(field, `fields[${index}]`));
   assertUniqueKeys(fields, "fields");
+  assertOptionFlagConditionsNameChoiceFields(fields);
   const labelSetKey = value.labelSetKey == null
     ? undefined
     : readProviderKey(value.labelSetKey, "labelSetKey") as PhiFormLabelSetKey;

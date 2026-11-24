@@ -213,3 +213,223 @@ export type PhisProductChangedEventFacts = {
  * `iconAssetId`.
  */
 export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId">;
+
+/**
+ * Who makes the products a Site package proposes: `@phis/products`, the supplier of the Site's own
+ * products made by hand, through its command `product.add`. Core names it rather than looking for a
+ * supplier, because a proposal is a product the Site will keep as its own -- edited, withdrawn or removed
+ * on the Products page like any other -- and that is the one supplier whose products those are.
+ */
+export const PHIS_SITE_PACKAGE_PRODUCT_SUPPLIER = {
+  addonId: "@phis/products",
+  command: "product.add",
+} as const;
+
+/** What a proposed product is besides its texts, as bits (`PhisSitePackageProductProposal.flags`). */
+export const PhisSitePackageProductFlag = {
+  /** Holding it has a quantity that adds up (seats, hours): `product.add`'s `counted`. */
+  Counted: 1 << 0,
+  /** It can only be acquired with an account: `product.add`'s `accountRequired`. */
+  AccountRequired: 1 << 1,
+} as const;
+
+/** Every bit `PhisSitePackageProductFlag` names. */
+export const PHIS_SITE_PACKAGE_PRODUCT_FLAG_MASK =
+  PhisSitePackageProductFlag.Counted | PhisSitePackageProductFlag.AccountRequired;
+
+/** A proposal's own key: a lower-case word, or words joined by dashes, at most 48 characters. */
+export const PHIS_SITE_PACKAGE_PRODUCT_KEY_PATTERN = /^[a-z][a-z0-9-]*$/;
+export const PHIS_SITE_PACKAGE_PRODUCT_KEY_MAX = 48;
+/** The product's kind (`product.add`'s `kind`, Core's `type`), as `@phis/products` takes it. */
+export const PHIS_SITE_PACKAGE_PRODUCT_KIND_PATTERN = /^[a-z][a-z0-9-]*$/;
+export const PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX = 64;
+/** As Core keeps them (`phis.products`: `VARCHAR(200)`, `VARCHAR(1000)`). */
+export const PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX = 200;
+export const PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX = 1000;
+/** A product key in Core (`^[a-z][a-z0-9.-]*$`, at most 96 characters). */
+const PHIS_PRODUCT_KEY_PATTERN = /^[a-z][a-z0-9.-]*$/;
+const PHIS_PRODUCT_KEY_MAX = 96;
+/** A package name, or each half of a scoped one, that can stand in a product key. */
+const PHIS_SITE_PACKAGE_NAME_PART_PATTERN = /^[a-z][a-z0-9-]*$/;
+
+/**
+ * A product a Site package proposes, under `phis.products` in its `package.json`.
+ *
+ * What `@phis/products`' `product.add` takes, and nothing else: a Site package proposes products the Site
+ * then owns, so it can say what a person on the Products page could say. Core makes each one once per Site
+ * (`phis module products sync`), keyed by the package and this key, and never again: a product the Site
+ * already had under the key, or changed or removed since, is left as it is. Title and summary are in the
+ * package's `sourceLocale`.
+ */
+export type PhisSitePackageProductProposal = {
+  /** The package's own name for it, unique in the package; the product's key is derived from it (`phisSitePackageProductKey`). */
+  key: string;
+  title: string;
+  /** Absent: none. */
+  summary?: string;
+  /** Absent: `@phis/products`' default, `product`. */
+  kind?: string;
+  /** Absent: `draft`, as `product.add` makes it. */
+  state?: "draft" | "active";
+  /** `PhisSitePackageProductFlag`. Absent: none. */
+  flags?: number;
+  /** The key of one of this package's own Media files (`phis.media.files[].key`), imported into the Site's Media library. */
+  picture?: string;
+  /** As `picture`, for the small picture beside the title. */
+  icon?: string;
+};
+
+/**
+ * The key a proposal's product has at the Site: the package name's parts and the proposal's key, joined by
+ * dots -- `@phis/phisys` and `phivoice-ai` are `phis.phisys.phivoice-ai`, the product
+ * `@phis/products:phis.phisys.phivoice-ai`. Two packages cannot collide, because neither the parts nor the
+ * key may hold a dot. Null where the package name cannot stand in a key (a dot, an underscore, a leading
+ * digit) or the whole is longer than Core keeps.
+ */
+export function phisSitePackageProductKey(packageName: string, key: string): string | null {
+  const parts = packageName.startsWith("@") ? packageName.slice(1).split("/") : [packageName];
+  if (
+    parts.length > 2 ||
+    parts.some((part) => !PHIS_SITE_PACKAGE_NAME_PART_PATTERN.test(part)) ||
+    !PHIS_SITE_PACKAGE_PRODUCT_KEY_PATTERN.test(key) ||
+    key.length > PHIS_SITE_PACKAGE_PRODUCT_KEY_MAX
+  ) {
+    return null;
+  }
+  const productKey = [...parts, key].join(".");
+  return productKey.length <= PHIS_PRODUCT_KEY_MAX && PHIS_PRODUCT_KEY_PATTERN.test(productKey) ? productKey : null;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+const PROPOSAL_FIELDS = ["key", "title", "summary", "kind", "state", "flags", "picture", "icon"] as const;
+
+/**
+ * Reads one proposal, reporting into `report(where, message)`. `mediaFileKeys` are the keys of the
+ * package's `phis.media.files` a `picture` or `icon` must name; null where the caller does not hold the
+ * package (Core, which is handed one proposal), and then they need only be a key.
+ */
+function readProposal(
+  packageName: string,
+  entry: unknown,
+  where: string,
+  mediaFileKeys: ReadonlySet<string> | null,
+  report: (where: string, message: string) => void,
+): PhisSitePackageProductProposal | null {
+  if (!isPlainRecord(entry)) {
+    report(where, "must be an object");
+    return null;
+  }
+  let valid = true;
+  const fault = (at: string, message: string) => {
+    valid = false;
+    report(at, message);
+  };
+  for (const name of Object.keys(entry)) {
+    if (!(PROPOSAL_FIELDS as readonly string[]).includes(name)) fault(where, `unknown property "${name}"`);
+  }
+  const key = entry.key;
+  if (typeof key !== "string" || key.length > PHIS_SITE_PACKAGE_PRODUCT_KEY_MAX || !PHIS_SITE_PACKAGE_PRODUCT_KEY_PATTERN.test(key)) {
+    report(where, `key ${JSON.stringify(key)} must be 1 to ${PHIS_SITE_PACKAGE_PRODUCT_KEY_MAX} lowercase letters, digits or hyphens, starting with a letter`);
+    return null;
+  }
+  const at = `${where} (key "${key}")`;
+  if (phisSitePackageProductKey(packageName, key) === null) {
+    fault(at, `the product key cannot be made from the package name: each part of it must be lowercase letters, digits or hyphens, starting with a letter, and the whole at most ${PHIS_PRODUCT_KEY_MAX} characters`);
+  }
+  const text = (name: "title" | "summary", max: number, required: boolean) => {
+    const value = entry[name];
+    if (value === undefined && !required) return undefined;
+    if (typeof value !== "string" || value.trim() === "" || value.trim().length > max) {
+      fault(at, `\`${name}\` must be ${required ? "a" : "an optional"} non-empty string of at most ${max} characters`);
+      return undefined;
+    }
+    return value.trim();
+  };
+  const title = text("title", PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX, true);
+  const summary = text("summary", PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX, false);
+  const kind = entry.kind;
+  if (kind !== undefined && (typeof kind !== "string" || kind.length > PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX || !PHIS_SITE_PACKAGE_PRODUCT_KIND_PATTERN.test(kind))) {
+    fault(at, `\`kind\` must be a lower-case word, or words joined by dashes, of at most ${PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX} characters`);
+  }
+  const state = entry.state;
+  if (state !== undefined && state !== "draft" && state !== "active") fault(at, "`state` must be draft or active");
+  const flags = entry.flags;
+  if (flags !== undefined && (!Number.isSafeInteger(flags) || (flags as number) < 0 || ((flags as number) & ~PHIS_SITE_PACKAGE_PRODUCT_FLAG_MASK) !== 0)) {
+    fault(at, "`flags` must be a sum of PhisSitePackageProductFlag bits (Counted 1, AccountRequired 2)");
+  }
+  for (const name of ["picture", "icon"] as const) {
+    const value = entry[name];
+    if (value === undefined) continue;
+    if (typeof value !== "string" || (mediaFileKeys ? !mediaFileKeys.has(value) : !/^[a-z0-9][a-z0-9-]*$/.test(value))) {
+      fault(at, `\`${name}\` ${JSON.stringify(value)} must be the key of one of this package's phis.media.files`);
+    }
+  }
+  if (!valid || title === undefined) return null;
+  return {
+    key,
+    title,
+    ...(summary !== undefined ? { summary } : {}),
+    ...(typeof kind === "string" ? { kind } : {}),
+    ...(state === "draft" || state === "active" ? { state } : {}),
+    ...(typeof flags === "number" && flags !== 0 ? { flags } : {}),
+    ...(typeof entry.picture === "string" ? { picture: entry.picture } : {}),
+    ...(typeof entry.icon === "string" ? { icon: entry.icon } : {}),
+  };
+}
+
+/**
+ * Reads `phis.products` of one package's `phis` block and reports every violation, each with the package
+ * and the key it is about.
+ *
+ * Strict, as `phis.media` is read: an unknown property, a wrong type, a key that is not one or comes twice,
+ * a package name that cannot stand in a product key, flags this release does not name, and a `picture` or
+ * `icon` that is no key of the package's `phis.media.files`. `proposals` is empty when the package
+ * proposes nothing or proposes wrongly; `issues` says which.
+ */
+export function readPhisSitePackageProductProposals(
+  packageName: string,
+  phisBlock: unknown,
+): { proposals: PhisSitePackageProductProposal[]; issues: string[] } {
+  const issues: string[] = [];
+  const report = (where: string, message: string) => issues.push(`${packageName}: ${where}: ${message}`);
+  if (!isPlainRecord(phisBlock) || phisBlock.products === undefined) return { proposals: [], issues };
+  if (!Array.isArray(phisBlock.products)) {
+    report("phis.products", "must be an array");
+    return { proposals: [], issues };
+  }
+  const media = isPlainRecord(phisBlock.media) && Array.isArray(phisBlock.media.files) ? phisBlock.media.files : [];
+  const mediaFileKeys = new Set(media.flatMap((file) =>
+    isPlainRecord(file) && typeof file.key === "string" ? [file.key] : []));
+  const seen = new Set<string>();
+  const proposals: PhisSitePackageProductProposal[] = [];
+  phisBlock.products.forEach((entry: unknown, index: number) => {
+    const where = `phis.products[${index}]`;
+    const proposal = readProposal(packageName, entry, where, mediaFileKeys, report);
+    if (!proposal) return;
+    if (seen.has(proposal.key)) {
+      report(`${where} (key "${proposal.key}")`, "key is already used by another product of this package");
+      return;
+    }
+    seen.add(proposal.key);
+    proposals.push(proposal);
+  });
+  return issues.length > 0 ? { proposals: [], issues } : { proposals, issues };
+}
+
+/**
+ * One proposal as Core is handed it, without the package around it: the same rules, except that a
+ * `picture` or `icon` need only be a Media key -- whether the package declares it is the sender's to
+ * check, and whether the Site holds it is Core's.
+ */
+export function readPhisSitePackageProductProposal(
+  packageName: string,
+  value: unknown,
+): { proposal: PhisSitePackageProductProposal | null; issues: string[] } {
+  const issues: string[] = [];
+  const proposal = readProposal(packageName, value, "proposal", null, (where, message) =>
+    issues.push(`${packageName}: ${where}: ${message}`));
+  return { proposal: issues.length > 0 ? null : proposal, issues };
+}

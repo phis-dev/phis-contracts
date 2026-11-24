@@ -10,6 +10,7 @@ import {
   type PhiControllerSignalAddress,
   type PhiSignalAddress,
 } from "./signals.js";
+import { readPhiControlOptionFlags } from "./controls.js";
 import { isPhiRecord, readPhiDotPath } from "./record.js";
 
 /**
@@ -33,7 +34,13 @@ import { isPhiRecord, readPhiDotPath } from "./record.js";
  * with it rather than leaving an empty slot.
  */
 export const PHI_RUNTIME_CONDITION_SOURCES = ["row", "form", "controller", "page", "widget", "feature", "record"] as const;
-export const PHI_RUNTIME_CONDITION_OPERATORS = ["truthy", "falsy", "equals", "contains"] as const;
+/**
+ * How a condition judges what it reads. `truthy`, `falsy`, `equals` and `contains` judge the value at
+ * `valuePath`. `optionFlag` judges the option chosen there instead: `source: "form"` only, `valuePath`
+ * a field of the same Form that offers options, and it holds where the chosen option carries every bit
+ * of `flag` (`PhiControlOption.flags`) -- so a field can follow what a choice is, not which value it has.
+ */
+export const PHI_RUNTIME_CONDITION_OPERATORS = ["truthy", "falsy", "equals", "contains", "optionFlag"] as const;
 export const PHI_RUNTIME_CONDITION_GROUP_MATCHES = ["all", "any"] as const;
 
 export type PhiRuntimeConditionSource = (typeof PHI_RUNTIME_CONDITION_SOURCES)[number];
@@ -55,6 +62,11 @@ export type PhiRuntimeValueCondition = {
   valuePath: string;
   operator: PhiRuntimeConditionOperator;
   value?: PhiRuntimeConditionValue;
+  /**
+   * The bits an `optionFlag` condition asks of the chosen option, all of them: a whole number from 1 to
+   * `PHI_CONTROL_OPTION_FLAGS_MAX`. Required with `optionFlag` and absent with every other operator.
+   */
+  flag?: number;
   /**
    * How to read a sender that has not said anything yet. Absent means "not matched".
    *
@@ -107,6 +119,13 @@ export type PhiRuntimeConditionSourceValues = {
   page?: PhiRuntimePageConditionState | null;
   /** The fields of the record the Page is about, by key, each as the value it has. */
   record?: Readonly<Record<string, unknown>> | null;
+  /**
+   * What an `optionFlag` condition reads: per field key of the Form, the `flags` of the option chosen
+   * there -- of every chosen option together for a field that holds several, 0 for a field that holds
+   * nothing or whose option carries none. A field whose chosen option is not known (yet), its options
+   * still loading, is absent, and the condition is unavailable.
+   */
+  formOptionFlags?: Readonly<Record<string, number>> | null;
 };
 
 export type PhiRuntimeConditionStateSignalValue = {
@@ -126,10 +145,10 @@ function readConditionSource(value: unknown): PhiRuntimeConditionSource | null {
 export function readPhiRuntimeValueCondition(value: unknown): PhiRuntimeValueCondition | null {
   if (!isPhiRecord(value)) return null;
   const source = readConditionSource(value.source);
-  const operator = value.operator === "truthy" || value.operator === "falsy" ||
-    value.operator === "equals" || value.operator === "contains"
-    ? value.operator
+  const operator = PHI_RUNTIME_CONDITION_OPERATORS.includes(value.operator as PhiRuntimeConditionOperator)
+    ? value.operator as PhiRuntimeConditionOperator
     : null;
+  const flag = operator === "optionFlag" ? readPhiControlOptionFlags(value.flag) : undefined;
   const valuePath = typeof value.valuePath === "string" ? value.valuePath.trim() : "";
   const whenUnavailable = value.whenUnavailable === "matched" || value.whenUnavailable === "not-matched"
     ? value.whenUnavailable
@@ -147,7 +166,9 @@ export function readPhiRuntimeValueCondition(value: unknown): PhiRuntimeValueCon
     !valuePath ||
     (source === "controller" && !controllerAddress) ||
     (source === "widget" && !widgetAddress) ||
-    (operator !== "truthy" && operator !== "falsy" && conditionValue === undefined)
+    (operator === "optionFlag" && (source !== "form" || flag === undefined || value.value !== undefined)) ||
+    (operator !== "optionFlag" && value.flag !== undefined) ||
+    (operator !== "truthy" && operator !== "falsy" && operator !== "optionFlag" && conditionValue === undefined)
   ) {
     return null;
   }
@@ -158,7 +179,8 @@ export function readPhiRuntimeValueCondition(value: unknown): PhiRuntimeValueCon
     valuePath,
     operator,
     whenUnavailable,
-    value: operator === "truthy" || operator === "falsy" ? undefined : conditionValue,
+    value: operator === "truthy" || operator === "falsy" || operator === "optionFlag" ? undefined : conditionValue,
+    ...(flag !== undefined ? { flag } : {}),
     reason: typeof value.reason === "string" && value.reason.trim() ? value.reason.trim() : undefined,
   };
 }
@@ -228,6 +250,10 @@ export function matchesPhiRuntimeValueCondition(
   condition: PhiRuntimeValueCondition,
   sources: PhiRuntimeConditionSourceValues,
 ) {
+  if (condition.operator === "optionFlag") {
+    const flags = sources.formOptionFlags?.[condition.valuePath];
+    return flags !== undefined && condition.flag !== undefined && (flags & condition.flag) === condition.flag;
+  }
   const source = resolvePhiRuntimeConditionSource(condition, sources);
   if (source == null) return false;
   const current = readPhiRuntimeConditionValue(source, condition.valuePath);
@@ -247,6 +273,12 @@ export function evaluatePhiRuntimeConditionExpression(
   sources: PhiRuntimeConditionSourceValues,
 ): PhiRuntimeConditionResult {
   if ("source" in expression) {
+    if (expression.operator === "optionFlag") {
+      if (sources.formOptionFlags?.[expression.valuePath] === undefined) {
+        return expression.whenUnavailable ?? "unavailable";
+      }
+      return matchesPhiRuntimeValueCondition(expression, sources) ? "matched" : "not-matched";
+    }
     const source = resolvePhiRuntimeConditionSource(expression, sources);
     if (source == null) return expression.whenUnavailable ?? "unavailable";
     if (

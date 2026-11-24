@@ -59,6 +59,14 @@ export type PhiControlOption<TValue extends string | number = string> = {
    * the list, or that leads back to the option itself, leaves the option at the top level.
    */
   parentValue?: TValue;
+  /**
+   * What is true of this option, as bit flags whose meaning the one answering for the options names --
+   * a support type's `External` bit, say. No Control draws them; they are there for a Form condition to
+   * read, `operator: "optionFlag"` on the field the option is chosen in (`@phis/contracts/conditions`),
+   * so a field can stand or fall with what the choice in another one is rather than with which value it
+   * has. Absent is none.
+   */
+  flags?: number;
 };
 
 export type PhiControlOptionSeparator = "before" | "after";
@@ -212,6 +220,19 @@ export function parsePhiControlOptionsProviderConfig(value: unknown): PhiControl
   };
 }
 
+/**
+ * The largest flag set an option may carry: the bits a JavaScript bitwise test reads without the sign of
+ * the thirty-second turning it negative.
+ */
+export const PHI_CONTROL_OPTION_FLAGS_MAX = 0x7fffffff;
+
+/** An option's `flags`: a whole number from 1 to `PHI_CONTROL_OPTION_FLAGS_MAX`; 0 and anything else is none. */
+export function readPhiControlOptionFlags(value: unknown): number | undefined {
+  return Number.isSafeInteger(value) && (value as number) > 0 && (value as number) <= PHI_CONTROL_OPTION_FLAGS_MAX
+    ? value as number
+    : undefined;
+}
+
 export function readPhiControlOptions(value: unknown): PhiControlOption[] {
   if (Array.isArray(value)) {
     return value
@@ -234,6 +255,7 @@ export function readPhiControlOptions(value: unknown): PhiControlOption[] {
           group: readString(record.group),
           separator: record.separator === "before" || record.separator === "after" ? record.separator : undefined,
           parentValue: readString(record.parentValue),
+          flags: readPhiControlOptionFlags(record.flags),
         };
       })
       .filter((item): item is PhiControlOption => item != null);

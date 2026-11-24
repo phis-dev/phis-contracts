@@ -112,7 +112,15 @@ What it covers:
 - **Products** -- `/products`: a product's `imageAssetId` (its picture) and `iconAssetId` (a small
   picture beside its title, a logo or an app icon) are accepted only where a visitor is served the Asset
   (ready, public, in the Site's Space or the supplier's own Add-on Space), and a manifest sync of the
-  declared products leaves a picture or an icon that is set alone.
+  declared products leaves a picture or an icon that is set alone. A Site package (Module) proposes
+  products of its own under `phis.products` in its `package.json`: `PhisSitePackageProductProposal`
+  (`key`, `title`, `summary?`, `kind?`, `state?` `draft`/`active`, `flags?` as `PhisSitePackageProductFlag`
+  -- `Counted`, `AccountRequired` --, `picture?` and `icon?` as keys of the package's `phis.media.files`),
+  read by `readPhisSitePackageProductProposals` (a whole package block, strict) and
+  `readPhisSitePackageProductProposal` (one, as Core is handed it). Core has the supplier
+  `PHIS_SITE_PACKAGE_PRODUCT_SUPPLIER` (`@phis/products`, command `product.add`) make each one once per
+  Site, under the key `phisSitePackageProductKey` derives: the package name's parts and the proposal's key
+  joined by dots (`@phis/phisys` + `phivoice-ai` is `phis.phisys.phivoice-ai`).
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
@@ -280,6 +288,19 @@ declaration a Module makes (`PhisDeclarableUserStateKey`), and `readPhisUserStat
 call so a refused write is refused the same way in both. phis stores it and is the only party that
 validates; the site UI declares the keys and reads them while rendering. Core's own account facts stay
 bit flags on the membership and account rows and are not this.
+
+## `/controls` and `/conditions`
+
+What a choice control offers (`PhiControlOption`, `readPhiControlOptions`) and the condition grammar a
+Form field's `visibleWhen` and `disabledWhen` and a Widget's visibility are written in
+(`PhiRuntimeConditionExpression`, read and evaluated here so the server that accepts a condition and the
+renderer that applies it use one set of rules). An option may carry `flags`, bits whose meaning whoever
+answers for the options names (a whole number from 1 to `PHI_CONTROL_OPTION_FLAGS_MAX`; absent is none). The
+leaf `{ source: "form", valuePath: "<field key>", operator: "optionFlag", flag: <bits> }` holds where the
+option chosen in that field of the same Form carries every bit of `flag`; the renderer hands the chosen
+options' flags in as `formOptionFlags`, and a field whose chosen option is not known yet answers
+`unavailable`. `parsePhiFormDescriptor` refuses an `optionFlag` condition that names no other field of the
+Form with options.
 
 ## Admission rule
 
