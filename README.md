@@ -243,6 +243,11 @@ The resolvers come with their vocabulary: `normalizePhiMediaKind` and `resolvePh
 map onto the kind list, so an upload is filed and listed as the same kind on both sides. How a delivery
 URL is built stays with each side, and phis's numeric Space kind never reaches a Site.
 
+`resolvePhiImageAssetVariantSpec` is what a variant is: its box, fit, quality, `format` (`webp`, or `jpeg`
+for `Share`, the 1200 x 630 picture of a link preview) and `flags` (`PhiImageAssetVariantSpecFlags`).
+`ExactSize` promises the variant is always exactly its box, a smaller original enlarged, so the site UI
+may state the size in the document head without fetching the picture; phis renders it that way.
+
 ## `/http`
 
 The request header names phis reads and the site UI writes: `PHIS_TOKEN_HEADER` (`x-phis-token`),

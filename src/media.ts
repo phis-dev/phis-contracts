@@ -122,6 +122,13 @@ export const PhiImageAssetVariantKey = {
    * is a different mark; 64 px is a 32 px cell on a high-density screen.
    */
   Icon: 10,
+  /**
+   * The picture a link preview shows (`og:image`): 1200 x 630, the 1.91:1 frame every large card is
+   * drawn in, cropped around the focal rectangle like the Card. A JPEG and not a WebP, because not every
+   * reader of a preview decodes WebP, and always exactly that size (`ExactSize`), because the head states
+   * width and height before anybody has fetched the picture.
+   */
+  Share: 11,
 } as const;
 
 export const PhiImageAssetVariantKeyName = {
@@ -136,6 +143,17 @@ export const PhiImageAssetVariantKeyName = {
   [PhiImageAssetVariantKey.Landscape]: "landscape",
   [PhiImageAssetVariantKey.Portrait]: "portrait",
   [PhiImageAssetVariantKey.Icon]: "icon",
+  [PhiImageAssetVariantKey.Share]: "share",
+} as const;
+
+/** What a variant promises besides its box, as bits of `PhiImageAssetVariantSpec.flags`. */
+export const PhiImageAssetVariantSpecFlags = {
+  /**
+   * The variant is always exactly `width` x `height`: a smaller original is enlarged to fill the box
+   * rather than delivered at its own size, so a reader may state the size without fetching the picture.
+   * Without it a variant is never larger than its original.
+   */
+  ExactSize: 1 << 0,
 } as const;
 
 export type PhiImageAssetVariantSpec = {
@@ -143,7 +161,9 @@ export type PhiImageAssetVariantSpec = {
   height: number;
   fit: "cover" | "contain";
   quality: number;
-  format: "webp";
+  format: "webp" | "jpeg";
+  /** `PhiImageAssetVariantSpecFlags`; 0 for none. */
+  flags: number;
 };
 
 export function normalizePhiMediaKind(kind: string | null | undefined) {
@@ -270,27 +290,36 @@ export function resolvePhiImageAssetVariantSpec(
 ): PhiImageAssetVariantSpec | null {
   switch (key) {
     case PhiImageAssetVariantKey.Thumbnail:
-      return { width: 256, height: 256, fit: "cover", quality: 80, format: "webp" };
+      return { width: 256, height: 256, fit: "cover", quality: 80, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Preview:
-      return { width: 640, height: 360, fit: "cover", quality: 82, format: "webp" };
+      return { width: 640, height: 360, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Banner:
-      return { width: 1600, height: 89, fit: "cover", quality: 82, format: "webp" };
+      return { width: 1600, height: 89, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Header:
-      return { width: 1920, height: 144, fit: "cover", quality: 82, format: "webp" };
+      return { width: 1920, height: 144, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Card:
-      return { width: 960, height: 640, fit: "cover", quality: 82, format: "webp" };
+      return { width: 960, height: 640, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Hero:
-      return { width: 1600, height: 900, fit: "cover", quality: 84, format: "webp" };
+      return { width: 1600, height: 900, fit: "cover", quality: 84, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Avatar:
-      return { width: 100, height: 100, fit: "cover", quality: 80, format: "webp" };
+      return { width: 100, height: 100, fit: "cover", quality: 80, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Logo:
-      return { width: 512, height: 256, fit: "contain", quality: 82, format: "webp" };
+      return { width: 512, height: 256, fit: "contain", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Landscape:
-      return { width: 640, height: 396, fit: "cover", quality: 82, format: "webp" };
+      return { width: 640, height: 396, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Portrait:
-      return { width: 396, height: 640, fit: "cover", quality: 82, format: "webp" };
+      return { width: 396, height: 640, fit: "cover", quality: 82, format: "webp", flags: 0 };
     case PhiImageAssetVariantKey.Icon:
-      return { width: 64, height: 64, fit: "contain", quality: 80, format: "webp" };
+      return { width: 64, height: 64, fit: "contain", quality: 80, format: "webp", flags: 0 };
+    case PhiImageAssetVariantKey.Share:
+      return {
+        width: 1200,
+        height: 630,
+        fit: "cover",
+        quality: 82,
+        format: "jpeg",
+        flags: PhiImageAssetVariantSpecFlags.ExactSize,
+      };
     default:
       return null;
   }
