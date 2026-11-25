@@ -228,9 +228,11 @@ export type PhisCdnImportRefusalV1 =
 /** What an import or a link that succeeded says besides the file, as bits (`flags` of the result). */
 export const PhisCdnPublishResultFlags = {
   /**
-   * The key was in the catalogue already with the same SHA-256 -- and, for a link, as a link -- so nothing
-   * was fetched, stored or recorded; the file answered is the one that was there. What makes a call safe to
-   * repeat: a job that lost its lease asks again and is told so.
+   * The key was in the catalogue already with the same SHA-256 -- and, for a link, as a link with the same
+   * size -- so nothing was fetched or stored; the file answered is the one that was there. A link asked for
+   * from another address of those bytes now points there (`url`), since a visitor gets the same file; that
+   * is all a repeated call records. What makes a call safe to repeat: a job that lost its lease asks again
+   * and is told so.
    */
   Already: 1 << 0,
 } as const;
@@ -278,7 +280,8 @@ export type PhisCdnLinkRefusalV1 = Extract<
 
 /**
  * What a link answers. `flags`: `PhisCdnPublishResultFlags`; `Already` where the key was recorded with the
- * same SHA-256 before, as a link. A key published as a copy, or with another SHA-256, is `key-taken`.
+ * same SHA-256 and size before, as a link -- answered with the request's `url` where that differs from the
+ * recorded one. A key published as a copy, with another SHA-256 or size, or withdrawn, is `key-taken`.
  */
 export type PhisCdnLinkResultV1 =
   | { ok: true; file: PhisCdnFileV1; flags: number }
@@ -302,7 +305,8 @@ export type PhisCdnPublishCapabilityV1 = {
   import(request: PhisCdnImportRequestV1, options?: { signal?: AbortSignal }): Promise<PhisCdnImportResultV1>;
   /**
    * Records `url` under `<name>/<version>/<file>` as a link (`storage: "link"`), before it resolves.
-   * Idempotent as `import` is.
+   * Idempotent as `import` is, for the same SHA-256 and size; the same bytes from another address move
+   * the link to that address.
    */
   link(request: PhisCdnLinkRequestV1): Promise<PhisCdnLinkResultV1>;
 };
