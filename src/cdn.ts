@@ -225,12 +225,19 @@ export type PhisCdnImportRefusalV1 =
   | "source-failed"
   | "storage-failed";
 
-/**
- * What an import answers. `already`: the key was published with the same SHA-256 before, and nothing was
- * fetched -- which is what makes an import safe to repeat.
- */
+/** What an import or a link that succeeded says besides the file, as bits (`flags` of the result). */
+export const PhisCdnPublishResultFlags = {
+  /**
+   * The key was in the catalogue already with the same SHA-256 -- and, for a link, as a link -- so nothing
+   * was fetched, stored or recorded; the file answered is the one that was there. What makes a call safe to
+   * repeat: a job that lost its lease asks again and is told so.
+   */
+  Already: 1 << 0,
+} as const;
+
+/** What an import answers. `flags`: `PhisCdnPublishResultFlags`, 0 for a file published by this call. */
 export type PhisCdnImportResultV1 =
-  | { ok: true; file: PhisCdnFileV1; already: boolean }
+  | { ok: true; file: PhisCdnFileV1; flags: number }
   | { ok: false; refusal: PhisCdnImportRefusalV1; message: string };
 
 /**
@@ -270,11 +277,11 @@ export type PhisCdnLinkRefusalV1 = Extract<
 >;
 
 /**
- * What a link answers. `already`: the key was recorded with the same SHA-256 before, as a link; a key
- * published as a copy, or with another SHA-256, is `key-taken`.
+ * What a link answers. `flags`: `PhisCdnPublishResultFlags`; `Already` where the key was recorded with the
+ * same SHA-256 before, as a link. A key published as a copy, or with another SHA-256, is `key-taken`.
  */
 export type PhisCdnLinkResultV1 =
-  | { ok: true; file: PhisCdnFileV1; already: boolean }
+  | { ok: true; file: PhisCdnFileV1; flags: number }
   | { ok: false; refusal: PhisCdnLinkRefusalV1; message: string };
 
 /**
@@ -288,7 +295,7 @@ export type PhisCdnPublishCapabilityV1 = {
   /**
    * Fetches `url`, uploads it to `<name>/<version>/<file>` and records it, before it resolves.
    *
-   * Idempotent: the same key with the same SHA-256 answers `{ ok: true, already: true }`. Honours the
+   * Idempotent: the same key with the same SHA-256 answers `ok` with `PhisCdnPublishResultFlags.Already`. Honours the
    * caller's signal (a job's lease); an aborted import leaves nothing behind, and the next one starts
    * from the beginning.
    */
@@ -430,22 +437,41 @@ export type PhisCdnUploadStateV1 = {
   error: { code: string; message: string } | null;
 };
 
+/** What a withdraw says besides the file, as bits (`PhisCdnAdminWithdrawResultV1.flags`). */
+export const PhisCdnAdminWithdrawResultFlags = {
+  /** The file was withdrawn already, and nothing changed. */
+  AlreadyWithdrawn: 1 << 0,
+} as const;
+
 /** What `POST /api/site/admin/cdn/files/{name}/{version}/{file}/withdraw` answers. */
 export type PhisCdnAdminWithdrawResultV1 = {
   file: PhisCdnAdminFileV1;
-  /** 1 where the file was withdrawn already, and nothing changed; else 0. */
-  alreadyWithdrawn: number;
+  /** `PhisCdnAdminWithdrawResultFlags`; 0 for a file this call withdrew. */
+  flags: number;
 };
+
+/** What the CDN check found as a whole, as bits (`PhisCdnCheckReportV1.flags`). */
+export const PhisCdnCheckReportFlags = {
+  /** Bucket and catalogue agree: nothing unrecorded, nothing missing, no size differs. */
+  Consistent: 1 << 0,
+} as const;
+
+/** What the check says of one object the catalogue does not hold, as bits (`unrecorded[].flags`). */
+export const PhisCdnCheckObjectFlags = {
+  /** `check/adopt` can take it into the catalogue; else `reason` says why not. */
+  Adoptable: 1 << 0,
+} as const;
 
 /** What the CDN check finds (`POST /api/site/admin/cdn/check`, `phis cdn check`). Links are not checked. */
 export type PhisCdnCheckReportV1 = {
-  ok: boolean;
+  /** `PhisCdnCheckReportFlags`. */
+  flags: number;
   /** Objects in the bucket. */
   objects: number;
   /** Copied files in the catalogue. */
   recorded: number;
-  /** Objects the catalogue does not hold; `adoptable` where `check/adopt` can take one. */
-  unrecorded: { key: string; sizeBytes: number; adoptable: boolean; reason: string | null }[];
+  /** Objects the catalogue does not hold; `flags` as `PhisCdnCheckObjectFlags`. */
+  unrecorded: { key: string; sizeBytes: number; flags: number; reason: string | null }[];
   /** Keys the catalogue offers and the bucket does not hold. */
   missing: string[];
   sizeMismatch: { key: string; recorded: number; stored: number }[];

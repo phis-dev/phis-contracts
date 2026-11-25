@@ -55,3 +55,15 @@ test("the platform bits start at bit 0 and the masks hold every named bit", () =
   assert.equal(Object.values(PhisCdnFileArch).reduce((all, bit) => all | bit, 0), PHIS_CDN_FILE_ARCH_MASK);
   assert.ok(PHIS_CDN_FILE_OS_MASK < 1 << 8 && PHIS_CDN_FILE_ARCH_MASK < 1 << 8);
 });
+
+test("the yes/no answers of the new shapes are named bits", async () => {
+  const cdn = await import("../dist/cdn.js");
+  const idp = await import("../dist/identity-provider.js");
+  assert.equal(cdn.PhisCdnPublishResultFlags.Already, 1);
+  assert.equal(cdn.PhisCdnAdminWithdrawResultFlags.AlreadyWithdrawn, 1);
+  assert.equal(cdn.PhisCdnCheckReportFlags.Consistent, 1);
+  assert.equal(cdn.PhisCdnCheckObjectFlags.Adoptable, 1);
+  assert.deepEqual(idp.PhisIdentityProviderFlags, { Pkce: 1, Testable: 2 });
+  assert.equal(idp.PhisIdentityProviderSettingFlags.Required, 1);
+  assert.equal(idp.PhisIdentityProviderIdentityFlags.EmailVerified, 1);
+});

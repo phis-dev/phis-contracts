@@ -52,11 +52,17 @@ export const PHIS_IDENTITY_PROVIDER_PROBE_TIMEOUT_MS = 10_000;
 export const PHIS_IDENTITY_PROVIDER_BEGIN_TIMEOUT_MS = 10_000;
 export const PHIS_IDENTITY_PROVIDER_COMPLETE_TIMEOUT_MS = 20_000;
 
+/** What a setting field is besides its type, as bits (`PhisIdentityProviderSettingFieldV1.flags`). */
+export const PhisIdentityProviderSettingFlags = {
+  /** It must be filled in; without it the field may be left empty and is then absent from `settings`. */
+  Required: 1 << 0,
+} as const;
+
 /**
  * One field an installation of this provider takes -- an entity id, a metadata address, a realm.
  *
  * Drawn on the Site's login provider page for this provider only, stored in the installation's `config`
- * under `key`, and checked by Core against `type` and `required` before the implementation is handed it.
+ * under `key`, and checked by Core against `type` and `flags` before the implementation is handed it.
  * A secret is never a setting: it is `PhisIdentityProviderDescriptionV1.secret`, written through Core's
  * write-only path. `url` takes an absolute `https:` address.
  */
@@ -65,8 +71,8 @@ export type PhisIdentityProviderSettingFieldV1 = {
   key: string;
   label: string;
   type: "text" | "url" | "integer" | "boolean";
-  /** Absent or false: may be left empty, and is then absent from `settings`. */
-  required?: boolean;
+  /** `PhisIdentityProviderSettingFlags`. Absent: 0. */
+  flags?: number;
   /** One line under the field. */
   hint?: string | null;
 };
@@ -76,6 +82,14 @@ export type PhisIdentityProviderSettingsSchemaV1 = {
   fields: readonly PhisIdentityProviderSettingFieldV1[];
 };
 
+/** How Core runs a provider's flow, as bits (`PhisIdentityProviderDescriptionV1.flags`). */
+export const PhisIdentityProviderFlags = {
+  /** Core makes a PKCE pair for this provider: `begin` gets the challenge, `complete` the verifier. */
+  Pkce: 1 << 0,
+  /** `probe` can tell more than that the settings are filled in; the provider page offers a test. */
+  Testable: 1 << 1,
+} as const;
+
 /** What the provider page and the Login page show, and how Core runs the flow. */
 export type PhisIdentityProviderDescriptionV1 = {
   /** Shown in the provider select and on the login button: "Keycloak", "eID". */
@@ -84,13 +98,11 @@ export type PhisIdentityProviderDescriptionV1 = {
   icon: string | null;
   stages: readonly PhisIdentityProviderStage[];
   responseMode: PhisIdentityProviderResponseMode;
-  /** Whether Core makes a PKCE pair for this provider. */
-  pkce: boolean;
+  /** `PhisIdentityProviderFlags`. */
+  flags: number;
   settings: PhisIdentityProviderSettingsSchemaV1;
   /** The secret an installation needs, as the page asks for it; null: the provider needs none. */
   secret: { label: string; hint: string } | null;
-  /** Whether `probe` can tell more than that the settings are filled in. */
-  testable: boolean;
 };
 
 /**
@@ -127,7 +139,7 @@ export type PhisIdentityProviderBeginInputV1 = {
   callbackUrl: string;
   state: string;
   nonce: string;
-  /** The S256 challenge where the description asks for PKCE; null otherwise. */
+  /** The S256 challenge where the description has `PhisIdentityProviderFlags.Pkce`; null otherwise. */
   pkceChallenge: string | null;
   signal: AbortSignal;
 };
@@ -150,6 +162,17 @@ export type PhisIdentityProviderCallbackV1 = {
   signal: AbortSignal;
 };
 
+/** What the provider asserted of an identity, as bits (`PhisIdentityProviderIdentityV1.flags`). */
+export const PhisIdentityProviderIdentityFlags = {
+  /**
+   * The provider asserted that `email` is verified -- only what it asserted. Core applies the Site's linking
+   * rules to it and never takes it as its own verification of the address; trusting an Add-on provider's
+   * e-mail to link an existing account is the operator's choice per installation, off unless chosen, and
+   * never applies to privileged accounts. Meaningless without an `email`.
+   */
+  EmailVerified: 1 << 0,
+} as const;
+
 /**
  * The identity Core receives: who the provider says the person is.
  *
@@ -161,12 +184,8 @@ export type PhisIdentityProviderIdentityV1 = {
   issuer: string;
   subject: string;
   email: string | null;
-  /**
-   * Only what the provider asserted. Core applies the Site's linking rules to it and never takes it as its
-   * own verification of the address; trusting an Add-on provider's e-mail to link an existing account is
-   * the operator's choice per installation, off unless chosen, and never applies to privileged accounts.
-   */
-  emailVerified: boolean;
+  /** `PhisIdentityProviderIdentityFlags`. */
+  flags: number;
   /** Names a newly created account and nothing else; an existing account keeps its name. */
   displayName: string | null;
 };
