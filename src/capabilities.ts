@@ -16,7 +16,7 @@ import type { PhisAssetChangedEventFacts, PhisAssetsCapabilityV1 } from "./asset
 import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
-import type { PhisCdnCapabilityV1 } from "./cdn.js";
+import type { PhisCdnCapabilityV1, PhisCdnPublishCapabilityV1 } from "./cdn.js";
 import type { PhisTranslationsCapabilityV1 } from "./translation.js";
 import type { PhisMediaCapabilityV1, PhisMediaReleaseCapabilityV1 } from "./media-library.js";
 import type {
@@ -135,8 +135,15 @@ export type PhisAddonCapabilities = {
   entitlements?: PhisEntitlementsCapabilityV1;
   /** Reading the Site's products, and registering this Add-on's own as their supplier. */
   products?: PhisProductsCapabilityV1;
-  /** Reading the Site's CDN catalogue; publishing is the operator's. */
+  /** Reading the Site's CDN catalogue: every file offered under the Site's name, copied or linked. */
   cdn?: PhisCdnCapabilityV1;
+  /**
+   * Putting a file into the Site's CDN catalogue from an address Core fetches itself, or as a link, with
+   * this Add-on as the file's origin. Present only where the manifest requires
+   * `@phis/server/cdn-publish:v1` and Core delivers it (`@phis/server` 0.8.1 on); never in an unverified
+   * hook, which publishes nothing under the Site's name.
+   */
+  cdnPublish?: PhisCdnPublishCapabilityV1;
   /** Reading Assets of the Site's Media library by id, and whether a visitor is served them. */
   media?: PhisMediaCapabilityV1;
   /** Giving up Media library Assets; Core deletes one nothing references any more. */
