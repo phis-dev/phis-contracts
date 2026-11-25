@@ -12,6 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
+    "test": "npm run build && node --test \"test/*.test.mjs\"",
     "prepack": "npm run build"
   },
   "exports": {
@@ -89,6 +90,11 @@
       "types": "./dist/media-source.d.ts",
       "import": "./dist/media-source.js",
       "default": "./dist/media-source.js"
+    },
+    "./identity-provider": {
+      "types": "./dist/identity-provider.d.ts",
+      "import": "./dist/identity-provider.js",
+      "default": "./dist/identity-provider.js"
     },
     "./support": {
       "types": "./dist/support.d.ts",

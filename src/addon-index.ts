@@ -4,6 +4,7 @@ export * from "./capabilities.js";
 export * from "./cdn.js";
 export * from "./core.js";
 export * from "./entitlements.js";
+export * from "./identity-provider.js";
 export * from "./media-library.js";
 export * from "./media-source.js";
 export * from "./media-storage.js";

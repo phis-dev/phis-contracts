@@ -32,6 +32,7 @@ and change at different moments.
 @phis/contracts/entitlements         who holds which product: subjects, entries and the capability; a bundle's holder holds its parts
 @phis/contracts/products             the Site's product directory: products, states, the capability and the event
 @phis/contracts/users                a person of the Site for Add-ons: fields by role, the Site's address book, the user events
+@phis/contracts/identity-provider    a login provider an Add-on supplies (service kind, no Core delivery yet)
 @phis/contracts/threads              the thread vocabulary
 @phis/contracts/conditions           the runtime condition descriptors and the sources they read, the Page's record among them
 @phis/contracts/controls             the Control descriptors
@@ -92,7 +93,11 @@ What it covers:
   (`PhisMediaStorageAdapter`, upload plans, object I/O), Directory, Payments, Translation, Support
   Forwarding and Media Source (`/media-source`: `PhisMediaSourceAdapterV1` lists what an archive offers
   and hands over the bytes of what somebody chose; Core imports them into the Site's library, and the
-  same list contract is what a Module's source answers in the browser). `PHIS_SERVICE_KINDS` names them
+  same list contract is what a Module's source answers in the browser), and Identity Provider
+  (`/identity-provider`: `PhisIdentityProviderAdapterV1` builds the address a browser is sent to and turns
+  the callback into an issuer, subject and e-mail; Core keeps the transaction, accounts and sessions, and
+  namespaces the issuer as `addon:<provider key>:<issuer>`). The Identity Provider kind is a contract
+  without a Core delivery yet: an installed implementation signs nobody in until the server builds it. `PHIS_SERVICE_KINDS` names them
   and `PHIS_SERVICE_INTERFACE_DIGESTS` holds the digest of each kind's current interface; Core refuses an
   Add-on built against a different digest at install.
 - **Files on a row** -- `PhisAssetsCapabilityV1` (`assets:v1`). A client's file goes through `begin` and
@@ -101,6 +106,19 @@ What it covers:
   `PHIS_ASSET_PUT_MAX_BYTES` and within the slot's and the Site's ceilings. The same bytes in the same slot
   of the same row answer with the file already there; the same bytes anywhere else in the Add-on's Space
   are refused, as `finalize` refuses them.
+- **CDN** -- `cdn:v1` (`PhisCdnCapabilityV1`) reads the Site's CDN catalogue: every file offered under
+  the Site's name as `PhisCdnFileV1`, with `storage` (`cdn`, copied into the bucket, or `link`, kept at
+  its source), `os` and `arch` (`PhisCdnFileOs`, `PhisCdnFileArch` bits, 0 for not stated).
+  `cdn-publish:v1` (`PhisCdnPublishCapabilityV1`, a grant of its own) puts a file in: `import` hands Core
+  an https address, a size and a SHA-256, and Core fetches, checks and uploads the bytes itself; `link`
+  records the same fields without bytes moving. Both are idempotent per key and SHA-256 and answer a
+  refusal rather than throwing for what the caller could not know (`PhisCdnImportRefusalV1`, among them
+  `name-not-yours`, `key-taken`, `host-not-allowed`, `too-large` past the Site's largest object and
+  `quota-exceeded` past its Space's quota). A key is `<name>/<version>/<file>`: name and file name hold
+  `PHIS_CDN_KEY_SEGMENT_PATTERN` (a `~` anywhere but first), the version `PHIS_CDN_KEY_VERSION_PATTERN`
+  (also a `:`, for an epoch), and no segment a `/`. The CDN page's routes answer the `PhisCdnAdmin*`,
+  `PhisCdnUpload*`, `PhisCdnCheckReportV1` and `PhisCdnAdopt*` types; `cdnAdmin`
+  (`@phis/server/cdn-admin:v1`) names that a server answers them and is never handed to an Add-on.
 - **Media library** -- `PhisMediaCapabilityV1` (`media:v1`) reads Assets of the Site's library by id, at
   most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path` and what a media tile draws (`name`, `title`,
   `alt`, `thumbnailPath`, `previewPath`, `blurDataUrl`); `PhisMediaReleaseCapabilityV1`
@@ -130,11 +148,15 @@ What it covers:
   `PHIS_PRODUCT_GALLERY_MAX`, written as Asset ids (`PhisProductDraft.gallery`) under the picture's rules
   and read as `PhisProductGalleryPicture` (`assetId`, the public `path`, `listPath`); a change of either
   owes `product.changed`, and a manifest names no gallery. Every Add-on reads them through `products:v1`;
-  a seller keeps no gallery or description of its own. A Site package (Module) proposes
+  a seller keeps no gallery or description of its own. A product may carry a `link`
+  (`PhisProductLink`): a `target`, a Page reference or an https address (`PhiLinkTarget`), and a `label`
+  in the product's language, translated like the title (`PhisProductText.LinkLabel`); no target, no
+  button, and a label without a target is refused (`readPhisProductLink`). A draft, a manifest's product
+  and a Site package proposal state it the same way. A Site package (Module) proposes
   products of its own under `phis.products` in its `package.json`: `PhisSitePackageProductProposal`
   (`key`, `sourceLocale` -- the package's `phis.sourceLocale`, `en` where it states none, stated by the
   reader and never per product --, `title`, `summary?`, `description?`, `kind?`, `state?` `draft`/`active`, `flags?` as
-  `PhisSitePackageProductFlag` -- `Counted`, `AccountRequired` --, `picture?` and `icon?` as keys of the
+  `PhisSitePackageProductFlag` -- `Counted`, `AccountRequired` --, `link?`, `picture?` and `icon?` as keys of the
   package's `phis.media.files`, `gallery?` as a list of such keys in order),
   read by `readPhisSitePackageProductProposals` (a whole package block, strict) and
   `readPhisSitePackageProductProposal` (one, as Core is handed it). Core has the supplier
@@ -154,8 +176,8 @@ What it covers:
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
-  Add-ons; a catalogue id such as `authentication` may serve Site Modules without a corresponding
-  Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
+  Add-ons; a catalogue id such as `authentication` or `cdnAdmin` may serve Site Modules without a
+  corresponding Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
 
 `PHIS_ADDON_ABI_VERSION` is the single number phis checks an Add-on against.
 

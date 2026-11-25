@@ -15,7 +15,14 @@ import type { PhisUserChangedEventFacts, PhisUserRegisteredEventFacts } from "./
  *
  * This list is a promise, not a plan. A capability appears here when Core delivers it, never before:
  * an Add-on that finds a name here must be able to rely on it. `images:v1` (image processing) is therefore
- * absent; reading Media library Assets is `media`.
+ * absent; reading Media library Assets is `media`. A name may arrive with the contracts release just
+ * before the server release that delivers it, when both are rolled out together -- `cdnPublish` and
+ * `cdnAdmin` are named here for `@phis/server` 0.8.1, as `users` arrived beside the server release that built it.
+ *
+ * A name is not always something an Add-on is handed. `authentication` and `cdnAdmin` say what this
+ * server does, for a Site Module to bind to; the server keeps the list of the ones it binds to an
+ * Add-on's context (`isPhisAddonCapabilityDeliverable` in phis-server), and an Add-on requiring any other
+ * is refused before its handler runs.
  *
  * Still no node builtins. The digests are stated rather than derived, so a manifest stays readable
  * without hashing anything -- Core recomputes them and checks, which is where that belongs.
@@ -63,8 +70,21 @@ export const PHIS_CORE_CAPABILITIES = {
   entitlements: "@phis/server/entitlements:v1",
   /** The Site's products: registered by whoever supplies them, read by whoever sells or shows them. */
   products: "@phis/server/products:v1",
-  /** The Site's CDN catalogue, read-only: what the operator published, with its public address. */
+  /** The Site's CDN catalogue, read-only: every file offered under the Site's name, with its public address. */
   cdn: "@phis/server/cdn:v1",
+  /**
+   * Putting a file into the Site's CDN catalogue from an address Core fetches itself, or recording it as a
+   * link (`cdn.ts`, `PhisCdnPublishCapabilityV1`). Separate from `cdn`, so being able to read the catalogue
+   * is not being able to publish under the Site's name. Delivered from `@phis/server` 0.8.1 on.
+   */
+  cdnPublish: "@phis/server/cdn-publish:v1",
+  /**
+   * Name only, like `authentication`: this server answers the CDN Admin routes (`/api/site/admin/cdn`,
+   * the `PhisCdnAdmin*` types of `cdn.ts`), which the Site's CDN Module binds to. Never bound to an
+   * Add-on's context; an Add-on requiring it is refused as for `authentication`. Named from
+   * `@phis/server` 0.8.1 on.
+   */
+  cdnAdmin: "@phis/server/cdn-admin:v1",
   /** The Site's Media library, read-only: an Asset by its id, and whether a visitor is served it. */
   media: "@phis/server/media:v1",
   /**
@@ -195,6 +215,17 @@ export const PHIS_SERVICE_KINDS = {
    * `PhisMediaSourceAdapterV1` in `@phis/contracts/media-source`.
    */
   mediaSource: "@phis/server/service/media-source",
+  /**
+   * Signing a person in through a provider Core does not speak itself -- a SAML identity provider, a
+   * national eID, a login outside OpenID Connect.
+   *
+   * **A contract without a Core delivery yet.** The interface is stated
+   * (`PhisIdentityProviderAdapterV1` in `@phis/contracts/identity-provider`) so an Add-on can be built
+   * against it; Core does not yet resolve, offer or call an implementation, so an installed one signs
+   * nobody in until the server release that builds it (phis-server design/IDENTITY_PROVIDERS.md).
+   * Google, Apple, GitHub, Microsoft and generic OpenID Connect stay Core's own providers.
+   */
+  identityProvider: "@phis/server/service/identity-provider",
 } as const;
 
 export type PhisServiceKind =
@@ -225,6 +256,7 @@ export const PHIS_SERVICE_INTERFACE_VERSIONS: Readonly<Record<PhisServiceKind, n
   [PHIS_SERVICE_KINDS.translation]: 1,
   [PHIS_SERVICE_KINDS.supportForwarding]: 1,
   [PHIS_SERVICE_KINDS.mediaSource]: 1,
+  [PHIS_SERVICE_KINDS.identityProvider]: 1,
 };
 
 export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, string>> = {
@@ -240,4 +272,6 @@ export const PHIS_SERVICE_INTERFACE_DIGESTS: Readonly<Record<PhisServiceKind, st
     "e9d01711a5ebdfa37ea4c6828952c87935b6e755b98ab8e69cc397933dfbed6f",
   [PHIS_SERVICE_KINDS.mediaSource]:
     "252af23499cf2c3ed0ee0ae36d3f50a13eae920c5125d0fadbdb14cf3c490c88",
+  [PHIS_SERVICE_KINDS.identityProvider]:
+    "38807b1dbef2bf6deea31d9eb78c5ccbbcc508b402493044832ba06df79f3aa9",
 };

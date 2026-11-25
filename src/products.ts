@@ -24,7 +24,11 @@
  * 3. Otherwise the text was typed by a person on the Site -- a staff Form, a seller's listing hint -- and
  *    is in the Site's source language. `@phis/products`' manifest language never stands in for what staff
  *    type into its Form: that is rule 3, unless the Form states another language, which is rule 1.
+ *
+ * The same language holds for every text of a product: title, summary, description and its link's label.
  */
+
+import { readPhiLinkTarget, type PhiLinkTarget } from "./references.js";
 
 /**
  * A product, named under the Add-on that supplies it: `@scope/name:key`.
@@ -83,8 +87,8 @@ export type PhisProduct = PhisProductReleasedTerms & {
    */
   readonly sourceLocale: string;
   /**
-   * Which of title, summary and description answer a translation into the `locale` read rather than the
-   * text as written, as `PhisProductText` bits. Zero without a `locale`, in the product's own language and
+   * Which of title, summary, description and the link's label answer a translation into the `locale` read
+   * rather than the text as written, as `PhisProductText` bits. Zero without a `locale`, in the product's own language and
    * wherever a provider failed. A description has the bit only where a person translated it whole under
    * Editor > Translations (or imported it): a Markdown document is never handed to a provider whole, and a
    * renderer translates a description without the bit paragraph by paragraph from `sourceLocale`.
@@ -160,6 +164,11 @@ export type PhisProduct = PhisProductReleasedTerms & {
    * the one that is set alone.
    */
   readonly gallery: readonly PhisProductGalleryPicture[];
+  /**
+   * Where the product's button leads -- its own page, a store listing, the publisher's site -- and what the
+   * button says. Null: no button. A server before 0.8.1 states no link; absent reads as null.
+   */
+  readonly link?: PhisProductLink | null;
   /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
   readonly counted: boolean;
   readonly state: PhisProductState;
@@ -203,7 +212,72 @@ export const PhisProductText = {
   Title: 1 << 0,
   Summary: 1 << 1,
   Description: 1 << 2,
+  /** The label of `PhisProduct.link`. */
+  LinkLabel: 1 << 3,
 } as const;
+
+/**
+ * A product's button: where it leads, and what it says (`PhisProduct.link`).
+ *
+ * `target` is a Page of the Site, named by its reference and resolved to an address wherever the button
+ * is drawn, or an `https:` address elsewhere -- `PhiLinkTarget` of `@phis/contracts/references`, its
+ * external kind narrowed to https. A Page reference outlives the Page moving; a Site-relative path is
+ * never stored, for the reason `PhiLinkTarget` gives.
+ *
+ * `label` is a text of the product like its title: written in the product's `sourceLocale`, a source text
+ * of the Site's translation store under the product's context (`product <n> link label`), and read with a
+ * `locale` in that language -- asked of the Site's provider once where nobody translated it, as title and
+ * summary are, with `PhisProductText.LinkLabel` in `translated`. Empty: the button says what the Widget
+ * that draws it says by default.
+ *
+ * No target, no button. A label without a target is no link and is refused (`readPhisProductLink`).
+ */
+export type PhisProductLink = {
+  readonly target: PhiLinkTarget;
+  readonly label: string;
+};
+
+/** A product's button as a supplier or a proposal states it (`PhisProductDraft.link`). */
+export type PhisProductLinkDraft = {
+  target: PhiLinkTarget;
+  /** In the product's `sourceLocale`, at most `PHIS_PRODUCT_LINK_LABEL_MAX` characters. Absent, null or empty: none. */
+  label?: string | null;
+};
+
+/** The longest link label Core keeps, in characters. */
+export const PHIS_PRODUCT_LINK_LABEL_MAX = 80;
+
+const PHIS_PRODUCT_LINK_FIELDS: readonly string[] = ["target", "label"];
+
+/**
+ * Reads a product's link as a hand-over states it, under the rules of `PhisProductLink`: an object with a
+ * `target` that `readPhiLinkTarget` takes, a Page or an `https:` address, and an optional `label` of at
+ * most `PHIS_PRODUCT_LINK_LABEL_MAX` characters, trimmed, an empty one dropped. Absent or null is no link
+ * and no issue. A label without a target, an unknown property, or a target of any other kind is an issue,
+ * and `link` is then null.
+ */
+export function readPhisProductLink(value: unknown): { link: PhisProductLinkDraft | null; issue: string | null } {
+  if (value === undefined || value === null) return { link: null, issue: null };
+  if (!isPlainRecord(value)) return { link: null, issue: "`link` must be an object with a `target`" };
+  const unknown = Object.keys(value).find((name) => !PHIS_PRODUCT_LINK_FIELDS.includes(name));
+  if (unknown !== undefined) return { link: null, issue: `\`link\` has an unknown property "${unknown}"` };
+  if (value.target === undefined || value.target === null) {
+    return { link: null, issue: "`link` needs a `target`: a label without a target is no link" };
+  }
+  const target = readPhiLinkTarget(value.target);
+  if (!target || (target.kind === "external" && !/^https:\/\/[^/]/iu.test(target.href))) {
+    return { link: null, issue: "`link.target` must be a Page reference or an https address" };
+  }
+  const label = value.label;
+  if (label !== undefined && label !== null && typeof label !== "string") {
+    return { link: null, issue: "`link.label` must be a string" };
+  }
+  const trimmed = typeof label === "string" ? label.trim() : "";
+  if (trimmed.length > PHIS_PRODUCT_LINK_LABEL_MAX) {
+    return { link: null, issue: `\`link.label\` must be at most ${PHIS_PRODUCT_LINK_LABEL_MAX} characters` };
+  }
+  return { link: trimmed ? { target, label: trimmed } : { target }, issue: null };
+}
 
 /** The longest description Core keeps, in characters. */
 export const PHIS_PRODUCT_DESCRIPTION_MAX = 20000;
@@ -221,7 +295,12 @@ export type PhisProductDraft = {
   /** Markdown, as `PhisProduct.description`. Absent: none. */
   description?: string;
   /**
-   * The language title, summary and description are written in, a locale key Core knows (`fr`, `pt-BR`);
+   * The button, as `PhisProduct.link`; its label in `sourceLocale` like the other texts. Absent or null:
+   * none. Refused where `readPhisProductLink` reports an issue -- a label without a target among them.
+   */
+  link?: PhisProductLinkDraft | null;
+  /**
+   * The language title, summary, description and the link's label are written in, a locale key Core knows (`fr`, `pt-BR`);
    * refused otherwise. Absent or null: the Site's source language (rule 3 at the top of this file) -- `register` is the whole statement, so a supplier that changes a product written in another
    * language states it again. A change of the language is a change of every text: their translations go.
    */
@@ -329,8 +408,9 @@ export type PhisProductChangedEventFacts = {
  *
  * The manifest is the statement of every field it carries, and of nothing else: it names no picture, no
  * icon and no gallery, so a sync (enabling the Add-on, reconciling a release) neither sets nor clears
- * `imageAssetId`, `iconAssetId` or `gallery`. It may carry a `description`, which it then states as every
- * other text: absent is none. Its texts are in the manifest's `sourceLocale` (rule 2 at the top of this file), which a manifest declaring products must state; a descriptor names no language of its own.
+ * `imageAssetId`, `iconAssetId` or `gallery`. It may carry a `description` and a `link`, which it then states
+ * as every other text: absent is none. A manifest knows no Page of a Site, so a link's Page target names a
+ * Module Page (`createPhiPageReference({ kind: "module", ... })`), else an https address. Its texts are in the manifest's `sourceLocale` (rule 2 at the top of this file), which a manifest declaring products must state; a descriptor names no language of its own.
  */
 export type PhisAddonProductDescriptor = Omit<PhisProductDraft, "publisher" | "imageAssetId" | "iconAssetId" | "gallery" | "sourceLocale">;
 
@@ -403,6 +483,12 @@ export type PhisSitePackageProductProposal = {
   summary?: string;
   /** Markdown, at most `PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX` characters. Absent: none. */
   description?: string;
+  /**
+   * The button, as `PhisProduct.link`, its label in `sourceLocale`: a Module Page of the package
+   * (`createPhiPageReference({ kind: "module", ... })`) or an https address, since a package knows no Page
+   * of the Site. Read by `readPhisProductLink`; a label without a target is refused. Absent: none.
+   */
+  link?: PhisProductLinkDraft;
   /** Absent: `@phis/products`' default, `product`. */
   kind?: string;
   /** Absent: `draft`, as `product.add` makes it. */
@@ -446,7 +532,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-const PROPOSAL_FIELDS = ["key", "title", "summary", "description", "kind", "state", "flags", "picture", "icon", "gallery"] as const;
+const PROPOSAL_FIELDS = ["key", "title", "summary", "description", "link", "kind", "state", "flags", "picture", "icon", "gallery"] as const;
 
 /** A locale key as a package states one (`fr`, `pt-BR`); whether Core translates it is Core's to say. */
 const PHIS_SITE_PACKAGE_LOCALE_PATTERN = /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/;
@@ -506,6 +592,8 @@ function readProposal(
   const title = text("title", PHIS_SITE_PACKAGE_PRODUCT_TITLE_MAX, true);
   const summary = text("summary", PHIS_SITE_PACKAGE_PRODUCT_SUMMARY_MAX, false);
   const description = text("description", PHIS_SITE_PACKAGE_PRODUCT_DESCRIPTION_MAX, false);
+  const { link, issue: linkIssue } = readPhisProductLink(entry.link);
+  if (linkIssue !== null) fault(at, linkIssue);
   const kind = entry.kind;
   if (kind !== undefined && (typeof kind !== "string" || kind.length > PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX || !PHIS_SITE_PACKAGE_PRODUCT_KIND_PATTERN.test(kind))) {
     fault(at, `\`kind\` must be a lower-case word, or words joined by dashes, of at most ${PHIS_SITE_PACKAGE_PRODUCT_KIND_MAX} characters`);
@@ -541,6 +629,7 @@ function readProposal(
     title,
     ...(summary !== undefined ? { summary } : {}),
     ...(description !== undefined ? { description } : {}),
+    ...(link ? { link } : {}),
     ...(typeof kind === "string" ? { kind } : {}),
     ...(state === "draft" || state === "active" ? { state } : {}),
     ...(typeof flags === "number" && flags !== 0 ? { flags } : {}),
@@ -554,7 +643,8 @@ function readProposal(
  * Reads `phis.products` of one package's `phis` block and reports every violation, each with the package
  * and the key it is about.
  *
- * Strict, as `phis.media` is read: an unknown property, a wrong type, a key that is not one or comes twice,
+ * Strict, as `phis.media` is read: an unknown property, a wrong type, a key that is not one or comes twice, a
+ * `link` `readPhisProductLink` refuses,
  * a package name that cannot stand in a product key, flags this release does not name, and a `picture`,
  * `icon` or `gallery` entry that is no key of the package's `phis.media.files` (or one the gallery names twice). `proposals` is empty when the package
  * proposes nothing or proposes wrongly; `issues` says which. Every proposal carries the package's
