@@ -538,7 +538,12 @@ export type PhisAddonManifestV1 = {
 export type PhisAddonRequestContext = {
   addonId: string;
   requestId: string;
-  method: PhisAddonHttpMethod;
+  /**
+   * The request's method. `HEAD` is never declared on a route or hook: it reaches the `GET` one of the same
+   * path, and the handler answers it as it answers `GET` -- status and headers -- without the side effects
+   * of a `GET` (a count, a write). Core drops whatever body the answer has.
+   */
+  method: PhisAddonHttpMethod | "HEAD";
   url: string;
   headers: Headers;
   body: Uint8Array;
