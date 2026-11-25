@@ -698,12 +698,16 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
 }
 
 /**
- * What a form looks like when it says nothing: labels beside their controls at a third of the width,
- * and stacked once the form is measured narrow, which is the one place a label beside a short input
- * leaves the input no room. Line 9 of 24 is the third; the control takes everything after it.
+ * What a form looks like when it says nothing: labels beside their controls, and stacked once the form
+ * is measured narrow, which is the one place a label beside a short input leaves the input no room.
  *
- * A third is the house column, the one the Login states for itself in `PHI_LOGIN_FORM_LAYOUT_CONFIG`:
- * eight tracks hold a two-word label without wrapping it, and sixteen still read as the wider half.
+ * Wide, the label takes a third: line 9 of 24, the house column the Login states for itself in
+ * `PHI_LOGIN_FORM_LAYOUT_CONFIG`. Eight tracks hold a two-word label there without wrapping it, and
+ * sixteen still read as the wider half.
+ *
+ * Medium -- a form 377 to 609px wide, where a one-column dialog's Form stands -- gives the label ten
+ * tracks and the control fourteen (line 11; owner, 2026-11-25, on trial). A third of 377px is about
+ * 110px, and there a label of two words like "Installation key" or "Callback origin" broke in two.
  */
 export const PHI_FORM_DEFAULT_LAYOUT = {
   gap: {
@@ -714,12 +718,12 @@ export const PHI_FORM_DEFAULT_LAYOUT = {
   labelAlign: "start",
   label: {
     compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
-    medium: { start: 1, end: 9 },
+    medium: { start: 1, end: 11 },
     wide: { start: 1, end: 9 },
   },
   control: {
     compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
-    medium: { start: 9, end: PHI_FORM_GRID_LAST_LINE },
+    medium: { start: 11, end: PHI_FORM_GRID_LAST_LINE },
     wide: { start: 9, end: PHI_FORM_GRID_LAST_LINE },
   },
 } as const satisfies PhiFormLayoutDescriptor;
