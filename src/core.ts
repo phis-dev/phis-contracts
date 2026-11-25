@@ -16,13 +16,8 @@ import type { PhisUserChangedEventFacts, PhisUserRegisteredEventFacts } from "./
  * This list is a promise, not a plan. A capability appears here when Core delivers it, never before:
  * an Add-on that finds a name here must be able to rely on it. `images:v1` (image processing) is therefore
  * absent; reading Media library Assets is `media`. A name may arrive with the contracts release just
- * before the server release that delivers it, when both are rolled out together -- `cdnPublish` and
- * `cdnAdmin` are named here for `@phis/server` 0.8.1, as `users` arrived beside the server release that built it.
- *
- * A name is not always something an Add-on is handed. `authentication` and `cdnAdmin` say what this
- * server does, for a Site Module to bind to; the server keeps the list of the ones it binds to an
- * Add-on's context (`isPhisAddonCapabilityDeliverable` in phis-server), and an Add-on requiring any other
- * is refused before its handler runs.
+ * before the server release that delivers it, when both are rolled out together -- `cdnPublish` is named
+ * here for `@phis/server` 0.8.1, as `users` arrived beside the server release that built it.
  *
  * Still no node builtins. The digests are stated rather than derived, so a manifest stays readable
  * without hashing anything -- Core recomputes them and checks, which is where that belongs.
@@ -78,13 +73,6 @@ export const PHIS_CORE_CAPABILITIES = {
    * is not being able to publish under the Site's name. Delivered from `@phis/server` 0.8.1 on.
    */
   cdnPublish: "@phis/server/cdn-publish:v1",
-  /**
-   * Name only, like `authentication`: this server answers the CDN Admin routes (`/api/site/admin/cdn`,
-   * the `PhisCdnAdmin*` types of `cdn.ts`), which the Site's CDN Module binds to. Never bound to an
-   * Add-on's context; an Add-on requiring it is refused as for `authentication`. Named from
-   * `@phis/server` 0.8.1 on.
-   */
-  cdnAdmin: "@phis/server/cdn-admin:v1",
   /** The Site's Media library, read-only: an Asset by its id, and whether a visitor is served it. */
   media: "@phis/server/media:v1",
   /**

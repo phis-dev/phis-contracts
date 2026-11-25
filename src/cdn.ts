@@ -2,7 +2,7 @@
  * A Site's CDN: files published once, served from a host of their own, never through a serving process.
  *
  * Three roads lead into Core's catalogue, and all three run one pipeline in Core: the operator's
- * `phis cdn publish`, a Maintainer's upload on the Admin page `CDN` (`cdn-admin:v1`), and an Add-on's
+ * `phis cdn publish`, a Maintainer's upload on the Admin page `CDN`, and an Add-on's
  * import through `cdn-publish:v1`. The catalogue holds every file offered under the Site's name, so Core
  * knows all of them and can withdraw any of them -- a file Core copied into the CDN bucket
  * (`storage: "cdn"`) and a file Core only links to where its source keeps it (`storage: "link"`).

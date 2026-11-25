@@ -117,8 +117,7 @@ What it covers:
   `quota-exceeded` past its Space's quota). A key is `<name>/<version>/<file>`: name and file name hold
   `PHIS_CDN_KEY_SEGMENT_PATTERN` (a `~` anywhere but first), the version `PHIS_CDN_KEY_VERSION_PATTERN`
   (also a `:`, for an epoch), and no segment a `/`. The CDN page's routes answer the `PhisCdnAdmin*`,
-  `PhisCdnUpload*`, `PhisCdnCheckReportV1` and `PhisCdnAdopt*` types; `cdnAdmin`
-  (`@phis/server/cdn-admin:v1`) names that a server answers them and is never handed to an Add-on.
+  `PhisCdnUpload*`, `PhisCdnCheckReportV1` and `PhisCdnAdopt*` types.
 - **Media library** -- `PhisMediaCapabilityV1` (`media:v1`) reads Assets of the Site's library by id, at
   most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path` and what a media tile draws (`name`, `title`,
   `alt`, `thumbnailPath`, `previewPath`, `blurDataUrl`); `PhisMediaReleaseCapabilityV1`
@@ -176,8 +175,8 @@ What it covers:
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
-  Add-ons; a catalogue id such as `authentication` or `cdnAdmin` may serve Site Modules without a
-  corresponding Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
+  Add-ons; a catalogue id such as `authentication` may serve Site Modules without a corresponding
+  Add-on context field. Payment ids accompany the implemented Core capability/service/event catalogue.
 
 `PHIS_ADDON_ABI_VERSION` is the single number phis checks an Add-on against.
 
