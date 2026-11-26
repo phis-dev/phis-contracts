@@ -106,18 +106,19 @@ export const PhisThreadMessageFlag = {
   /** Written by an integration from something outside, and therefore never exported back to it. */
   Imported: 1 << 4,
   /**
-   * `sourceLang` was recognised by a translator rather than declared by whoever delivered the message.
+   * `sourceLang` was recognised by a translator rather than declared by whoever wrote the message.
    *
-   * The difference between an assertion and a guess, which is why it is a flag and not a shrug. An
-   * integration states the language from something it actually has -- a mail header, the locale of the
-   * page a form was submitted from -- and a translator states what a model made of the text: right for a
-   * paragraph, a coin toss for "bongo". Anything routing or counting on the column has to be able to see
-   * which of the two it is looking at.
+   * The difference between an assertion and a guess, which is why it is a flag and not a shrug. A writer
+   * states the language from something they actually have -- a person picks the one they wrote in, an
+   * integration reads a mail header or the locale of the page a form was submitted from -- and a
+   * translator states what a model made of the text: right for a paragraph, a coin toss for "bongo".
+   * Anything routing or counting on the column has to be able to see which of the two it is looking at.
    *
    * It is set where a translation reported a language for a message that declared none, because the
    * recognition arrives as a field on a translation that was paid for anyway and throwing it away would
-   * leave the column empty for every message a person ever wrote. Never set by a caller: Core sets it
-   * together with the value, and a declared language is never overwritten by a detected one.
+   * leave the column empty for every message written in "Other language" or before the picker existed.
+   * Never set by a caller: Core sets it together with the value, and a declared language is never
+   * overwritten by a detected one.
    */
   LangDetected: 1 << 5,
 } as const;
@@ -244,18 +245,24 @@ export type PhisThreadMessage = {
   bodyText: string | null;
   bodyMarkdown: string | null;
   /**
-   * The language the body is written in, where an integration recorded it. Null is `not declared`.
+   * The language the body is written in, as its writer declared it. Null is `not declared`.
    *
-   * Never to be read as the Site's default. Nobody is asked for this: a person writing on a Site is
-   * offered no language picker, because a translator determines the source language itself. What fills it
-   * is an integration that already knows -- a mail header, the locale of the page a form came from -- so a
-   * message written by a person arrives carrying null, which is the honest answer and the one a
-   * translation reads as "you detect it".
+   * Never to be read as the Site's default. **The writer declares it.** A person writing on a Site picks
+   * it beside the message -- the Site's languages, opening on their own, plus "Other language", which
+   * declares nothing -- and the Site's thread and Support write routes take it as an optional
+   * `sourceLang`. An integration declares it through `messageSourceLang` on `threads:v1` `create` and
+   * `reply` and on `support:v1` `create`, from something it already knows: a mail header, the locale of
+   * the page a form came from. Either way the key is stored as it resolves (`zh-CN` as `zh-Hans`) and
+   * without `LangDetected`; a key the platform does not know is refused, not stored as null.
    *
    * It is also filled afterwards, by the translation of a message that declared none: the language comes
    * back as a field on a translation somebody paid for, and dropping it would keep the column empty for
-   * everything a person ever wrote. Such a value carries `LangDetected`, because a recognition is a guess
-   * and an integration's declaration is not, and a declared language is never overwritten by one.
+   * everything written in "Other language" or before anybody was asked. Such a value carries
+   * `LangDetected`, because a recognition is a guess and a declaration is not, and a declared language is
+   * never overwritten by one.
+   *
+   * What a surface does with it is the translate link: offered where the language is unknown or differs
+   * from the reader's, and not on a message already written in the reader's language.
    *
    * It sits on the message and not on the thread, because two people writing to each other in different
    * languages is the case it exists for.
@@ -330,13 +337,15 @@ export type PhisThreadsCapabilityV1 = {
     /**
      * What the opening message is written in, where the integration knows.
      *
-     * This is the **only** way the field is ever written: no Site route accepts it and no surface offers
-     * it, so a value present means an integration said so. An integration that does not know leaves it
-     * out, and the message carries null.
+     * An integration's declaration, as the language picker is a person's on the Site routes
+     * (`sourceLang` there): a value present is stored without `LangDetected` and is never replaced by a
+     * language a translation recognises later. An integration that does not know leaves it out, and the
+     * message carries null until a translation fills it, flagged `LangDetected`.
      *
-     * A locale key the platform holds; anything else is refused rather than stored. Core checks that the
-     * key is well-formed and not that it is true -- naming a language over text in another one misleads
-     * every reader of it, and nothing contradicts the claim.
+     * A locale key the platform holds, aliases resolved (`zh-CN` is stored as `zh-Hans`); absent, null or
+     * empty declares nothing, and anything else is refused rather than stored. Core checks that the key is
+     * well-formed and not that it is true -- naming a language over text in another one misleads every
+     * reader of it, and nothing contradicts the claim.
      */
     messageSourceLang?: string | null;
     messageFlags?: number;

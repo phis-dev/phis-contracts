@@ -365,6 +365,13 @@ export type PhisSupportCapabilityV1 = {
     queueKey?: string;
     subject: string;
     message: string;
+    /**
+     * What the opening message is written in, where the integration knows: `messageSourceLang` of
+     * `threads:v1` `create`, on the same terms -- a locale key the platform holds, stored as it resolves
+     * and without `LangDetected`, never replaced by a recognised language; absent, null or empty declares
+     * nothing, and any other key is refused and no ticket is opened.
+     */
+    messageSourceLang?: string | null;
     externalRef?: string;
   }): Promise<PhisSupportTicket>;
   /** The work on one ticket, in the order the Site keeps it. */
