@@ -165,3 +165,85 @@ test("a fourth width, spacious, follows wide until it is stated", () => {
     /layout\.label\.spacious\.end must be greater/u,
   );
 });
+
+const field = (key, extra = {}) => ({ key, fieldProviderKey: "phis/field-text", ...extra });
+const formOf = (...fields) => ({ schemaVersion: 1, key: "inspector", fields });
+
+test("a list field's entries have fields of their own, parsed and checked per entry", () => {
+  const [links] = parsePhiFormDescriptor(formOf(field("links", {
+    fieldProviderKey: "phis/field-list",
+    config: { addLabel: "Add link", maxItems: 8 },
+    fields: [field("label"), field("target.path"), field("slug", { derive: { from: "label", source: "value", transform: "slug" } })],
+  }))).fields;
+  assert.deepEqual(links.fields.map((entry) => entry.key), ["label", "target.path", "slug"]);
+  assert.equal(links.config.maxItems, 8);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("links", { fields: [field("a"), field("a")] }))), /fields\[0\]\.fields contains duplicate key "a"/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("links", { fields: "a" }))), /fields\[0\]\.fields must be an array/u);
+  // An entry's derivation names a field of the same entry, not of the Form around it.
+  assert.throws(
+    () => parsePhiFormDescriptor(formOf(field("title"), field("links", { fields: [field("slug", { derive: { from: "title", source: "value", transform: "slug" } })] }))),
+    /fields\[1\]\.fields\[0\]\.derive\.from names "title"/u,
+  );
+});
+
+test("a key is a dot path owned by one field, keys included", () => {
+  const [size] = parsePhiFormDescriptor(formOf(field("size", { keys: { width: "size.width", height: "size.height" } }))).fields;
+  assert.equal(size.key, "size");
+  // The key and its roles overlap within one field too: size owns size.width already.
+  assert.ok(size.keys);
+  const [box] = parsePhiFormDescriptor(formOf(field("box.width", { keys: { height: "box.height" } }), field("label"))).fields;
+  assert.deepEqual(box.keys, { height: "box.height" });
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("a..b"))), /must be a dot path without empty segments/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field(".a"))), /without empty segments/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("address"), field("address.city"))), /fields\[1\] owns "address\.city", which overlaps "address" of fields\[0\]/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("w", { keys: { height: "h" } }), field("h"))), /duplicate key "h"/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("w", { keys: {} }))), /keys must be an object naming at least one role/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("w", { keys: { height: "" } }))), /keys\.height must be a non-empty string/u);
+});
+
+test("a field may carry a heading, a default it shows, what an emptied value submits, read-only and a translation register", () => {
+  const [parsed] = parsePhiFormDescriptor(formOf(field("color", {
+    heading: label("appearance", "Appearance"),
+    defaultValue: "#336699",
+    whenEmpty: "omit",
+    readOnly: true,
+    translatable: "message",
+  }))).fields;
+  assert.deepEqual(parsed.heading, label("appearance", "Appearance"));
+  assert.equal(parsed.defaultValue, "#336699");
+  assert.equal(parsed.whenEmpty, "omit");
+  assert.equal(parsed.readOnly, true);
+  assert.equal(parsed.translatable, "message");
+  const [plain] = parsePhiFormDescriptor(formOf(field("color"))).fields;
+  for (const key of ["heading", "defaultValue", "whenEmpty", "readOnly", "translatable", "keys", "fields"]) assert.equal(key in plain, false, key);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { whenEmpty: "drop" }))), /whenEmpty must be "omit" or "keep"/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { readOnly: "yes" }))), /readOnly must be true or false/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { translatable: true }))), /translatable must be "label" or "message"/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { heading: "Appearance" }))), /heading must be a Form text descriptor/u);
+});
+
+test("options carry a preview, a group heading and a parent, and hold text or number values of one kind", () => {
+  const [fonts] = parsePhiFormDescriptor(formOf(field("font", { options: [
+    { value: "serif", label: label("serif", "Serif"), group: label("classic", "Classic"), preview: { kind: "font", fontFamily: "Georgia, serif" } },
+    { value: "slab", label: label("slab", "Slab"), parentValue: "serif", preview: { kind: "background", backgroundColor: "#fff", other: "x" } },
+  ] }))).fields;
+  assert.deepEqual(fonts.options[0].preview, { kind: "font", fontFamily: "Georgia, serif" });
+  assert.deepEqual(fonts.options[0].group, label("classic", "Classic"));
+  assert.equal(fonts.options[1].parentValue, "serif");
+  assert.deepEqual(fonts.options[1].preview, { kind: "background", backgroundColor: "#fff" });
+  const [count] = parsePhiFormDescriptor(formOf(field("columns", { options: [
+    { value: 1, label: label("one", "One") }, { value: 2, label: label("two", "Two"), parentValue: 1 },
+  ] }))).fields;
+  assert.deepEqual(count.options.map((option) => option.value), [1, 2]);
+  assert.throws(
+    () => parsePhiFormDescriptor(formOf(field("columns", { options: [{ value: 1, label: label("one", "One") }, { value: "2", label: label("two", "Two") }] }))),
+    /fields\[0\]\.options mixes text and number values/u,
+  );
+  assert.throws(
+    () => parsePhiFormDescriptor(formOf(field("columns", { options: [{ value: 1, label: label("one", "One") }, { value: 1, label: label("uno", "Uno") }] }))),
+    /duplicate key "1"/u,
+  );
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { options: [{ value: Number.NaN, label: label("x", "X") }] }))), /value must be a non-empty string or a finite number/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { options: [{ value: "a", label: label("x", "X"), preview: { kind: "color" } }] }))), /preview\.kind must be "font" or "background"/u);
+  assert.throws(() => parsePhiFormDescriptor(formOf(field("c", { options: [{ value: "a", label: label("x", "X"), group: "Classic" }] }))), /group must be a Form text descriptor/u);
+});

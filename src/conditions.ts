@@ -35,18 +35,26 @@ import { isPhiRecord, readPhiDotPath } from "./record.js";
  */
 export const PHI_RUNTIME_CONDITION_SOURCES = ["row", "form", "controller", "page", "widget", "feature", "record"] as const;
 /**
- * How a condition judges what it reads. `truthy`, `falsy`, `equals` and `contains` judge the value at
- * `valuePath`. `optionFlag` judges the option chosen there instead: `source: "form"` only, `valuePath`
- * a field of the same Form that offers options, and it holds where the chosen option carries every bit
- * of `flag` (`PhiControlOption.flags`) -- so a field can follow what a choice is, not which value it has.
+ * How a condition judges what it reads. `truthy`, `falsy`, `equals`, `notEquals` and `contains` judge the
+ * value at `valuePath`. `optionFlag` judges the option chosen there instead: `source: "form"` only,
+ * `valuePath` a field of the same Form that offers options, and it holds where the chosen option carries
+ * every bit of `flag` (`PhiControlOption.flags`) -- so a field can follow what a choice is, not which value
+ * it has.
+ *
+ * `truthy` holds for a value JavaScript calls truthy, except an empty list, which holds nothing and is
+ * falsy -- a multiple choice with nothing chosen is not a choice made. `falsy` is its opposite. `equals`
+ * holds where the value is the condition's `value`, the same type included (`Object.is`: the number 2 is
+ * not the text "2"); `notEquals` where it is not, which a value that is not there is not either.
+ * `contains` holds for a list with an entry that equals `value`, and for a text containing `value` as text.
  */
-export const PHI_RUNTIME_CONDITION_OPERATORS = ["truthy", "falsy", "equals", "contains", "optionFlag"] as const;
+export const PHI_RUNTIME_CONDITION_OPERATORS = ["truthy", "falsy", "equals", "notEquals", "contains", "optionFlag"] as const;
 export const PHI_RUNTIME_CONDITION_GROUP_MATCHES = ["all", "any"] as const;
 
 export type PhiRuntimeConditionSource = (typeof PHI_RUNTIME_CONDITION_SOURCES)[number];
 export type PhiRuntimeConditionOperator = (typeof PHI_RUNTIME_CONDITION_OPERATORS)[number];
 export type PhiRuntimeConditionGroupMatch = (typeof PHI_RUNTIME_CONDITION_GROUP_MATCHES)[number];
-export type PhiRuntimeConditionValue = string;
+/** What `equals`, `notEquals` and `contains` compare with: a text, a finite number, a yes or no, or null. */
+export type PhiRuntimeConditionValue = string | number | boolean | null;
 
 export type PhiRuntimeValueCondition = {
   source: PhiRuntimeConditionSource;
@@ -133,7 +141,8 @@ export type PhiRuntimeConditionStateSignalValue = {
 };
 
 function readConditionValue(value: unknown): PhiRuntimeConditionValue | undefined {
-  return typeof value === "string" ? value : undefined;
+  if (value === null || typeof value === "string" || typeof value === "boolean") return value;
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function readConditionSource(value: unknown): PhiRuntimeConditionSource | null {
@@ -258,11 +267,14 @@ export function matchesPhiRuntimeValueCondition(
   if (source == null) return false;
   const current = readPhiRuntimeConditionValue(source, condition.valuePath);
   if ((condition.source === "controller" || condition.source === "widget") && current === undefined) return false;
-  if (condition.operator === "truthy") return Boolean(current);
-  if (condition.operator === "falsy") return !current;
+  // An empty list holds nothing: a multiple choice with nothing chosen is falsy.
+  const truthy = Array.isArray(current) ? current.length > 0 : Boolean(current);
+  if (condition.operator === "truthy") return truthy;
+  if (condition.operator === "falsy") return !truthy;
   if (condition.operator === "equals") return Object.is(current, condition.value);
+  if (condition.operator === "notEquals") return !Object.is(current, condition.value);
   return Array.isArray(current)
-    ? current.some((entry) => typeof entry === "string" && entry === condition.value)
+    ? current.some((entry) => Object.is(entry, condition.value))
     : typeof current === "string" && typeof condition.value === "string"
       ? current.includes(condition.value)
       : false;

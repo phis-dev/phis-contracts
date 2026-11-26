@@ -16,6 +16,7 @@ import {
   parsePhiControlOptionsProviderConfig,
   readPhiControlOptionFlags,
   type PhiControlOption,
+  type PhiControlOptionPreview,
   type PhiControlOptionsProviderConfig,
 } from "./controls.js";
 import {
@@ -192,12 +193,25 @@ export type PhiFormValidationRuleDescriptor = {
   config?: Record<string, unknown>;
 };
 
+/**
+ * One option of a choice field, written out. `PhiControlOption` with its visible words as Form texts, so
+ * they are translated: `label`, `description`, and `group`, the heading consecutive options of the same
+ * group are listed under (texts compared as the field shows them). `preview`, `separator`, `parentValue`
+ * and `flags` are `PhiControlOption`'s.
+ *
+ * `value` is a text or a finite number, and all options of one field hold the same kind -- the kind the
+ * field's value then has, submitted as written, so a field choosing a count submits `3` and not `"3"`.
+ * Said on the option and not as a `valueType` of the field, because the option's value is what is stored
+ * and compared (`equals` tells 3 from "3"), and an Options Provider answering numbers needs no field to
+ * announce it; the parser refuses a field that mixes the two. `parentValue` is of the same kind.
+ */
 export type PhiFormOptionDescriptor = Omit<
-  PhiControlOption,
-  "label" | "description"
+  PhiControlOption<string | number>,
+  "label" | "description" | "group"
 > & {
   label: PhiFormTextDescriptor;
   description?: PhiFormTextDescriptor;
+  group?: PhiFormTextDescriptor;
 };
 
 /**
@@ -237,15 +251,52 @@ export type PhiFormFieldDeriveDescriptor = {
   transform: "slug";
 };
 
+/**
+ * One field of a Form.
+ *
+ * `key` is where its value stands among the Form's values: a dot path, `address.city` being the `city`
+ * of the object at `address`, read and written the way a condition's `valuePath` reads it
+ * (`readPhiDotPath`). No segment is empty. A key without a dot is a value at the top, as it always was.
+ * Two fields never own the same place: not the same key, and not one key inside another (`address` and
+ * `address.city`), counting `keys` too.
+ */
 export type PhiFormFieldDescriptor = {
   key: string;
+  /**
+   * The further values a field edits beside `key`, by the role each plays for the field -- a size field's
+   * `width` and `height`, each a dot path of its own. The roles are the field provider's to name; the
+   * paths are owned once in the Form like every `key`.
+   */
+  keys?: Readonly<Record<string, string>>;
   fieldProviderKey: PhiFormProviderKey;
+  /** A heading the field is preceded by: a Form's sections, a line with a title above the first field of each. */
+  heading?: PhiFormTextDescriptor;
   label?: PhiFormTextDescriptor;
   controlLabel?: PhiFormTextDescriptor;
   description?: PhiFormTextDescriptor;
   placeholder?: PhiFormTextDescriptor;
   autoComplete?: string;
   initialValue?: unknown;
+  /**
+   * What holds where the field holds nothing, shown as the inherited value -- a Theme's colour beneath a
+   * Widget's own -- and never submitted: it is somebody else's value, and a Form that submitted it would
+   * write it down as its own. `initialValue` is the opposite, a value the field starts with and submits.
+   */
+  defaultValue?: unknown;
+  /**
+   * What an emptied field submits: `omit`, nothing -- its key is left out, so whatever stands beneath it
+   * (`defaultValue`) holds again -- or `keep`, the empty value itself, so the emptiness is stored. Absent
+   * is the field provider's own reading of empty.
+   */
+  whenEmpty?: "omit" | "keep";
+  /** Shown and submitted as it stands, and not changed by whoever fills in the Form. */
+  readOnly?: boolean;
+  /**
+   * That the field's value is itself a text to translate, and in which register: `label`, a short name
+   * read on its own (a button, a heading), or `message`, running text. The register is what the
+   * translator is told the text is (TRANSLATIONS.md, context flags). Absent: the value is not translated.
+   */
+  translatable?: "label" | "message";
   options?: readonly PhiFormOptionDescriptor[];
   optionsProvider?: PhiControlOptionsProviderConfig | null;
   /** The field's "none of these", for a field that offers options (`PhiFormEmptyOptionDescriptor`). */
@@ -256,6 +307,14 @@ export type PhiFormFieldDescriptor = {
   visibleWhen?: PhiRuntimeConditionExpression;
   disabledWhen?: PhiRuntimeConditionExpression;
   placement?: PhiFormFieldPlacementDescriptor;
+  /**
+   * The fields of each entry, for a field whose value is a list of objects -- a list of links, each a
+   * label and a target. Their keys are paths inside one entry, unique among themselves, and their
+   * conditions and derivations name fields of the same entry. How the list itself is drawn and bounded
+   * (`addLabel`, `emptyLabel`, `minItems`, `maxItems`, `reorderable`, `itemKeyField`, `itemLabelField`) is
+   * the list field provider's `config`; which provider that is, is the site UI's, as for every field.
+   */
+  fields?: readonly PhiFormFieldDescriptor[];
   config?: Record<string, unknown>;
 };
 
@@ -555,17 +614,55 @@ function readOption(value: unknown, path: string): PhiFormOptionDescriptor {
   if (!isPhiRecord(value)) {
     throw new Error(`${path} must be an option object.`);
   }
+  const preview = readOptionPreview(value.preview, `${path}.preview`);
+  const group = value.group == null ? undefined : readTextDescriptor(value.group, `${path}.group`);
+  const parentValue = value.parentValue == null ? undefined : readOptionValue(value.parentValue, `${path}.parentValue`);
   return {
-    value: readRequiredString(value.value, `${path}.value`),
+    value: readOptionValue(value.value, `${path}.value`),
     label: readTextDescriptor(value.label, `${path}.label`),
     description: value.description == null
       ? undefined
       : readTextDescriptor(value.description, `${path}.description`),
     disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
     icon: readOptionalString(value.icon, `${path}.icon`),
+    ...(preview ? { preview } : {}),
+    ...(group ? { group } : {}),
     separator: readOptionSeparator(value.separator, `${path}.separator`),
+    ...(parentValue !== undefined ? { parentValue } : {}),
     flags: readOptionFlags(value.flags, `${path}.flags`),
   };
+}
+
+/** An option's value: a non-empty text, trimmed, or a finite number. */
+function readOptionValue(value: unknown, path: string): string | number {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error(`${path} must be a non-empty string or a finite number.`);
+    return value;
+  }
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`${path} must be a non-empty string or a finite number.`);
+  }
+  return value.trim();
+}
+
+const OPTION_BACKGROUND_PREVIEW_KEYS = ["backgroundColor", "backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat"] as const;
+
+/** What the option shows of itself (`PhiControlOptionPreview`): a typeface, or a background. */
+function readOptionPreview(value: unknown, path: string): PhiControlOptionPreview | undefined {
+  if (value == null) return undefined;
+  if (!isPhiRecord(value)) throw new Error(`${path} must be a preview object.`);
+  if (value.kind === "font") {
+    return { kind: "font", fontFamily: readRequiredString(value.fontFamily, `${path}.fontFamily`) };
+  }
+  if (value.kind === "background") {
+    const preview: Extract<PhiControlOptionPreview, { kind: "background" }> = { kind: "background" };
+    for (const key of OPTION_BACKGROUND_PREVIEW_KEYS) {
+      const entry = readOptionalString(value[key], `${path}.${key}`);
+      if (entry) preview[key] = entry;
+    }
+    return preview;
+  }
+  throw new Error(`${path}.kind must be "font" or "background".`);
 }
 
 /** A line before or after the option, where the Control draws one (`PhiControlOption.separator`). */
@@ -615,19 +712,19 @@ function readDerive(value: unknown, path: string): PhiFormFieldDeriveDescriptor 
  * and no circle -- and, for `optionLabel`, one that offers options. A key that names nothing would leave
  * the field without proposals for good, which nobody would notice.
  */
-function assertDerivedFieldsReadOtherFields(fields: readonly PhiFormFieldDescriptor[]) {
+function assertDerivedFieldsReadOtherFields(fields: readonly PhiFormFieldDescriptor[], path: string) {
   fields.forEach((field, index) => {
     if (!field.derive) return;
     const { from, source } = field.derive;
     const read = fields.find((other) => other.key === from);
     if (!read || read === field) {
-      throw new Error(`fields[${index}].derive.from names "${from}", which is no other field of this Form.`);
+      throw new Error(`${path}[${index}].derive.from names "${from}", which is no other field of this Form.`);
     }
     if (read.derive) {
-      throw new Error(`fields[${index}].derive.from names "${from}", which derives its own value; a proposal is made from a field somebody fills in.`);
+      throw new Error(`${path}[${index}].derive.from names "${from}", which derives its own value; a proposal is made from a field somebody fills in.`);
     }
     if (source === "optionLabel" && !read.options && !read.optionsProvider) {
-      throw new Error(`fields[${index}].derive reads the option label of "${from}", which offers no options.`);
+      throw new Error(`${path}[${index}].derive reads the option label of "${from}", which offers no options.`);
     }
   });
 }
@@ -672,7 +769,7 @@ function readOptionFlags(value: unknown, path: string) {
  * one that offers options -- written out or from an Options Provider. A key that names nothing, or a
  * field without options, would leave the condition unavailable for good, which hides a field silently.
  */
-function assertOptionFlagConditionsNameChoiceFields(fields: readonly PhiFormFieldDescriptor[]) {
+function assertOptionFlagConditionsNameChoiceFields(fields: readonly PhiFormFieldDescriptor[], path: string) {
   fields.forEach((field, index) => {
     for (const [name, expression] of [["visibleWhen", field.visibleWhen], ["disabledWhen", field.disabledWhen]] as const) {
       for (const condition of collectPhiRuntimeValueConditions(expression)) {
@@ -680,7 +777,7 @@ function assertOptionFlagConditionsNameChoiceFields(fields: readonly PhiFormFiel
         const chosenIn = fields.find((other) => other.key === condition.valuePath);
         if (!chosenIn || chosenIn === field || (!chosenIn.options && !chosenIn.optionsProvider)) {
           throw new Error(
-            `fields[${index}].${name} reads the option chosen in "${condition.valuePath}", which is no other field of this Form that offers options.`,
+            `${path}[${index}].${name} reads the option chosen in "${condition.valuePath}", which is no other field of this Form that offers options.`,
           );
         }
       }
@@ -688,8 +785,68 @@ function assertOptionFlagConditionsNameChoiceFields(fields: readonly PhiFormFiel
   });
 }
 
-function assertUniqueKeys(items: readonly { key: string }[], path: string) {
-  const seen = new Set<string>();
+/** A field's key or one of its `keys`: a dot path whose segments are none of them empty. */
+function readFieldKey(value: unknown, path: string) {
+  const key = readRequiredString(value, path);
+  if (key.split(".").some((segment) => !segment.trim())) {
+    throw new Error(`${path} must be a dot path without empty segments: ${JSON.stringify(key)}.`);
+  }
+  return key;
+}
+
+function readFieldKeys(value: unknown, path: string): Readonly<Record<string, string>> | undefined {
+  if (value == null) return undefined;
+  if (!isPhiRecord(value) || Object.keys(value).length === 0) {
+    throw new Error(`${path} must be an object naming at least one role and its key.`);
+  }
+  return Object.fromEntries(Object.entries(value).map(([role, key]) => [role, readFieldKey(key, `${path}.${role}`)]));
+}
+
+/**
+ * Every place among the Form's values is owned by one field: no key twice, counting every field's `keys`,
+ * and no key inside another (`address` beside `address.city`), which would be two fields writing the
+ * same object.
+ */
+function assertFieldKeysOwnedOnce(fields: readonly PhiFormFieldDescriptor[], path: string) {
+  const owned: { key: string; owner: string }[] = [];
+  fields.forEach((field, index) => {
+    for (const key of [field.key, ...Object.values(field.keys ?? {})]) {
+      const owner = `${path}[${index}]`;
+      // One field may name places inside its own key (a size at `size` editing `size.width`); two may not.
+      const clash = owned.find((other) => other.key === key
+        || (other.owner !== owner && (other.key.startsWith(`${key}.`) || key.startsWith(`${other.key}.`))));
+      if (clash) {
+        throw new Error(clash.key === key
+          ? `${path} contains duplicate key "${key}".`
+          : `${path}[${index}] owns "${key}", which overlaps "${clash.key}" of ${clash.owner}.`);
+      }
+      owned.push({ key, owner });
+    }
+  });
+}
+
+/** The options a field writes out hold values of one kind, which is then the kind of the field's value. */
+function assertOptionValuesOfOneKind(options: readonly PhiFormOptionDescriptor[], path: string) {
+  const kinds = new Set(options.flatMap((option) => [typeof option.value, ...(option.parentValue === undefined ? [] : [typeof option.parentValue])]));
+  if (kinds.size > 1) {
+    throw new Error(`${path} mixes text and number values; a field's options hold values of one kind.`);
+  }
+}
+
+/** One level of fields: the Form's own, or an entry's of a list field. */
+function readFields(value: unknown, path: string): PhiFormFieldDescriptor[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`${path} must be an array.`);
+  }
+  const fields = value.map((field, index) => readField(field, `${path}[${index}]`));
+  assertFieldKeysOwnedOnce(fields, path);
+  assertOptionFlagConditionsNameChoiceFields(fields, path);
+  assertDerivedFieldsReadOtherFields(fields, path);
+  return fields;
+}
+
+function assertUniqueKeys(items: readonly { key: string | number }[], path: string) {
+  const seen = new Set<string | number>();
   for (const item of items) {
     if (seen.has(item.key)) {
       throw new Error(`${path} contains duplicate key "${item.key}".`);
@@ -748,6 +905,7 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
   if (options) {
     const optionKeys = options.map((option) => ({ key: option.value }));
     assertUniqueKeys(optionKeys, `${path}.options`);
+    assertOptionValuesOfOneKind(options, `${path}.options`);
   }
   const optionsProvider = value.optionsProvider == null
     ? undefined
@@ -761,14 +919,27 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     throw new Error(`${path}.emptyOption needs options or an optionsProvider to stand beside.`);
   }
   const derive = readDerive(value.derive, `${path}.derive`);
+  const keys = readFieldKeys(value.keys, `${path}.keys`);
+  const fields = value.fields == null ? undefined : readFields(value.fields, `${path}.fields`);
+  if (value.whenEmpty != null && value.whenEmpty !== "omit" && value.whenEmpty !== "keep") {
+    throw new Error(`${path}.whenEmpty must be "omit" or "keep".`);
+  }
+  if (value.readOnly != null && typeof value.readOnly !== "boolean") {
+    throw new Error(`${path}.readOnly must be true or false.`);
+  }
+  if (value.translatable != null && value.translatable !== "label" && value.translatable !== "message") {
+    throw new Error(`${path}.translatable must be "label" or "message".`);
+  }
   if (value.config != null && !isPhiRecord(value.config)) {
     throw new Error(`${path}.config must be an object.`);
   }
   const placement = readFieldPlacement(value.placement, `${path}.placement`);
 
   return {
-    key: readRequiredString(value.key, `${path}.key`),
+    key: readFieldKey(value.key, `${path}.key`),
+    ...(keys ? { keys } : {}),
     fieldProviderKey: readProviderKey(value.fieldProviderKey, `${path}.fieldProviderKey`),
+    ...(value.heading == null ? {} : { heading: readTextDescriptor(value.heading, `${path}.heading`) }),
     label: value.label == null ? undefined : readTextDescriptor(value.label, `${path}.label`),
     controlLabel: value.controlLabel == null
       ? undefined
@@ -781,6 +952,10 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
       : readTextDescriptor(value.placeholder, `${path}.placeholder`),
     autoComplete: readOptionalString(value.autoComplete, `${path}.autoComplete`),
     initialValue: value.initialValue,
+    ...(value.defaultValue === undefined ? {} : { defaultValue: value.defaultValue }),
+    ...(value.whenEmpty == null ? {} : { whenEmpty: value.whenEmpty }),
+    ...(value.readOnly == null ? {} : { readOnly: value.readOnly }),
+    ...(value.translatable == null ? {} : { translatable: value.translatable }),
     options,
     optionsProvider,
     ...(emptyOption ? { emptyOption } : {}),
@@ -791,6 +966,7 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     visibleWhen: readFormConditionExpression(value.visibleWhen, `${path}.visibleWhen`),
     disabledWhen: readFormConditionExpression(value.disabledWhen, `${path}.disabledWhen`),
     placement,
+    ...(fields ? { fields } : {}),
     config: value.config as Record<string, unknown> | undefined,
   };
 }
@@ -838,10 +1014,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
   if ("presentation" in value) {
     throw new Error("Form descriptor presentation is forbidden; use the owning Layout or Overlay.");
   }
-  const fields = value.fields.map((field, index) => readField(field, `fields[${index}]`));
-  assertUniqueKeys(fields, "fields");
-  assertOptionFlagConditionsNameChoiceFields(fields);
-  assertDerivedFieldsReadOtherFields(fields);
+  const fields = readFields(value.fields, "fields");
   const labelSetKey = value.labelSetKey == null
     ? undefined
     : readProviderKey(value.labelSetKey, "labelSetKey") as PhiFormLabelSetKey;
