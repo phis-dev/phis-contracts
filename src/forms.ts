@@ -20,8 +20,6 @@ import {
 } from "./controls.js";
 import {
   isPhiSpacingToken,
-  resolvePhiResponsiveValue,
-  type PhiResponsiveValue,
   type PhiSpacingToken,
 } from "./layout.js";
 import { isPhiRecord } from "./record.js";
@@ -77,7 +75,49 @@ export type PhiFormGridRange = {
   end: number;
 };
 
-export type PhiFormResponsiveGridRange = PhiResponsiveValue<PhiFormGridRange>;
+/**
+ * A value per measured Form width: `compact` below 377px, `medium` from 377px, `wide` from 610px and
+ * `spacious` from 987px (the site UI's `PHI_CONTAINER_BREAKPOINT_COL3`, `_CONTENT` and `_REGION`;
+ * owner, 2026-11-26).
+ *
+ * The Form's own and not the layout vocabulary's `PhiResponsiveValue`, which the Grid and the Masonry
+ * share: a fourth step for a Form running the width of a Region is a Form's question, and a Grid that
+ * never asked for one would otherwise have to answer it. A stated value cascades upwards to the wider
+ * modes (`resolvePhiFormResponsiveValue`), so a descriptor that says nothing of `spacious` draws there
+ * what it draws at `wide`.
+ */
+export type PhiFormResponsiveValue<TValue> = {
+  compact?: TValue;
+  medium?: TValue;
+  wide?: TValue;
+  spacious?: TValue;
+};
+
+export type PhiResolvedFormResponsiveValue<TValue> = {
+  compact: TValue;
+  medium: TValue;
+  wide: TValue;
+  spacious: TValue;
+};
+
+/** A stated value cascades upwards to the wider modes; the fallback answers only where nothing is. */
+export function resolvePhiFormResponsiveValue<TValue>(
+  value: PhiFormResponsiveValue<TValue> | undefined,
+  fallback: PhiResolvedFormResponsiveValue<TValue>,
+): PhiResolvedFormResponsiveValue<TValue> {
+  if (!value) return fallback;
+  const compact = value.compact ?? fallback.compact;
+  const medium = value.medium ?? (value.compact === undefined ? fallback.medium : compact);
+  const wide = value.wide ?? (
+    value.medium === undefined && value.compact === undefined ? fallback.wide : medium
+  );
+  const spacious = value.spacious ?? (
+    value.wide === undefined && value.medium === undefined && value.compact === undefined ? fallback.spacious : wide
+  );
+  return { compact, medium, wide, spacious };
+}
+
+export type PhiFormResponsiveGridRange = PhiFormResponsiveValue<PhiFormGridRange>;
 
 export type PhiFormLogicalAlignment = "start" | "center" | "end";
 
@@ -101,7 +141,7 @@ export type PhiFormLayoutDescriptor = {
    * question in one place and a popover's in another. Absent is `medium`.
    */
   size?: PhiFormLayoutSize;
-  gap?: PhiResponsiveValue<PhiSpacingToken>;
+  gap?: PhiFormResponsiveValue<PhiSpacingToken>;
   /**
    * What stands between two columns of a row, where a row has two.
    *
@@ -116,7 +156,7 @@ export type PhiFormLayoutDescriptor = {
    * further apart than a label is from its own control, which is half of it -- the hierarchy a
    * two-column form needs to read as two columns.
    */
-  columnGap?: PhiResponsiveValue<PhiSpacingToken>;
+  columnGap?: PhiFormResponsiveValue<PhiSpacingToken>;
   labelAlign?: Exclude<PhiFormLogicalAlignment, "center">;
   label?: PhiFormResponsiveGridRange;
   control?: PhiFormResponsiveGridRange;
@@ -177,6 +217,26 @@ export type PhiFormEmptyOptionDescriptor = {
   label: PhiFormTextDescriptor;
 };
 
+/**
+ * A value the field proposes from another field of the same Form: an address from a name, typed once.
+ *
+ * A proposal and never a binding. The field takes the proposal while it is empty or still holds the last
+ * proposal it took; once somebody writes something of their own there, it keeps that, whatever `from`
+ * becomes afterwards -- and emptying it again lets the proposals back in. What is submitted is the
+ * field's value as it stands, like any other field's; nobody recomputes it on the way.
+ *
+ * `from` names another field of this Form that derives nothing itself, so proposals never run in a
+ * circle. `source` says what of it is read: `value`, its value where that is a string or a number, or
+ * `optionLabel`, the label of the option chosen in it as the field shows it -- for a field that offers
+ * options, written out or from an Options Provider. Nothing chosen, or a value of another kind, proposes
+ * nothing. `transform` is how the text becomes the proposal: `slug` is `toPhiSlug`.
+ */
+export type PhiFormFieldDeriveDescriptor = {
+  from: string;
+  source: "value" | "optionLabel";
+  transform: "slug";
+};
+
 export type PhiFormFieldDescriptor = {
   key: string;
   fieldProviderKey: PhiFormProviderKey;
@@ -190,6 +250,8 @@ export type PhiFormFieldDescriptor = {
   optionsProvider?: PhiControlOptionsProviderConfig | null;
   /** The field's "none of these", for a field that offers options (`PhiFormEmptyOptionDescriptor`). */
   emptyOption?: PhiFormEmptyOptionDescriptor;
+  /** A value proposed from another field of this Form (`PhiFormFieldDeriveDescriptor`). */
+  derive?: PhiFormFieldDeriveDescriptor;
   validation?: readonly PhiFormValidationRuleDescriptor[];
   visibleWhen?: PhiRuntimeConditionExpression;
   disabledWhen?: PhiRuntimeConditionExpression;
@@ -439,6 +501,7 @@ function readResponsiveGridRange(
     compact: readGridRange(value.compact, `${path}.compact`),
     medium: readGridRange(value.medium, `${path}.medium`),
     wide: readGridRange(value.wide, `${path}.wide`),
+    spacious: readGridRange(value.spacious, `${path}.spacious`),
   };
 }
 
@@ -457,7 +520,7 @@ function readFormConditionExpression(value: unknown, path: string) {
 function readResponsiveGap(
   value: unknown,
   path: string,
-): PhiResponsiveValue<PhiSpacingToken> | undefined {
+): PhiFormResponsiveValue<PhiSpacingToken> | undefined {
   if (value == null) return undefined;
   if (!isPhiRecord(value)) throw new Error(`${path} must be a responsive spacing object.`);
   const readToken = (entry: unknown, entryPath: string) => {
@@ -469,6 +532,7 @@ function readResponsiveGap(
     compact: readToken(value.compact, `${path}.compact`),
     medium: readToken(value.medium, `${path}.medium`),
     wide: readToken(value.wide, `${path}.wide`),
+    spacious: readToken(value.spacious, `${path}.spacious`),
   };
 }
 
@@ -531,6 +595,69 @@ function readEmptyOption(value: unknown, path: string): PhiFormEmptyOptionDescri
   return { label: readTextDescriptor(value.label, `${path}.label`) };
 }
 
+function readDerive(value: unknown, path: string): PhiFormFieldDeriveDescriptor | undefined {
+  if (value == null) return undefined;
+  if (!isPhiRecord(value)) {
+    throw new Error(`${path} must be an object with from, source and transform.`);
+  }
+  const from = readRequiredString(value.from, `${path}.from`);
+  if (value.source !== "value" && value.source !== "optionLabel") {
+    throw new Error(`${path}.source must be "value" or "optionLabel".`);
+  }
+  if (value.transform !== "slug") {
+    throw new Error(`${path}.transform must be "slug".`);
+  }
+  return { from, source: value.source, transform: value.transform };
+}
+
+/**
+ * A derived field reads another field of the same Form, one that derives nothing itself -- so no chain
+ * and no circle -- and, for `optionLabel`, one that offers options. A key that names nothing would leave
+ * the field without proposals for good, which nobody would notice.
+ */
+function assertDerivedFieldsReadOtherFields(fields: readonly PhiFormFieldDescriptor[]) {
+  fields.forEach((field, index) => {
+    if (!field.derive) return;
+    const { from, source } = field.derive;
+    const read = fields.find((other) => other.key === from);
+    if (!read || read === field) {
+      throw new Error(`fields[${index}].derive.from names "${from}", which is no other field of this Form.`);
+    }
+    if (read.derive) {
+      throw new Error(`fields[${index}].derive.from names "${from}", which derives its own value; a proposal is made from a field somebody fills in.`);
+    }
+    if (source === "optionLabel" && !read.options && !read.optionsProvider) {
+      throw new Error(`fields[${index}].derive reads the option label of "${from}", which offers no options.`);
+    }
+  });
+}
+
+/**
+ * The address form of a text: what a derived field proposes (`PhiFormFieldDeriveDescriptor`, `slug`) and
+ * what a server that makes a slug of a name makes of it, so the two never disagree.
+ *
+ * Lower case; ä, ö, ü and ß -- capital or not -- written out as ae, oe, ue and ss, the way German spells
+ * them without the marks; every other mark taken off its letter (NFKD), so é is e; every run of anything
+ * but a-z and 0-9 one hyphen, and no hyphen at either end. A text of nothing but such characters is the
+ * empty string. No length is cut here: how long a slug may be is the field's validation and the
+ * column's, not the spelling's.
+ */
+export function toPhiSlug(text: string): string {
+  return text
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/ä/gu, "ae")
+    .replace(/ö/gu, "oe")
+    .replace(/ü/gu, "ue")
+    .replace(/ß/gu, "ss")
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    // A compatibility character may decompose into capitals (Ⅻ is XII).
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+}
+
 function readOptionFlags(value: unknown, path: string) {
   if (value == null) return undefined;
   const flags = readPhiControlOptionFlags(value);
@@ -579,8 +706,8 @@ function assertUniqueKeys(items: readonly { key: string }[], path: string) {
  */
 function readPlacementPart(value: unknown, path: string) {
   const range = readResponsiveGridRange(value, path);
-  if (range && !range.compact && !range.medium && !range.wide) {
-    throw new Error(`${path} must state a range for at least one of compact, medium, or wide.`);
+  if (range && !range.compact && !range.medium && !range.wide && !range.spacious) {
+    throw new Error(`${path} must state a range for at least one of compact, medium, wide, or spacious.`);
   }
   return range;
 }
@@ -633,6 +760,7 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     // "None of these" beside nothing would be the field's only choice, and a field that can only be empty.
     throw new Error(`${path}.emptyOption needs options or an optionsProvider to stand beside.`);
   }
+  const derive = readDerive(value.derive, `${path}.derive`);
   if (value.config != null && !isPhiRecord(value.config)) {
     throw new Error(`${path}.config must be an object.`);
   }
@@ -656,6 +784,7 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     options,
     optionsProvider,
     ...(emptyOption ? { emptyOption } : {}),
+    ...(derive ? { derive } : {}),
     validation: Array.isArray(value.validation)
       ? value.validation.map((rule, index) => readValidationRule(rule, `${path}.validation[${index}]`))
       : undefined,
@@ -712,6 +841,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
   const fields = value.fields.map((field, index) => readField(field, `fields[${index}]`));
   assertUniqueKeys(fields, "fields");
   assertOptionFlagConditionsNameChoiceFields(fields);
+  assertDerivedFieldsReadOtherFields(fields);
   const labelSetKey = value.labelSetKey == null
     ? undefined
     : readProviderKey(value.labelSetKey, "labelSetKey") as PhiFormLabelSetKey;
@@ -781,23 +911,29 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
  * Medium -- a form 377 to 609px wide, where a one-column dialog's Form stands -- gives the label ten
  * tracks and the control fourteen (line 11; owner, 2026-11-25, on trial). A third of 377px is about
  * 110px, and there a label of two words like "Installation key" or "Callback origin" broke in two.
+ *
+ * Spacious -- from 987px -- draws what wide draws until a Form says otherwise; the step is there so one
+ * can (owner, 2026-11-26).
  */
 export const PHI_FORM_DEFAULT_LAYOUT = {
   gap: {
     compact: "sm",
     medium: "base",
     wide: "base",
+    spacious: "base",
   },
   labelAlign: "start",
   label: {
     compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
     medium: { start: 1, end: 11 },
     wide: { start: 1, end: 9 },
+    spacious: { start: 1, end: 9 },
   },
   control: {
     compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
     medium: { start: 11, end: PHI_FORM_GRID_LAST_LINE },
     wide: { start: 9, end: PHI_FORM_GRID_LAST_LINE },
+    spacious: { start: 9, end: PHI_FORM_GRID_LAST_LINE },
   },
 } as const satisfies PhiFormLayoutDescriptor;
 
@@ -813,12 +949,14 @@ export const PHI_FORM_ROW_FULL = {
   compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
   medium: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
   wide: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
+  spacious: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
 } as const satisfies PhiFormResponsiveGridRange;
 
 export const PHI_FORM_ROW_END_HALF = {
   compact: { start: 1, end: PHI_FORM_GRID_LAST_LINE },
   medium: { start: 13, end: PHI_FORM_GRID_LAST_LINE },
   wide: { start: 13, end: PHI_FORM_GRID_LAST_LINE },
+  spacious: { start: 13, end: PHI_FORM_GRID_LAST_LINE },
 } as const satisfies PhiFormResponsiveGridRange;
 
 /** Labels above their controls at every width: one range for both parts of every field. */
@@ -838,11 +976,13 @@ export const PHI_FORM_SIDE_START_HALF = {
     compact: { start: 1, end: 7 },
     medium: { start: 1, end: 5 },
     wide: { start: 1, end: 5 },
+    spacious: { start: 1, end: 5 },
   },
   control: {
     compact: { start: 7, end: PHI_FORM_GRID_LAST_LINE },
     medium: { start: 5, end: 13 },
     wide: { start: 5, end: 13 },
+    spacious: { start: 5, end: 13 },
   },
 } as const satisfies PhiFormFieldPlacementDescriptor;
 
@@ -851,11 +991,13 @@ export const PHI_FORM_SIDE_END_HALF = {
     compact: { start: 1, end: 7 },
     medium: { start: 13, end: 17 },
     wide: { start: 13, end: 17 },
+    spacious: { start: 13, end: 17 },
   },
   control: {
     compact: { start: 7, end: PHI_FORM_GRID_LAST_LINE },
     medium: { start: 17, end: PHI_FORM_GRID_LAST_LINE },
     wide: { start: 17, end: PHI_FORM_GRID_LAST_LINE },
+    spacious: { start: 17, end: PHI_FORM_GRID_LAST_LINE },
   },
 } as const satisfies PhiFormFieldPlacementDescriptor;
 
@@ -896,27 +1038,16 @@ export const PHI_FORM_STACKED_FULL = {
   control: PHI_FORM_ROW_FULL,
 } as const satisfies PhiFormFieldPlacementDescriptor;
 
-export type PhiResolvedFormResponsiveGridRange = {
-  compact: PhiFormGridRange;
-  medium: PhiFormGridRange;
-  wide: PhiFormGridRange;
-};
+export type PhiResolvedFormResponsiveGridRange = PhiResolvedFormResponsiveValue<PhiFormGridRange>;
 
-export const PHI_FORM_RESPONSIVE_MODES = ["compact", "medium", "wide"] as const;
+/** The measured Form widths, narrowest first (`PhiFormResponsiveValue`). */
+export const PHI_FORM_RESPONSIVE_MODES = ["compact", "medium", "wide", "spacious"] as const;
 
 export type PhiFormResponsiveMode = (typeof PHI_FORM_RESPONSIVE_MODES)[number];
 
 export type PhiResolvedFormLayout = {
-  gap: {
-    compact: PhiSpacingToken;
-    medium: PhiSpacingToken;
-    wide: PhiSpacingToken;
-  };
-  columnGap: {
-    compact: PhiSpacingToken;
-    medium: PhiSpacingToken;
-    wide: PhiSpacingToken;
-  };
+  gap: PhiResolvedFormResponsiveValue<PhiSpacingToken>;
+  columnGap: PhiResolvedFormResponsiveValue<PhiSpacingToken>;
   labelAlign: "start" | "end";
   label: PhiResolvedFormResponsiveGridRange;
   control: PhiResolvedFormResponsiveGridRange;
@@ -1007,25 +1138,26 @@ export function resolvePhiFormResponsiveGridRange(
   fallback: PhiResolvedFormResponsiveGridRange,
   path: string,
 ): PhiResolvedFormResponsiveGridRange {
-  const resolved = resolvePhiResponsiveValue(value, fallback);
+  const resolved = resolvePhiFormResponsiveValue(value, fallback);
   return {
     compact: assertPhiFormGridRange(resolved.compact, `${path}.compact`),
     medium: assertPhiFormGridRange(resolved.medium, `${path}.medium`),
     wide: assertPhiFormGridRange(resolved.wide, `${path}.wide`),
+    spacious: assertPhiFormGridRange(resolved.spacious, `${path}.spacious`),
   };
 }
 
 export function resolvePhiFormLayout(
   layout?: PhiFormLayoutDescriptor,
 ): PhiResolvedFormLayout {
-  const gap = resolvePhiResponsiveValue(layout?.gap, PHI_FORM_DEFAULT_LAYOUT.gap);
+  const gap = resolvePhiFormResponsiveValue(layout?.gap, PHI_FORM_DEFAULT_LAYOUT.gap);
   return {
     gap,
     /*
      * The row gap answers for the column gap where nobody stated one, so the default is the number the
      * form already carries rather than a second constant that could drift away from it.
      */
-    columnGap: resolvePhiResponsiveValue(layout?.columnGap, gap),
+    columnGap: resolvePhiFormResponsiveValue(layout?.columnGap, gap),
     labelAlign: layout?.labelAlign ?? PHI_FORM_DEFAULT_LAYOUT.labelAlign,
     label: resolvePhiFormResponsiveGridRange(
       layout?.label,
@@ -1051,5 +1183,6 @@ export function statedPhiFormGridRange(
   if (!value) return undefined;
   if (mode === "compact") return value.compact;
   if (mode === "medium") return value.medium ?? value.compact;
-  return value.wide ?? value.medium ?? value.compact;
+  if (mode === "wide") return value.wide ?? value.medium ?? value.compact;
+  return value.spacious ?? value.wide ?? value.medium ?? value.compact;
 }

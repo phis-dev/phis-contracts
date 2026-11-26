@@ -569,7 +569,31 @@ export type PhisPaymentProfileReach = {
   merchantOfRecord: PhisPaymentMerchantOfRecordFeatures | null;
 };
 
+/**
+ * One merchant profile granted to the calling consumer, as `listProfiles` names it: what a seller picks a
+ * profile by. No credentials, grants or merchant identity -- those are the operator's.
+ */
+export type PhisPaymentProfileSummary = {
+  profileKey: string;
+  /** The registered provider key the profile is bound to (`PhisPaymentProfileDraft.providerKey`). */
+  providerKey: string;
+  /** The Add-on that provides it. */
+  providerAddonId: string;
+  mode: "test" | "live";
+  /**
+   * `enabled`: payments can be created under it. `disabled`: added or changed and not enabled since
+   * (`phis payment profile enable`). `retired`: for good; it serves only the payments it already has.
+   */
+  state: "enabled" | "disabled" | "retired";
+};
+
 export interface PhisPaymentsCapabilityV1 {
+  /**
+   * The Site's profiles this consumer's grant includes `read` on, retired ones too, by `profileKey`. Where
+   * a profile is chosen -- a Shop's destination -- rather than typed. The profiles without such a grant
+   * are not named, as everywhere else. Not from a hook (`forbidden`).
+   */
+  listProfiles(): Promise<readonly PhisPaymentProfileSummary[]>;
   listMethods(input: {
     profileKey: string;
     amount: PhisPaymentMoney;

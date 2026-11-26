@@ -142,9 +142,17 @@ export type PhisEntitlementsCapabilityV1 = {
    * were queued; a second call while the first is still being delivered queues nothing new.
    */
   redeliver(input: { product: PhisProductId }): Promise<{ queued: number }>;
-  /** The entries behind an answer, of every source, valid or not. */
+  /**
+   * The entries behind an answer, of every source, valid or not: of one subject (`subject`, else the
+   * acting user's), or of several at once (`subjects`) -- a table of people asked for its page in one
+   * read rather than one per row. `subjects` and `subject` are not given together; at most 100 subjects,
+   * more are refused, none answers no entries, and a subject that is nobody on this Site has none. The
+   * same reading rule as for one subject, and the same answer: entries in id order, each naming its
+   * subject.
+   */
   list(input: {
     subject?: PhisEntitlementSubject;
+    subjects?: readonly PhisEntitlementSubject[];
     product?: PhisProductId;
     /**
      * With `product`: also the entries on every bundle that contains it, directly or through nested
