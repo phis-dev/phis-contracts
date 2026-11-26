@@ -358,6 +358,16 @@ options' flags in as `formOptionFlags`, and a field whose chosen option is not k
 `unavailable`. `parsePhiFormDescriptor` refuses an `optionFlag` condition that names no other field of the
 Form with options.
 
+A Form field's written-out options may carry `separator` (`"before"` or `"after"`; anything else is
+refused). A field that offers options -- written out or from an Options Provider -- may declare
+`emptyOption: { label }`, its "none of these": the renderer lists it last, after a separator, and choosing
+it leaves the field with no value, so the field is left out of what the Form submits and a handler reads
+the key as absent. It has no value of its own (`value` beside it is refused), and a field without options
+cannot declare it.
+
+A Form's `layout.size` (`"small"` or `"medium"`, anything else refused; absent is `medium`) is the size
+the descriptor is drawn at where its placement states none: a placement's own size wins over it.
+
 ## Admission rule
 
 Per subpath, and narrow on purpose. Name the two parties and the sentence they promise each other; if that

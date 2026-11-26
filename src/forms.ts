@@ -81,6 +81,9 @@ export type PhiFormResponsiveGridRange = PhiResponsiveValue<PhiFormGridRange>;
 
 export type PhiFormLogicalAlignment = "start" | "center" | "end";
 
+/** The sizes a Form is drawn at: the Controls' vocabulary without `large`. */
+export type PhiFormLayoutSize = "small" | "medium";
+
 /**
  * What a form's rows look like where a field says nothing of its own.
  *
@@ -89,6 +92,15 @@ export type PhiFormLogicalAlignment = "start" | "center" | "end";
  * mechanism decides all of it, and the responsive sets decide it per measured width.
  */
 export type PhiFormLayoutDescriptor = {
+  /**
+   * How large the Form draws its fields, its labels and its submit, where its placement says nothing:
+   * `medium`, or `small` for a Form made to stand among chrome -- a picker, a popover, a panel of tools.
+   *
+   * The descriptor's default and not the last word: a placement that states a size (the site UI's Form
+   * Widget `controlSize`, its `PhiFormControl` `size`) wins over it, because the same Form may be a page's
+   * question in one place and a popover's in another. Absent is `medium`.
+   */
+  size?: PhiFormLayoutSize;
   gap?: PhiResponsiveValue<PhiSpacingToken>;
   /**
    * What stands between two columns of a row, where a row has two.
@@ -148,6 +160,23 @@ export type PhiFormOptionDescriptor = Omit<
   description?: PhiFormTextDescriptor;
 };
 
+/**
+ * A choice field's "none of these", declared: an option the field offers beside the others, last and set
+ * apart by a line, whose choosing means the field holds no value.
+ *
+ * Declared rather than spelled as an option with a value of its own, because the answer it gives is
+ * "nothing": a sentinel value ("other", "none") would reach every handler that reads the field, and each
+ * of them would have to know to throw it away. Chosen, the field holds no value and is left out of what
+ * the Form submits, so a handler sees the key absent -- the one reading "not declared" has everywhere.
+ *
+ * It has a label and nothing else: no value, because it holds none, and no place, because it always
+ * stands last, after a separator, beside whatever the field's options are -- written out or from an
+ * Options Provider. A field that opens on no value opens on it.
+ */
+export type PhiFormEmptyOptionDescriptor = {
+  label: PhiFormTextDescriptor;
+};
+
 export type PhiFormFieldDescriptor = {
   key: string;
   fieldProviderKey: PhiFormProviderKey;
@@ -159,6 +188,8 @@ export type PhiFormFieldDescriptor = {
   initialValue?: unknown;
   options?: readonly PhiFormOptionDescriptor[];
   optionsProvider?: PhiControlOptionsProviderConfig | null;
+  /** The field's "none of these", for a field that offers options (`PhiFormEmptyOptionDescriptor`). */
+  emptyOption?: PhiFormEmptyOptionDescriptor;
   validation?: readonly PhiFormValidationRuleDescriptor[];
   visibleWhen?: PhiRuntimeConditionExpression;
   disabledWhen?: PhiRuntimeConditionExpression;
@@ -468,8 +499,36 @@ function readOption(value: unknown, path: string): PhiFormOptionDescriptor {
       : readTextDescriptor(value.description, `${path}.description`),
     disabled: typeof value.disabled === "boolean" ? value.disabled : undefined,
     icon: readOptionalString(value.icon, `${path}.icon`),
+    separator: readOptionSeparator(value.separator, `${path}.separator`),
     flags: readOptionFlags(value.flags, `${path}.flags`),
   };
+}
+
+/** A line before or after the option, where the Control draws one (`PhiControlOption.separator`). */
+function readOptionSeparator(value: unknown, path: string) {
+  if (value == null) return undefined;
+  if (value !== "before" && value !== "after") {
+    throw new Error(`${path} must be "before" or "after".`);
+  }
+  return value;
+}
+
+/**
+ * The field's "none of these": a label, nothing else. A value written beside it is refused rather than
+ * ignored -- whoever wrote it expects the field to submit it, and the empty option submits nothing.
+ */
+function readEmptyOption(value: unknown, path: string): PhiFormEmptyOptionDescriptor | undefined {
+  if (value == null) return undefined;
+  if (!isPhiRecord(value)) {
+    throw new Error(`${path} must be an object with a label.`);
+  }
+  if ("value" in value) {
+    throw new Error(`${path} holds no value: choosing it leaves the field empty, and the field is left out of the submit.`);
+  }
+  if (value.label == null) {
+    throw new Error(`${path}.label must say what the option reads.`);
+  }
+  return { label: readTextDescriptor(value.label, `${path}.label`) };
 }
 
 function readOptionFlags(value: unknown, path: string) {
@@ -569,6 +628,11 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
   if (value.optionsProvider != null && !optionsProvider) {
     throw new Error(`${path}.optionsProvider is invalid.`);
   }
+  const emptyOption = readEmptyOption(value.emptyOption, `${path}.emptyOption`);
+  if (emptyOption && !options && !optionsProvider) {
+    // "None of these" beside nothing would be the field's only choice, and a field that can only be empty.
+    throw new Error(`${path}.emptyOption needs options or an optionsProvider to stand beside.`);
+  }
   if (value.config != null && !isPhiRecord(value.config)) {
     throw new Error(`${path}.config must be an object.`);
   }
@@ -591,6 +655,7 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     initialValue: value.initialValue,
     options,
     optionsProvider,
+    ...(emptyOption ? { emptyOption } : {}),
     validation: Array.isArray(value.validation)
       ? value.validation.map((rule, index) => readValidationRule(rule, `${path}.validation[${index}]`))
       : undefined,
@@ -599,6 +664,13 @@ function readField(value: unknown, path: string): PhiFormFieldDescriptor {
     placement,
     config: value.config as Record<string, unknown> | undefined,
   };
+}
+
+function readLayoutSize(value: unknown): PhiFormLayoutSize {
+  if (value !== "small" && value !== "medium") {
+    throw new Error(`layout.size must be "small" or "medium".`);
+  }
+  return value;
 }
 
 function readSubmit(value: unknown): PhiFormSubmitDescriptor | undefined {
@@ -647,6 +719,7 @@ export function parsePhiFormDescriptor(value: unknown): PhiFormDescriptor {
     ? undefined
     : isPhiRecord(value.layout)
       ? {
+          ...(value.layout.size == null ? {} : { size: readLayoutSize(value.layout.size) }),
           gap: readResponsiveGap(value.layout.gap, "layout.gap"),
           columnGap: readResponsiveGap(value.layout.columnGap, "layout.columnGap"),
           labelAlign: value.layout.labelAlign == null
