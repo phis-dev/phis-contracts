@@ -61,7 +61,15 @@ function readInstant(value: unknown): string | undefined {
   return text && !Number.isNaN(Date.parse(text)) ? text : undefined;
 }
 
-/** One entry, or `null` for anything that is not one. An entry without a key or text is not one. */
+/** Every bit `PhiTimelineEntryFlag` names. */
+const PHI_TIMELINE_ENTRY_FLAG_MASK = Object.values(PhiTimelineEntryFlag).reduce((mask, bit) => mask | bit, 0);
+
+/**
+ * One entry, or `null` for anything that is not one. An entry without a key or text is not one, and
+ * neither is one whose `flags` is not a sum of `PhiTimelineEntryFlag` bits: a bit this reader does not know
+ * is refused, never dropped. `flags` 0 is left out, as absent. Keys an entry does not have (an old
+ * `pending`) are not read.
+ */
 export function readPhiTimelineEntry(value: unknown): PhiTimelineEntry | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -75,6 +83,10 @@ export function readPhiTimelineEntry(value: unknown): PhiTimelineEntry | null {
   const at = readInstant(record.at);
   const time = readString(record.time);
   const icon = readString(record.icon);
+  const flags = record.flags;
+  if (flags !== undefined && (!Number.isSafeInteger(flags) || (flags as number) < 0 || ((flags as number) & ~PHI_TIMELINE_ENTRY_FLAG_MASK) !== 0)) {
+    return null;
+  }
   return {
     key,
     content: typeof record.content === "string" ? record.content : "",
@@ -83,7 +95,7 @@ export function readPhiTimelineEntry(value: unknown): PhiTimelineEntry | null {
     ...(time ? { time } : {}),
     ...(icon ? { icon } : {}),
     ...(isPhiTimelineTone(record.tone) ? { tone: record.tone } : {}),
-    ...(record.pending === true ? { pending: true } : {}),
+    ...(typeof flags === "number" && flags !== 0 ? { flags } : {}),
   };
 }
 
