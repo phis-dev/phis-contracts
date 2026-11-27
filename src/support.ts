@@ -488,20 +488,33 @@ export type PhisSupportForwardingTarget = {
  *
  * Asked before a Supporter is offered anything. One implementation may offer several targets -- every
  * repository its installation reaches, say -- and a Supporter chooses one per forward. `findings` say in an
- * operator's terms what does not answer when `usable` is false or a target is left out.
+ * operator's terms what does not answer when `Usable` is not set or a target is left out.
  */
 export type PhisSupportForwardingProbe = {
-  usable: boolean;
+  /** `PhisSupportForwardingProbeFlag`. */
+  flags: number;
   targets: PhisSupportForwardingTarget[];
   findings: string[];
 };
 
+/** Bit flags of `PhisSupportForwardingProbe.flags`. */
+export const PhisSupportForwardingProbeFlag = {
+  /** The implementation can take work on this Site now. */
+  Usable: 1 << 0,
+} as const;
+
+/** Bit flags of `PhisSupportForwardRequest.flags`. */
+export const PhisSupportForwardRequestFlag = {
+  /** The conversation follows the external record: the ticket type carries `External`. */
+  Mirror: 1 << 0,
+} as const;
+
 /**
  * One ticket's work, handed over.
  *
- * `mirror` is the ticket type's `External`, decided by Core and not by the implementation: where it is
- * false the external record is opened from the title alone and nothing of the conversation follows it.
- * Where it is true, `body` is what opens it -- the ticket's first message, and only if the person who
+ * `Mirror` (`flags`) is the ticket type's `External`, decided by Core and not by the implementation: where
+ * it is not set the external record is opened from the title alone and nothing of the conversation follows
+ * it. Where it is set, `body` is what opens it -- the ticket's first message, and only if the person who
  * wrote it agreed to it leaving the Site. What follows afterwards reaches the implementation as thread
  * events, through the synced link Core writes for it, and Core withholds there what may not leave.
  */
@@ -510,7 +523,8 @@ export type PhisSupportForwardRequest = {
   target: string;
   ticket: { id: number; threadId: number; subject: string; typeKey: string };
   task: { title: string };
-  mirror: boolean;
+  /** `PhisSupportForwardRequestFlag`. */
+  flags: number;
   body: string | null;
   /** Who forwarded it, for the external record's attribution. */
   actor: { userId: number; displayName: string | null };

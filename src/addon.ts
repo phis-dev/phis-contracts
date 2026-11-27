@@ -652,8 +652,15 @@ export type PhisAddonRuntimeModuleV1 = {
   phisAddon: PhisAddonRuntimeV1;
 };
 
+/** Bit flags of an installed Add-on's entry (`PhisAddonBuildEntry.flags`, `PhisAddonDesiredStateEntry.flags`). */
+export const PhisAddonInstallationFlag = {
+  /** The Add-on may run. */
+  Enabled: 1 << 0,
+} as const;
+
 export type PhisAddonBuildEntry = {
-  enabled: boolean;
+  /** `PhisAddonInstallationFlag`. */
+  flags: number;
   manifestDigest: string;
   manifest: PhisAddonManifestV1;
   load: () => Promise<PhisAddonRuntimeModuleV1>;
@@ -680,7 +687,8 @@ export type PhisAddonDesiredStateEntry = {
   artifactDigest: string;
   /** The validated descriptors, as read from the artifact at installation. */
   manifest: PhisAddonManifestV1;
-  enabled: boolean;
+  /** `PhisAddonInstallationFlag`. */
+  flags: number;
 };
 
 export type PhisAddonDesiredState = {

@@ -120,7 +120,7 @@ What it covers:
   (also a `:`, for an epoch), and no segment a `/`. The CDN page's routes answer the `PhisCdnAdmin*`,
   `PhisCdnUpload*`, `PhisCdnCheckReportV1` and `PhisCdnAdopt*` types.
 - **Media library** -- `PhisMediaCapabilityV1` (`media:v1`) reads Assets of the Site's library by id, at
-  most `PHIS_MEDIA_GET_MAX_IDS`, with `servable` and `path` and what a media tile draws (`name`, `title`,
+  most `PHIS_MEDIA_GET_MAX_IDS`, with `flags` (`PhisMediaAssetV1Flag.Servable`) and `path` and what a media tile draws (`name`, `title`,
   `alt`, `thumbnailPath`, `previewPath`, `blurDataUrl`); `PhisMediaReleaseCapabilityV1`
   (`media-release:v1`, a grant of its own) gives them up, at most `PHIS_MEDIA_RELEASE_MAX_IDS`, and Core
   deletes each one nothing references any more -- for good, there is no trash. An Asset id an Add-on keeps

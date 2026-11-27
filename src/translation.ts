@@ -90,12 +90,13 @@ export type PhisTranslationResult = {
  * able to offer a choice of target language before anybody presses anything, and a list fetched at the
  * moment of use is a list that decides whether a control can be drawn after it has been drawn.
  *
- * A Provider that cannot be reached answers `usable: false` with a finding rather than throwing. Not
+ * A Provider that cannot be reached answers without `Usable` with a finding rather than throwing. Not
  * being reachable is an answer, and an operator configuring one needs to be told which of the two it
  * is.
  */
 export type PhisTranslationProbe = {
-  usable: boolean;
+  /** `PhisTranslationProbeFlag`. */
+  flags: number;
   /**
    * The languages it accepts as a source, as locale keys.
    *
@@ -182,8 +183,9 @@ export type PhisTranslationsCapabilityV1 = {
    * The texts in `locale`, each at its position: the translation held for it, else the provider's, asked
    * for the missing ones in one request and kept; the text as written where `locale` is the texts' source
    * language, null, or no language the Site translates into, and for a text never recorded (`record`),
-   * which this never records. `provisional` is true where any answer is the text as written standing in
-   * for a provider that failed: a caller that keeps answers does not keep that one.
+   * which this never records. `flags` carries `Provisional` (`PhisTranslationResultFlag`) where any answer
+   * is the text as written standing in for a provider that failed: a caller that keeps answers does not
+   * keep that one.
    *
    * `locale` is the reader's, `PhisAddonRequestContext.locale` for a request; `sourceLocale` as `record`'s,
    * and the text as written where `locale` is that language.
@@ -193,5 +195,17 @@ export type PhisTranslationsCapabilityV1 = {
     locale: string | null;
     texts: readonly string[];
     sourceLocale?: string;
-  }): Promise<{ texts: string[]; provisional: boolean }>;
+  }): Promise<{ texts: string[]; flags: number }>;
 };
+
+/** Bit flags of `PhisTranslationProbe.flags`. */
+export const PhisTranslationProbeFlag = {
+  /** The Provider answers and can be offered; without it, `findings` say why not. */
+  Usable: 1 << 0,
+} as const;
+
+/** Bit flags of the `flags` `PhisTranslationsCapabilityV1.translate` answers. */
+export const PhisTranslationResultFlag = {
+  /** At least one answer is the text as written, standing in for a provider that failed; do not keep it. */
+  Provisional: 1 << 0,
+} as const;

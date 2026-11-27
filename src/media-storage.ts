@@ -382,9 +382,15 @@ export function choosePhisMediaChecksumAlgorithm(
   return null;
 }
 
+/** Bit flags of `PhisMediaStorageProbe.flags`. */
+export const PhisMediaStorageProbeFlag = {
+  /** A small object could be written, read back, and removed again. */
+  Writable: 1 << 0,
+} as const;
+
 export type PhisMediaStorageProbe = {
-  /** Whether a small object could be written, read back, and removed again. */
-  writable: boolean;
+  /** `PhisMediaStorageProbeFlag`. */
+  flags: number;
   /**
    * Which digests the endpoint was found to check against the bytes it is given.
    *
@@ -419,7 +425,7 @@ export interface PhisMediaStorageAdapter {
    * Tries what this endpoint can do, and leaves nothing behind.
    *
    * Runs when a Profile is configured, not per upload. It writes a small object under a key of its own
-   * and removes it again; a Provider that cannot be probed answers with `writable: false` and a finding
+   * and removes it again; a Provider that cannot be probed answers without `Writable` and with a finding
    * rather than throwing, because a Profile that cannot be reached is an answer too.
    */
   probeCapabilities(): Promise<PhisMediaStorageProbe>;
@@ -579,7 +585,7 @@ export interface PhisMediaStorageAdapter {
    * Through the storage's own API only, so it is the same step for every endpoint the Provider speaks
    * to. Credentials are not part of it: no common API creates a key, and the key this runs with is the
    * one the operator already made. A bucket that exists and is this key's own is not an error
-   * (`created: false`); one that belongs to somebody else is.
+   * (no `Created`); one that belongs to somebody else is.
    *
    * `website` asks the storage to serve the bucket as a website, which is how a CDN host reads it
    * without a credential. An endpoint that does not offer that answers `"unsupported"` with a finding
@@ -593,10 +599,16 @@ export interface PhisMediaStorageAdapter {
   provisionStorage?(input: { website: boolean }): Promise<PhisMediaStorageProvision>;
 }
 
+/** Bit flags of `PhisMediaStorageProvision.flags`. */
+export const PhisMediaStorageProvisionFlag = {
+  /** The bucket was made by this call; not set where it already existed and was this key's own. */
+  Created: 1 << 0,
+} as const;
+
 /** What `provisionStorage` did. */
 export type PhisMediaStorageProvision = {
-  /** False where the bucket already existed and was this key's own. */
-  created: boolean;
+  /** `PhisMediaStorageProvisionFlag`. */
+  flags: number;
   website: "enabled" | "unsupported" | "not-requested";
   /** What did not go as asked, in an operator's terms. */
   findings: string[];

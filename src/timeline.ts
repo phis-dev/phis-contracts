@@ -29,9 +29,15 @@ export type PhiTimelineEntry = {
   /** A Phi icon name, drawn in place of the mark. */
   icon?: string;
   tone?: PhiTimelineTone;
-  /** Still under way: the mark spins. */
-  pending?: boolean;
+  /** `PhiTimelineEntryFlag`; absent: 0. */
+  flags?: number;
 };
+
+/** Bit flags of `PhiTimelineEntry.flags`. */
+export const PhiTimelineEntryFlag = {
+  /** Still under way: the mark spins. */
+  Pending: 1 << 0,
+} as const;
 
 /** A Timeline Provider's answer. */
 export type PhiTimelineProviderResult = {

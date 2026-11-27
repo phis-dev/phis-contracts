@@ -153,9 +153,9 @@ export const PHIS_ENTITLEMENT_LIST_MAX = 500;
  *
  * Reading is open to every Add-on that requires the capability. Writing is for a source the Site's
  * operator allowed -- for every product, or for the products of the suppliers the operator named -- and
- * for a supplier on its own product that is `free`, which needs nobody's leave. A source manages its own
- * entries and nobody else's: another source's entry is not found, never refused. An unverified hook
- * reaches none of it.
+ * for a supplier on its own product that carries `PhisProductFlag.Free`, which needs nobody's leave. A
+ * source manages its own entries and nobody else's: another source's entry is not found, never refused.
+ * An unverified hook reaches none of it.
  *
  * A new entry is refused for a product that is not `active`. An entry that exists is changed and taken
  * back whatever became of its product.

@@ -185,9 +185,15 @@ export type PhisThreadSummary = {
   createdAt: string;
   updatedAt: string;
   latestMessageAt: string | null;
-  /** Whether this reader has messages they have not seen. */
-  unread: boolean;
+  /** `PhisThreadReaderFlag`: what holds for this reader, beside the thread's own `flags`. */
+  readerFlags: number;
 };
+
+/** Bit flags of `PhisThreadSummary.readerFlags`; derived per reader, never stored on the thread. */
+export const PhisThreadReaderFlag = {
+  /** This reader has messages they have not seen. */
+  Unread: 1 << 0,
+} as const;
 
 /**
  * Who is in a thread.

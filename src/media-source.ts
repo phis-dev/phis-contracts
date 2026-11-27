@@ -111,13 +111,20 @@ export type PhisMediaSourceEntry = {
  * Whether this implementation can be asked on this Site right now, and what it offers.
  *
  * Asked before a picker shows a switch. `findings` say in an operator's terms what does not answer when
- * `usable` is false or a source is left out -- a missing key, an account without access.
+ * `Usable` is not set or a source is left out -- a missing key, an account without access.
  */
 export type PhisMediaSourceProbe = {
-  usable: boolean;
+  /** `PhisMediaSourceProbeFlag`. */
+  flags: number;
   sources: PhisMediaSourceEntry[];
   findings: string[];
 };
+
+/** Bit flags of `PhisMediaSourceProbe.flags`. */
+export const PhisMediaSourceProbeFlag = {
+  /** The implementation can be asked on this Site now and is offered in the picker. */
+  Usable: 1 << 0,
+} as const;
 
 /**
  * An item, taken: the file itself and what is known about it.
@@ -163,7 +170,7 @@ export type PhisMediaSourceServiceContext = {
  * The interface of `@phis/server/service/media-source`, version 1.
  *
  * Several implementations may be installed at once and nothing is configured in Core: every
- * implementation that resolves for the Site and probes usable is offered, each with the sources it
+ * implementation that resolves for the Site and probes `Usable` is offered, each with the sources it
  * names, and whoever has the picker open chooses.
  *
  * Every call carries an `AbortSignal` with Core's deadline, and an implementation honours it: Core does

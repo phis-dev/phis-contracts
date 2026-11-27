@@ -74,16 +74,29 @@ export type PhiSearchIndexState = {
 };
 
 export type PhiSearchIndexWriteResult = {
-  /** `false` when the set phis holds already carries this fingerprint, and nothing was written. */
-  accepted: boolean;
+  /** `PhiSearchIndexWriteResultFlag`. */
+  flags: number;
   state: PhiSearchIndexState;
 };
 
-/** A piece of a snippet; a `match` piece is one of the query's words as it stands in the text. */
+/** Bit flags of `PhiSearchIndexWriteResult.flags`. */
+export const PhiSearchIndexWriteResultFlag = {
+  /** The set was written; not set where the set phis holds already carries this fingerprint. */
+  Accepted: 1 << 0,
+} as const;
+
+/** A piece of a snippet; a piece with `Match` is one of the query's words as it stands in the text. */
 export type PhiSearchSnippetSegment = {
   text: string;
-  match: boolean;
+  /** `PhiSearchSnippetSegmentFlag`. */
+  flags: number;
 };
+
+/** Bit flags of `PhiSearchSnippetSegment.flags`. */
+export const PhiSearchSnippetSegmentFlag = {
+  /** The piece is one of the query's words. */
+  Match: 1 << 0,
+} as const;
 
 export type PhiSearchHit = {
   path: string;

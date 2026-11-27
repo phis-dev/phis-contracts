@@ -6,6 +6,16 @@ import * as payments from "../dist/payments.js";
 import * as billing from "../dist/billing.js";
 import * as entitlements from "../dist/entitlements.js";
 import { PHIS_ADDON_EVENTS, PHIS_CORE_CAPABILITIES } from "../dist/core.js";
+import * as products from "../dist/products.js";
+import { PhisTranslationProbeFlag, PhisTranslationResultFlag } from "../dist/translation.js";
+import { PhiTimelineEntryFlag } from "../dist/timeline.js";
+import { PhisMediaAssetV1Flag } from "../dist/media-library.js";
+import { PhisMediaSourceProbeFlag } from "../dist/media-source.js";
+import { PhisSupportForwardingProbeFlag, PhisSupportForwardRequestFlag } from "../dist/support.js";
+import { PhisMediaStorageProbeFlag, PhisMediaStorageProvisionFlag } from "../dist/media-storage.js";
+import { PhiSearchIndexWriteResultFlag, PhiSearchSnippetSegmentFlag } from "../dist/search.js";
+import { PhisThreadReaderFlag } from "../dist/threads.js";
+import { PhisAddonInstallationFlag } from "../dist/addon.js";
 
 const flagObjects = {
   PhisPaymentFlag: payments.PhisPaymentFlag,
@@ -22,6 +32,20 @@ const flagObjects = {
   PhisEntitlementFlag: entitlements.PhisEntitlementFlag,
   PhisEntitlementStateFlag: entitlements.PhisEntitlementStateFlag,
   PhisEntitlementListFlag: entitlements.PhisEntitlementListFlag,
+  PhisProductFlag: products.PhisProductFlag,
+  PhisTranslationProbeFlag,
+  PhisTranslationResultFlag,
+  PhiTimelineEntryFlag,
+  PhisMediaAssetV1Flag,
+  PhisMediaSourceProbeFlag,
+  PhisSupportForwardingProbeFlag,
+  PhisSupportForwardRequestFlag,
+  PhisMediaStorageProbeFlag,
+  PhisMediaStorageProvisionFlag,
+  PhiSearchIndexWriteResultFlag,
+  PhiSearchSnippetSegmentFlag,
+  PhisThreadReaderFlag,
+  PhisAddonInstallationFlag,
 };
 
 for (const [name, flags] of Object.entries(flagObjects)) {
@@ -51,4 +75,10 @@ test("the limits are stated", () => {
   assert.equal(billing.PHIS_BILLING_DOCUMENT_NUMBER_MAX_LENGTH, 40);
   assert.equal(entitlements.PHIS_ENTITLEMENT_LIST_MAX, 500);
   assert.equal(entitlements.PHIS_ENTITLEMENT_NAMED_MAX, 100);
+});
+
+test("a product's Counted and AccountRequired keep the bits a Site package proposal gives them", () => {
+  assert.equal(products.PhisProductFlag.Counted, products.PhisSitePackageProductFlag.Counted);
+  assert.equal(products.PhisProductFlag.AccountRequired, products.PhisSitePackageProductFlag.AccountRequired);
+  assert.equal(products.PHIS_PRODUCT_TERMS_FLAG_MASK, products.PhisProductFlag.Free | products.PhisProductFlag.AccountRequired);
 });

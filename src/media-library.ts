@@ -33,16 +33,12 @@ export type PhisMediaAssetV1 = {
   height: number | null;
   /** The Asset's alternative text in the Site's source language; null without one. */
   alt: string | null;
-  /**
-   * Whether Core serves the Asset to a visitor: it is ready and delivered publicly. The check
-   * `products:v1` makes before it takes an Asset as a product's picture, and the one to make before an
-   * Asset id is saved for something a visitor will see.
-   */
-  servable: boolean;
+  /** `PhisMediaAssetV1Flag`: whether Core serves the Asset to a visitor (`Servable`). */
+  flags: number;
   /**
    * Where the Asset is served from, Site-relative, as Core addresses its own Media -- with the cache
    * revision, as `assets:v1` gives `contentPath` and `products:v1` gives `imagePath`. Null exactly where
-   * `servable` is false.
+   * `Servable` is not set.
    *
    * Read at the moment it is used and never stored: the revision rotates whenever the Asset's delivery
    * changes, and a path kept from an earlier read is then the stale one.
@@ -52,7 +48,7 @@ export type PhisMediaAssetV1 = {
    * Where Core serves the Asset's thumbnail and its preview, Site-relative, as the Media library's own
    * listing addresses them -- with the cache revision and the variant version, so read them when used and
    * never store them, as `path`. Core makes these variants of an image Asset only: null for any other
-   * kind, and null wherever `servable` is false.
+   * kind, and null wherever `Servable` is not set.
    */
   thumbnailPath: string | null;
   previewPath: string | null;
@@ -60,13 +56,23 @@ export type PhisMediaAssetV1 = {
   blurDataUrl: string | null;
 };
 
+/** Bit flags of `PhisMediaAssetV1.flags`. */
+export const PhisMediaAssetV1Flag = {
+  /**
+   * Core serves the Asset to a visitor: it is ready and delivered publicly. The check `products:v1` makes
+   * before it takes an Asset as a product's picture, and the one to make before an Asset id is saved for
+   * something a visitor will see.
+   */
+  Servable: 1 << 0,
+} as const;
+
 /**
  * The Media library capability: `@phis/server/media:v1`.
  *
  * Bound to the Site and to the calling Add-on; neither is an argument. Read-only.
  *
  * An unverified hook -- a public read point, where nobody is signed in -- is answered only the Assets a
- * visitor is served (`servable` true); the others are absent there, as an Asset out of reach is.
+ * visitor is served (`Servable` set); the others are absent there, as an Asset out of reach is.
  */
 export type PhisMediaCapabilityV1 = {
   /**

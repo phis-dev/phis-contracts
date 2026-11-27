@@ -54,16 +54,43 @@ export type PhisProductState = "draft" | "active" | "withdrawn" | "locked";
  */
 export type PhisProductSale = "own" | "referral" | "payout";
 
+/**
+ * What is true of a product, as bit flags (`PhisProduct.flags`). `Counted`, `Free` and `AccountRequired`
+ * are the supplier's statement (`PhisProductDraft.flags`); `Supplied` and `Released` are Core's and never
+ * written by a supplier. `Counted` and `AccountRequired` have the bits `PhisSitePackageProductFlag` gives
+ * them.
+ */
+export const PhisProductFlag = {
+  /** Holding it has a quantity that adds up (seats, hours) rather than being yes or no. Fixed once somebody holds the product. */
+  Counted: 1 << 0,
+  /**
+   * It can only be acquired with an account -- a licence, a subscription -- not by a guest. The supplier
+   * knows, and a seller's checkout asks for the sign-in where a product says so.
+   */
+  AccountRequired: 1 << 1,
+  /** It costs nothing; its supplier may grant it without a source's leave (`entitlements:v1`). */
+  Free: 1 << 2,
+  /** The supplying Add-on is enabled for the Site. Where it is not, nobody delivers and the state is `withdrawn`. */
+  Supplied: 1 << 3,
+  /**
+   * The Site operator released the terms: a publisher's product can be `active` only then; the Site's own
+   * (`publisher` null) needs no release and always carries it.
+   */
+  Released: 1 << 4,
+} as const;
+
+/** The bits of `PhisProductFlag` that belong to the released terms (`PhisProductReleasedTerms.flags`). */
+export const PHIS_PRODUCT_TERMS_FLAG_MASK = PhisProductFlag.Free | PhisProductFlag.AccountRequired;
+
 /** What needs the Site operator's release on a publisher's product, the first time and on every change. */
 export type PhisProductReleasedTerms = {
   readonly sale: PhisProductSale;
   readonly referralUrl: string | null;
-  readonly free: boolean;
   /**
-   * Whether it can only be acquired with an account -- a licence, a subscription -- or by a guest as
-   * well. The supplier knows, and a seller's checkout asks for the sign-in where a product says so.
+   * `PhisProductFlag`. Of the terms only `Free` and `AccountRequired` (`PHIS_PRODUCT_TERMS_FLAG_MASK`) count:
+   * in `pendingTerms` no other bit is set, on the product itself every bit is the product's.
    */
-  readonly accountRequired: boolean;
+  readonly flags: number;
   /** A bundle's parts. Whoever holds the bundle holds each of them (`entitlements:v1` resolves it). */
   readonly parts: readonly PhisProductId[];
 };
@@ -72,8 +99,6 @@ export type PhisProduct = PhisProductReleasedTerms & {
   readonly id: PhisProductId;
   /** The Add-on that registered it and delivers it. */
   readonly supplier: string;
-  /** Whether that Add-on is enabled for the Site. Where it is not, nobody delivers and the state is `withdrawn`. */
-  readonly supplied: boolean;
   /** The supplier's reference for whose product it is; opaque to Core. Null: the Site's own. */
   readonly publisher: string | null;
   /** The supplier's own word for what it is (`addon`, `download`, `plan`). Core keeps no list of them. */
@@ -169,14 +194,7 @@ export type PhisProduct = PhisProductReleasedTerms & {
    * button says. Null: no button. A server before 0.8.1 states no link; absent reads as null.
    */
   readonly link?: PhisProductLink | null;
-  /** Whether holding it has a quantity that adds up (seats, hours) or is yes or no. */
-  readonly counted: boolean;
   readonly state: PhisProductState;
-  /**
-   * A publisher's product can be `active` only once the Site operator released it; the Site's own
-   * (`publisher` null) needs no release and is always `true` here.
-   */
-  readonly released: boolean;
   /**
    * What the publisher asked to change of the released terms and the operator has not released yet. The
    * terms above stay in force until then. Title, summary, picture and icon change at once.
@@ -314,14 +332,14 @@ export type PhisProductDraft = {
    * served it, none twice, at most `PHIS_PRODUCT_GALLERY_MAX`. Absent: none.
    */
   gallery?: readonly number[];
-  /** Fixed once somebody holds the product. */
-  counted?: boolean;
   /** Absent: `own`. */
   sale?: PhisProductSale;
   referralUrl?: string | null;
-  free?: boolean;
-  /** Absent: false. */
-  accountRequired?: boolean;
+  /**
+   * `PhisProductFlag`: only `Counted` (fixed once somebody holds the product), `AccountRequired` and `Free`;
+   * `Supplied` and `Released` are refused. Absent: 0.
+   */
+  flags?: number;
   parts?: readonly PhisProductId[];
 };
 
