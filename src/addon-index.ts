@@ -1,5 +1,6 @@
 export * from "./addon.js";
 export * from "./assets.js";
+export * from "./billing.js";
 export * from "./capabilities.js";
 export * from "./cdn.js";
 export * from "./core.js";

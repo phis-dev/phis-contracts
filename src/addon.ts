@@ -27,6 +27,7 @@ import type {
 } from "./core.js";
 import type { PhiAddonMediaLimits } from "./server-capabilities.js";
 import type { PhisAddonUsersAccess } from "./users.js";
+import type { PhisAddonBillingDescriptor } from "./billing.js";
 import type { PhisAddonProductDescriptor } from "./products.js";
 import type { PhisAddonQueryCatalog } from "./queries.js";
 import type { PhisAddonSchemaDescriptor } from "./schema.js";
@@ -515,6 +516,13 @@ export type PhisAddonManifestV1 = {
    * not listed is refused on every road. Optional for the reason `settings` is.
    */
   users?: PhisAddonUsersAccess;
+  /**
+   * What this Add-on does with billing documents (`billing:v1`): the kinds it issues (`issues`), which the
+   * Site's operator sees before allowing it as a source, and the Add-ons that may issue documents for its
+   * sales (`issuedBy`). Absent means it issues none and nobody issues for it; reading needs only the
+   * capability. Optional for the reason `settings` is.
+   */
+  billing?: PhisAddonBillingDescriptor;
   /**
    * The tables this Add-on owns, or null when it owns none.
    *

@@ -13,6 +13,7 @@
  */
 
 import type { PhisAssetChangedEventFacts, PhisAssetsCapabilityV1 } from "./assets.js";
+import type { PhisBillingCapabilityV1, PhisBillingDocumentChangedEventFacts } from "./billing.js";
 import type { PhisAddonEmittedEventId, PhisAddonThreadEventId } from "./core.js";
 import type { PhisEntitlementChangedEventFacts, PhisEntitlementsCapabilityV1 } from "./entitlements.js";
 import type { PhisProductChangedEventFacts, PhisProductsCapabilityV1 } from "./products.js";
@@ -152,6 +153,8 @@ export type PhisAddonCapabilities = {
   users?: PhisUsersCapabilityV1;
   /** This Add-on's own words as source texts of the Site's translation store, and read in a reader's language. */
   translations?: PhisTranslationsCapabilityV1;
+  /** The Site's billing documents: reading them by the access rules of `billing:v1`, and issuing the merchant's own as an allowed source. */
+  billing?: PhisBillingCapabilityV1;
 };
 
 /**
@@ -530,7 +533,7 @@ export type PhisAddonCommandHandler = (
  * rather than as a person.
  *
  * Thread delivery is bounded by a synced link. The Payment event reaches only its stored
- * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The asset event reaches only the Add-on whose slot it concerns. The user events reach every enabled Add-on that requires `users:v1` and declares a handler for them. The subject kind and event discriminate those two ownership models; approved
+ * consuming Add-on. The entitlement event and the product event reach every enabled Add-on that declares a handler for them. The asset event reaches only the Add-on whose slot it concerns. The user events reach every enabled Add-on that requires `users:v1` and declares a handler for them. The billing document event reaches the document's source Add-on and, where different, its consumer Add-on. The subject kind and event discriminate those two ownership models; approved
  * Payment facts are delivered through Core's durable owner-directed outbox.
  */
 export type PhisAddonEventFacts =
@@ -544,6 +547,7 @@ export type PhisAddonEventFacts =
   | PhisAssetChangedEventFacts
   | PhisUserRegisteredEventFacts
   | PhisUserChangedEventFacts
+  | PhisBillingDocumentChangedEventFacts
   | {
       event: PhisAddonEmittedEventId;
       subject: PhisAddonEmittedEventSubject;

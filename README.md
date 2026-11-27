@@ -14,6 +14,7 @@ and change at different moments.
 ```
 @phis/contracts/addon                what phis and a separately shipped Add-on promise each other
 @phis/contracts/payments             the approved Payment consumer, Provider and merchant-profile types
+@phis/contracts/billing              the Site's billing documents: archived, issued and numbered by Core, read by their person and staff
 @phis/contracts/access               the authorization vocabulary phis and @phis/ui both evaluate
 @phis/contracts/signals              the signal vocabulary and address grammar the UI declares in and phis validates
 @phis/contracts/catalog              the Module categories an Add-on declares, the UI groups by and a market filters on
@@ -29,7 +30,7 @@ and change at different moments.
 @phis/contracts/references           the Page reference grammar both sides derive and compare
 @phis/contracts/resource-links       the links from a Phi record into an Add-on's own system
 @phis/contracts/support              the Support ticket vocabulary
-@phis/contracts/entitlements         who holds which product: subjects, entries and the capability; a bundle's holder holds its parts
+@phis/contracts/entitlements         who holds which product: subjects, entries, their standing and the capability; a bundle's holder holds its parts
 @phis/contracts/products             the Site's product directory: products, states, the capability and the event
 @phis/contracts/users                a person of the Site for Add-ons: fields by role, the Site's address book, the user events
 @phis/contracts/identity-provider    a login provider an Add-on supplies (service kind, no Core delivery yet)
@@ -172,6 +173,12 @@ What it covers:
   `PHIS_ADDON_TRANSLATION_CONTEXT_MAX`. Editor > Translations lists them beside a Page's words. Both take
   an optional `sourceLocale`, the texts' language: absent, the manifest's `sourceLocale`; what staff typed
   states the Site's (`PhisAddonRequestContext.site.sourceLocale`).
+- **Billing documents** -- `PhisBillingCapabilityV1` (`billing:v1`, `/billing`): an Add-on reads the
+  documents of its own sales (`list` by `references`), and an Add-on its manifest declares as an issuer
+  (`billing: { issues }`) and the Site's operator allowed as a source issues the merchant's own into Core:
+  `issue` allocates the number from a series and fixes the content, `attachFile` adds the PDF once. The
+  manifest's `billing.issuedBy` names the Add-ons that may issue for this Add-on's sales. Core's event
+  `billing-document.changed` reaches the source and the consumer Add-on.
 - **Core capabilities** -- `PHIS_CORE_CAPABILITIES`, the catalogue ids an Add-on may require. Declare
   against these constants rather than spelling the ids out, and read the list before concluding that
   Core lacks something; phis's `SERVER_ADDONS.md` section 13 says what each one is for. Core separately validates delivery to
@@ -204,12 +211,50 @@ currency; capture and refunds inherit it. Core never infers conversion or settle
 Core implements Payment execution separately. Its catalogue exports `payments`, `paymentNotifications`,
 the Payment service kind/interface digest and `payment.changed`. Notification ingress is available
 only in a bound hook context. The Add-on event context discriminates thread and Payment subjects;
-thread producers remain explicitly typed as thread events. A profile's Merchant-of-Record reach is
-recorded per currency when the Provider is asked (`refreshProfileReach`, a merchant action) and read
-back with `profileReach`, the one Payment operation a hook may call; a checkout can be given an end
-(`create` with `expiresAt`) within the method's `checkoutExpiry`.
+thread producers remain explicitly typed as thread events. A checkout can be given an end (`create`
+with `expiresAt`) within the method's `checkoutExpiry`.
+
+Everything Provider-specific is declared by the Provider in its method features (`PhisPaymentFeatures`),
+per pricing policy, since `probe` is asked per pricing selector: the collection modes a method can run
+and for which intervals (`collection`), its currency behaviour (`currency`: conversion into the
+customer's local currency, the conversion currencies, the account's settlement currencies, whether it
+reports settlements), and the documents it issues and who issues them in law (`documents`). Core records
+a profile's features per currency and per policy (`refreshProfileFeatures`, a merchant action) and
+answers them from the recording with `profileFeatures` and `chooseCollection`, the two Payment
+operations a hook may call; nothing reads a Provider's name.
+
+A subscription is collected in one of three modes (`PhisPaymentCollection`): `automatic` (Core charges
+the stored method, with a dunning policy), `payment-request` (Core asks the customer to pay each period
+on a checkout, `leadDays` before the paid one ends) and `provider-managed` (the Provider runs the
+schedule; prepared in the contract, refused until built). Every subscription has its own `graceDays`, 0
+to 30: a bound entitlement counts that long after an unpaid period's end, and a period still unpaid then
+ends the subscription -- there is no `unpaid` state. `payment.changed` names the `moment` of a requested
+period (`requested`, `reminder`, `due`, `grace-ending`) and the `changeId` of a change. A subscription
+changes terms with `previewSubscriptionChange` and `changeSubscription` (up at once, with the unused
+share of the paid period credited and the rest paid on a checkout, starting a new term; down or sideways
+at the period end), `cancelSubscriptionChange`, `listSubscriptionChanges` and `subscriptionCredit`.
+
+After a capture or a refund Core archives the Provider's documents (`listDocuments`, `fetchDocument`) into
+`billing:v1` and records what was settled (`observeSettlements`, read with `listSettlements` by Admin and
+Accountant only); `totals.presentment` is what the customer saw in their own currency, informational and
+never part of Core's arithmetic. Every yes/no fact is a bit of a `flags` number with its flag object
+(`PhisPaymentFlag`, `PhisPaymentSubscriptionFlag`, `PhisPaymentFeatureFlag`, ...), never a boolean.
 See the normative [Payment contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS.md)
 and [Stripe/profile contract](https://github.com/phis-dev/phis-server/blob/main/PAYMENTS_STRIPE.md).
+
+## `/billing`
+
+Every billing document of a Site in one model (`PhisBillingDocument`): the Provider's, fetched by Core
+after a payment, and the merchant's own invoices, credit notes, reminders, receipts and confirmations,
+issued by Add-ons through `billing:v1` (`PhisBillingCapabilityV1`). Core keeps them in its own private
+storage for ten years after the year of issue, numbers the issued invoices, credit notes and reminders
+gap-free from the Site's number series (`PhisBillingNumberSeries`, template `PHI-{YY}{xxxxx}`: the run of
+`x` is the serial's minimum width, `{YYYY}`, `{YY}` and `{MM}` are shown only, reset `none` or `yearly`),
+and shows a person all of theirs and Admin and Accountant all of them. A document never changes once
+issued; a correction is a credit note. `PhisBillingDocumentFlag` (`Voided`, `Credited`, `Detached`) and
+`PhisBillingNumberSeriesFlag` (`Closed`, `Used`) carry its yes/no facts. The manifest field `billing`
+(`PhisAddonBillingDescriptor`) declares what an Add-on issues and who may issue for it. Also re-exported
+by `/addon`.
 
 ## `/access`
 

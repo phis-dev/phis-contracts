@@ -1,4 +1,5 @@
 import type { PhisAssetChangedEventFacts } from "./assets.js";
+import type { PhisBillingDocumentChangedEventFacts } from "./billing.js";
 import type { PhisEntitlementChangedEventFacts } from "./entitlements.js";
 import type { PhisProductChangedEventFacts } from "./products.js";
 import type { PhisPaymentChangedEventFacts } from "./payments.js";
@@ -90,6 +91,13 @@ export const PHIS_CORE_CAPABILITIES = {
    * read in a reader's language (`translation.ts`, `PhisTranslationsCapabilityV1`).
    */
   translations: "@phis/server/translations:v1",
+  /**
+   * The Site's billing documents (`billing.ts`, `PhisBillingCapabilityV1`): reading the Provider's archived
+   * documents and every issuer's, as far as the acting person may, and issuing the merchant's own into
+   * Core's numbered, immutable store, for a source the Site's operator allowed. Named here with the
+   * contracts release before the server release that delivers it, both rolled out together.
+   */
+  billing: "@phis/server/billing:v1",
 } as const;
 
 export type PhisCoreCapabilityId =
@@ -126,12 +134,14 @@ export const PHIS_ADDON_EVENTS = {
   userRegistered: "user.registered",
   /** Which groups of a person's data changed, never their values; the handler reads them through `users:v1`. */
   userChanged: "user.changed",
+  /** A billing document was issued, became available, was voided, credited, its payment state changed, or fetching it was given up; the handler reads it. */
+  billingDocumentChanged: "billing-document.changed",
 } as const;
 
 export type PhisAddonThreadEventId =
-  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed" | "asset.changed" | "user.registered" | "user.changed">;
+  Exclude<(typeof PHIS_ADDON_EVENTS)[keyof typeof PHIS_ADDON_EVENTS], "payment.changed" | "entitlement.changed" | "product.changed" | "asset.changed" | "user.registered" | "user.changed" | "billing-document.changed">;
 
-/** The events Core itself emits: the thread events, the Payment event, the entitlement, product and asset events, and the user events. */
+/** The events Core itself emits: the thread events, the Payment event, the entitlement, product and asset events, the user events, and the billing document event. */
 export type PhisCoreEventId =
   | PhisAddonThreadEventId
   | PhisPaymentChangedEventFacts["event"]
@@ -139,7 +149,8 @@ export type PhisCoreEventId =
   | PhisProductChangedEventFacts["event"]
   | PhisAssetChangedEventFacts["event"]
   | PhisUserRegisteredEventFacts["event"]
-  | PhisUserChangedEventFacts["event"];
+  | PhisUserChangedEventFacts["event"]
+  | PhisBillingDocumentChangedEventFacts["event"];
 
 /**
  * An event an Add-on emits, named under the Add-on that emits it: `@scope/name:what.happened`.

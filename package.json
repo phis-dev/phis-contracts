@@ -21,6 +21,11 @@
       "import": "./dist/payments.js",
       "default": "./dist/payments.js"
     },
+    "./billing": {
+      "types": "./dist/billing.d.ts",
+      "import": "./dist/billing.js",
+      "default": "./dist/billing.js"
+    },
     "./references": {
       "types": "./dist/references.d.ts",
       "import": "./dist/references.js",
