@@ -1439,26 +1439,56 @@ export type PhisPaymentProviderDocument = {
 
 export type PhisPaymentSettlementId = string;
 
-/** What one capture or refund moved on the merchant's balance at the Provider. Recorded by Core, read-only to consumers; never rewritten, a later correction is a further record. */
+/**
+ * An amount that may go either way, in minor units: `minor` is a canonical integer string that may carry
+ * a leading `-` (`"-120"`), never `"-0"`, at most 16 digits. Only settlement records use it, because only
+ * they state what moved on a balance; every other amount in this contract is a `PhisPaymentMoney`.
+ */
+export type PhisPaymentSignedMoney = {
+  /** Uppercase ISO currency code. */
+  currency: string;
+  minor: string;
+};
+
+/**
+ * What one balance movement of a payment did to the merchant's balance at the Provider: a capture, a
+ * refund, a refund that failed and came back, a dispute's withdrawal or its reversal, a later adjustment.
+ * Recorded by Core, read-only to consumers; never rewritten -- a later correction is a further record.
+ *
+ * Every amount in the settlement currency is **signed from the merchant's side**, so one rule covers every
+ * case without a direction to interpret:
+ *
+ * - `settled`: positive where money came onto the balance (a capture, a failed refund coming back),
+ *   negative where it left (a refund, a dispute's withdrawal);
+ * - `fee`: positive where the Provider charged the merchant a fee for this movement, negative where it gave
+ *   one back, zero where neither;
+ * - `withheldTax`: positive where the Provider withheld tax it remits as Merchant of Record, negative where
+ *   it gave withheld tax back (a refund under Merchant of Record), `null` where none was withheld or returned;
+ * - `net = settled - fee - (withheldTax ?? 0)`: what the movement changed the balance by, positive in,
+ *   negative out. Core checks it (`isPhisPaymentSettlementBalanced`) and refuses a record that does not add up.
+ *
+ * `settled`, `fee`, `withheldTax` and `net` share one currency. A refund with a fee of its own is
+ * `settled -1000, fee 30, net -1030`; a refund that returns withheld tax is `settled -1000, fee 0,
+ * withheldTax -81, net -919`; the failed refund coming back is `settled 1000, net 1000` with the same
+ * `refundId`.
+ */
 export type PhisPaymentSettlement = {
   id: PhisPaymentSettlementId;
   paymentId: PhisPaymentId;
-  /** The refund this settles; `null` for the payment's own capture. */
+  /** The refund this movement belongs to (also a failed refund coming back); `null` for the payment's own capture and its disputes. */
   refundId: PhisPaymentRefundId | null;
-  /** `credit`: money came in (a capture); `debit`: it went out (a refund, a dispute's withdrawal). */
-  direction: "credit" | "debit";
   /** The Provider's id of the record, unique per profile (Stripe: the balance transaction `txn_...`). */
   reference: string;
-  /** What the payment or refund was, in its own currency. */
+  /** What the payment or refund was, in its own currency, as a magnitude; the sign is `settled`'s. */
   gross: PhisPaymentMoney;
-  /** What was booked on the balance before fees and withheld tax, in the settlement currency. */
-  settled: PhisPaymentMoney;
-  /** The Provider's fee, in the settlement currency; zero where none. */
-  fee: PhisPaymentMoney;
-  /** Tax the Provider withheld and remits as Merchant of Record, in the settlement currency; `null` where it withheld none. */
-  withheldTax: PhisPaymentMoney | null;
-  /** What remains for the merchant: `settled` less `fee` less `withheldTax`, in the settlement currency; Core checks the sum. */
-  net: PhisPaymentMoney;
+  /** What was booked on the balance before fees and withheld tax, in the settlement currency; signed as above. */
+  settled: PhisPaymentSignedMoney;
+  /** The Provider's fee for this movement, in the settlement currency; signed as above, zero where none. */
+  fee: PhisPaymentSignedMoney;
+  /** Tax the Provider withheld (positive) or gave back (negative) as Merchant of Record, in the settlement currency; `null` where none. */
+  withheldTax: PhisPaymentSignedMoney | null;
+  /** `settled - fee - (withheldTax ?? 0)`: what the balance changed by, in the settlement currency. */
+  net: PhisPaymentSignedMoney;
   /** Settlement units per unit of `gross`'s currency, as a decimal string ("0.9312"); `null` where nothing was converted. Never enters Core arithmetic. */
   exchangeRate: string | null;
   /** When the Provider makes it available for payout; `null` where it does not say. */
@@ -1468,11 +1498,31 @@ export type PhisPaymentSettlement = {
   recordedAt: string;
 };
 
-/** One settlement as the Provider reports it; Core adds the ids and checks the sums. */
+/** One settlement as the Provider reports it; Core adds the ids and checks the sum. */
 export type PhisPaymentProviderSettlement = Omit<PhisPaymentSettlement, "id" | "paymentId" | "refundId" | "recordedAt"> & {
-  /** The refund's binding where the record is a refund's; `null` for the payment's capture. */
+  /** The refund's binding where the movement belongs to a refund; `null` for the payment's capture and its disputes. */
   refund: PhisPaymentProviderBinding | null;
 };
+
+/** A signed `minor` as settlement records carry it: an optional `-`, no leading zero, no `-0`, 16 digits at most. */
+const PHIS_PAYMENT_SIGNED_MINOR_PATTERN = /^(0|-?[1-9][0-9]{0,15})$/u;
+
+/**
+ * Whether a settlement adds up: every amount a signed `minor`, `settled`, `fee`, `withheldTax` and `net` in
+ * one currency, `gross` a non-negative `minor`, and `net = settled - fee - (withheldTax ?? 0)` exactly.
+ * Core refuses a record for which this is false, and a Provider checks its own before it answers. Computed
+ * on integers (`BigInt`), never on floats.
+ */
+export function isPhisPaymentSettlementBalanced(
+  record: Pick<PhisPaymentSettlement, "gross" | "settled" | "fee" | "withheldTax" | "net">,
+): boolean {
+  const signed = [record.settled, record.fee, record.net, ...(record.withheldTax ? [record.withheldTax] : [])];
+  if (!signed.every((money) => PHIS_PAYMENT_SIGNED_MINOR_PATTERN.test(money.minor))) return false;
+  if (!signed.every((money) => money.currency === record.settled.currency)) return false;
+  if (!PHIS_PAYMENT_MINOR_PATTERN.test(record.gross.minor)) return false;
+  const withheld = record.withheldTax ? BigInt(record.withheldTax.minor) : 0n;
+  return BigInt(record.net.minor) === BigInt(record.settled.minor) - BigInt(record.fee.minor) - withheld;
+}
 
 export interface PhisPaymentNotificationsCapabilityV1 {
   receive(input: {
